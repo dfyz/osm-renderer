@@ -1,8 +1,15 @@
 extern crate clap;
+#[macro_use]
+extern crate log;
+extern crate slog_stdlog;
+
+extern crate renderer;
 
 use clap::{App,Arg};
 
 fn main() {
+    slog_stdlog::init().unwrap();
+
     let matches =
         App::new("OSM importer")
             .about("Imports an XML file with OpenStreetMap data to a format suitable for map rendering")
@@ -16,5 +23,13 @@ fn main() {
                     .index(2))
             .get_matches();
 
-    println!("Will import from {} to {}", matches.value_of("INPUT").unwrap(), matches.value_of("OUTPUT").unwrap());
+    let input = matches.value_of("INPUT").unwrap();
+    let output = matches.value_of("OUTPUT").unwrap();
+
+    info!("Importing from {} to {}", input, output);
+
+    match renderer::geodata::importer::import(input, output) {
+        Ok(_) => info!("All good"),
+        Err(err) => error!("Import failed: {}", err),
+    }
 }

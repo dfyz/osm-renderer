@@ -6,3 +6,5 @@ authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
 [dependencies]
 clap = "*"
 googleprojection = "*"
+log = "*"
+slog-stdlog = "*"
