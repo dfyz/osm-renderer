@@ -1,0 +1,8 @@
+[package]
+name = "renderer"
+version = "0.1.0"
+authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
+
+[dependencies]
+clap = "*"
+googleprojection = "*"
