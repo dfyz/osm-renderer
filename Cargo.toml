@@ -8,6 +8,7 @@ build = "build.rs"
 capnpc = "*"
 
 [dependencies]
+capnp = "*"
 clap = "*"
 googleprojection = "*"
 log = "*"
