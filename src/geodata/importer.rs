@@ -53,7 +53,7 @@ struct OsmXmlElement {
 impl OsmXmlElement {
     fn new(name: OwnedName, attrs: Vec<OwnedAttribute>) -> OsmXmlElement {
         let mut attr_map = HashMap::new();
-        for a in attrs.iter() {
+        for a in attrs.into_iter() {
             attr_map.insert(a.name.local_name, a.value);
         }
         OsmXmlElement {
@@ -71,14 +71,16 @@ struct OsmEntity {
 
 impl OsmEntity {
     fn from_initial_element(initial_element: OsmXmlElement) -> Result<OsmEntity, Box<Error>> {
-        match initial_element.attr_map.get("id") {
-            Some(value) => Ok(OsmEntity {
-                global_id: value.parse()?,
-                osm_type: initial_element.name,
+        let maybe_id = initial_element.attr_map.get("id").map(|x| x.parse());
+
+        match maybe_id {
+            Some(Ok(parsed_id)) => Ok(OsmEntity {
+                global_id: parsed_id,
+                osm_type: initial_element.name.clone(),
                 elems: vec![initial_element],
             }),
-            None => Err(OsmParsingError::from_reason(
-                format!("Element {} doesn't have an id attribute", initial_element.name)
+            _ => Err(OsmParsingError::from_reason(
+                format!("Element {} doesn't have a numeric id attribute", initial_element.name)
             ))
         }
     }
@@ -146,32 +148,30 @@ fn process_start_element(name: OwnedName, attrs: Vec<OwnedAttribute>, parsing_st
     match parsing_state.current_entity {
         Some(ref mut entity) => {
             entity.elems.push(osm_elem);
-            Ok(())
         },
         None => {
             parsing_state.current_entity = Some(
                 OsmEntity::from_initial_element(osm_elem)?
             );
-            Ok(())
         },
     }
+    Ok(())
 }
 
-fn process_end_element<'a>(name: OwnedName, parsing_state: &'a mut ParsingState) {
-    let get_storage_by_type = |state: &'a mut ParsingState, osm_type| {
-        match osm_type {
-            "node" => Some(&mut state.node_storage),
-            "way" => Some(&mut state.way_storage),
-            "relation" => Some(&mut state.relation_storage),
-            _ => None,
-        }
+fn process_end_element(name: OwnedName, parsing_state: &mut ParsingState) {
+    let maybe_storage = {
+        if let Some(ref entity) = parsing_state.current_entity {
+            if name.local_name == entity.osm_type {
+                match entity.osm_type.as_ref() {
+                    "node" => Some(&mut parsing_state.node_storage),
+                    "way" => Some(&mut parsing_state.way_storage),
+                    "relation" => Some(&mut parsing_state.relation_storage),
+                    _ => None,
+                }
+            } else { None }
+        } else { None }
     };
-    if let Some(entity) = parsing_state.current_entity {
-        if name.local_name == entity.osm_type {
-            if let Some(storage) = get_storage_by_type(parsing_state, &entity.osm_type) {
-                storage.add(entity);
-                parsing_state.current_entity = None;
-            }
-        }
+    if let Some(storage) = maybe_storage {
+        storage.add(parsing_state.current_entity.take().unwrap());
     }
 }
