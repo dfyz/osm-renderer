@@ -180,6 +180,8 @@ fn convert_to_message(osm_xml: ParsedOsmXml) -> Builder<HeapAllocator> {
     let mut message = Builder::new_default();
     {
         let mut geodata = message.init_root::<geodata::Builder>();
+
+        let nodes = geodata.init_nodes(osm_xml.node_storage.entities.len() as u32);
     }
     message
 }
