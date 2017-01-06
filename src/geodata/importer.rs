@@ -173,12 +173,13 @@ fn process_end_element(name: OwnedName, parsing_state: &mut ParsingState) {
 
     let entity = parsing_state.current_entity.take().unwrap();
 
-    let maybe_storage = match entity.osm_type.as_ref() {
-        "node" => Some(&mut parsing_state.node_storage),
-        "way" => Some(&mut parsing_state.way_storage),
-        "relation" => Some(&mut parsing_state.relation_storage),
-        _ => None,
-    };
+    let maybe_storage =
+        match entity.osm_type.as_ref() {
+            "node" => Some(&mut parsing_state.node_storage),
+            "way" => Some(&mut parsing_state.way_storage),
+            "relation" => Some(&mut parsing_state.relation_storage),
+            _ => None,
+        };
 
     if let Some(storage) = maybe_storage {
         storage.add(entity);
