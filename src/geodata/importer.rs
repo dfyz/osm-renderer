@@ -1,57 +1,38 @@
+use errors::*;
+
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read};
 
 use capnp::message::{HeapAllocator, Builder};
 use geodata_capnp::geodata;
 use xml::attribute::OwnedAttribute;
+use xml::common::{Position,TextPosition};
 use xml::name::OwnedName;
 use xml::reader::{EventReader, XmlEvent};
 
-pub fn import(input: &str, output: &str) -> Result<(), Box<Error>> {
-    let parser = EventReader::new(BufReader::new(File::open(input)?));
-    let mut writer = BufWriter::new(File::create(output)?);
+pub fn import(input: &str, output: &str) -> Result<()> {
+    let input_file = File::open(input).chain_err(|| format!("Failed to open {} for reading", input))?;
+    let output_file = File::create(output).chain_err(|| format!("Failed to open {} for writing", output))?;
+
+    let parser = EventReader::new(BufReader::new(input_file));
+    let mut writer = BufWriter::new(output_file);
 
     let message = read_geodata(parser)?;
 
-    ::capnp::serialize_packed::write_message(&mut writer, &message)?;
+    ::capnp::serialize_packed::write_message(&mut writer, &message)
+        .chain_err(|| "Failed to write the imported data to the output file")?;
     Ok(())
-}
-
-#[derive(Debug)]
-pub struct OsmParsingError {
-    reason: String,
-}
-
-impl fmt::Display for OsmParsingError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "OSM parsing error: {}", self.reason)
-    }
-}
-
-impl OsmParsingError {
-    fn from_reason(reason: String) -> Box<OsmParsingError> {
-        Box::new(OsmParsingError {
-            reason: reason,
-        })
-    }
-}
-
-impl Error for OsmParsingError {
-    fn description(self: &OsmParsingError) -> &str {
-        &self.reason
-    }
 }
 
 struct OsmXmlElement {
     name: String,
     attr_map: HashMap<String, String>,
+    input_position: TextPosition,
 }
 
 impl OsmXmlElement {
-    fn new(name: OwnedName, attrs: Vec<OwnedAttribute>) -> OsmXmlElement {
+    fn new(name: OwnedName, attrs: Vec<OwnedAttribute>, input_position: TextPosition) -> OsmXmlElement {
         let mut attr_map = HashMap::new();
         for a in attrs.into_iter() {
             attr_map.insert(a.name.local_name, a.value);
@@ -59,7 +40,14 @@ impl OsmXmlElement {
         OsmXmlElement {
             name: name.local_name,
             attr_map: attr_map,
+            input_position: input_position
         }
+    }
+}
+
+impl ::std::fmt::Display for OsmXmlElement {
+    fn fmt(self: &OsmXmlElement, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+        write!(f, "<{}> at {}", self.name, self.input_position)
     }
 }
 
@@ -70,7 +58,7 @@ struct OsmEntity {
 }
 
 impl OsmEntity {
-    fn from_initial_element(initial_element: OsmXmlElement) -> Result<OsmEntity, Box<Error>> {
+    fn from_initial_element(initial_element: OsmXmlElement) -> Result<OsmEntity> {
         let maybe_id = initial_element.attr_map.get("id").map(|x| x.parse());
 
         match maybe_id {
@@ -79,9 +67,7 @@ impl OsmEntity {
                 osm_type: initial_element.name.clone(),
                 elems: vec![initial_element],
             }),
-            _ => Err(OsmParsingError::from_reason(
-                format!("Element {} doesn't have a numeric id attribute", initial_element.name)
-            ))
+            _ => bail!("Element {} doesn't have a numeric id attribute", initial_element),
         }
     }
 }
@@ -114,7 +100,7 @@ struct ParsingState {
     current_entity: Option<OsmEntity>,
 }
 
-fn read_geodata<R: Read>(parser: EventReader<R>) -> Result<Builder<HeapAllocator>, Box<Error>> {
+fn read_geodata<R: Read>(mut parser: EventReader<R>) -> Result<Builder<HeapAllocator>> {
     let mut message = Builder::new_default();
 
     let mut parsing_state = ParsingState {
@@ -127,11 +113,12 @@ fn read_geodata<R: Read>(parser: EventReader<R>) -> Result<Builder<HeapAllocator
     {
         let mut geodata = message.init_root::<geodata::Builder>();
 
-        for ev in parser {
-            let e = ev?;
+        loop {
+            let e = parser.next().chain_err(|| "Failed to parse the input file")?;
             match e {
+                XmlEvent::EndDocument => break,
                 XmlEvent::StartElement {name, attributes, ..} => {
-                    process_start_element(name, attributes, &mut parsing_state)?
+                    process_start_element(name, attributes, parser.position(), &mut parsing_state)?
                 },
                 XmlEvent::EndElement {name} => {
                     process_end_element(name, &mut parsing_state);
@@ -144,8 +131,14 @@ fn read_geodata<R: Read>(parser: EventReader<R>) -> Result<Builder<HeapAllocator
     Ok(message)
 }
 
-fn process_start_element(name: OwnedName, attrs: Vec<OwnedAttribute>, parsing_state: &mut ParsingState) -> Result<(), Box<Error>> {
-    let osm_elem = OsmXmlElement::new(name, attrs);
+fn process_start_element(
+    name: OwnedName,
+    attrs: Vec<OwnedAttribute>,
+    input_position: TextPosition,
+    parsing_state: &mut ParsingState
+) -> Result<()>
+{
+    let osm_elem = OsmXmlElement::new(name, attrs, input_position);
     match parsing_state.current_entity {
         Some(ref mut entity) => {
             entity.elems.push(osm_elem);

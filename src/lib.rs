@@ -1,5 +1,13 @@
 extern crate capnp;
+
+#[macro_use]
+extern crate error_chain;
+
 extern crate xml;
+
+pub mod errors {
+	error_chain! {}
+}
 
 pub mod geodata_capnp {
     include!(concat!(env!("OUT_DIR"), "/geodata_capnp.rs"));

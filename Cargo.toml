@@ -10,6 +10,7 @@ capnpc = "*"
 [dependencies]
 capnp = "*"
 clap = "*"
+error-chain = "*"
 googleprojection = "*"
 log = "*"
 slog-stdlog = "*"

@@ -30,6 +30,12 @@ fn main() {
 
     match renderer::geodata::importer::import(input, output) {
         Ok(_) => info!("All good"),
-        Err(err) => error!("Import failed: {}", err),
+        Err(err) => {
+            error!("Import failed");
+            for (i, suberror) in err.iter().enumerate() {
+                let description = if i == 0 { "Reason" } else { "Caused by" };
+                error!("{}: {}", description, suberror);
+            }
+        }
     }
 }
