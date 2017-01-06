@@ -57,7 +57,6 @@ impl ::std::fmt::Display for OsmXmlElement {
 
 struct OsmEntity {
     global_id: u64,
-    osm_type: String,
     elems: Vec<OsmXmlElement>,
 }
 
@@ -69,7 +68,6 @@ impl OsmEntity {
             .and_then(|x| x.parse().ok())
             .map(|id| OsmEntity {
                 global_id: id,
-                osm_type: initial_element.name.clone(),
                 elems: vec![initial_element],
             })
     }
@@ -100,7 +98,7 @@ struct ParsedOsmXml {
     way_storage: OsmEntityStorage,
     relation_storage: OsmEntityStorage,
 
-    current_entity: Option<OsmEntity>,
+    current_entity_with_type: Option<(OsmEntity, String)>,
 }
 
 fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
@@ -108,7 +106,7 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
         relation_storage: OsmEntityStorage::new(),
-        current_entity: None,
+        current_entity_with_type: None,
     };
 
     loop {
@@ -135,15 +133,16 @@ fn process_start_element(
     parsing_state: &mut ParsedOsmXml
 )
 {
+    let entity_type = name.local_name.clone();
     let osm_elem = OsmXmlElement::new(name, attrs, input_position);
-    match parsing_state.current_entity {
-        Some(ref mut entity) => {
+    match parsing_state.current_entity_with_type {
+        Some((ref mut entity, _)) => {
             entity.elems.push(osm_elem);
         },
         None => {
             let new_entity = OsmEntity::new(osm_elem);
             if new_entity.is_some() {
-                parsing_state.current_entity = new_entity;
+                parsing_state.current_entity_with_type = new_entity.map(|x| (x, entity_type));
             }
         },
     }
@@ -151,8 +150,8 @@ fn process_start_element(
 
 fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
     let is_final_entity_element =
-        if let Some(ref entity) = parsing_state.current_entity {
-            entity.osm_type == name.local_name
+        if let Some((_, ref entity_type)) = parsing_state.current_entity_with_type {
+            *entity_type == name.local_name
         } else {
             false
         };
@@ -161,10 +160,10 @@ fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
         return
     }
 
-    let entity = parsing_state.current_entity.take().unwrap();
+    let (entity, entity_type) = parsing_state.current_entity_with_type.take().unwrap();
 
     let maybe_storage =
-        match entity.osm_type.as_ref() {
+        match entity_type.as_ref() {
             "node" => Some(&mut parsing_state.node_storage),
             "way" => Some(&mut parsing_state.way_storage),
             "relation" => Some(&mut parsing_state.relation_storage),
