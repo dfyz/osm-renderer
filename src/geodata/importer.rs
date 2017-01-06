@@ -58,17 +58,16 @@ struct OsmEntity {
 }
 
 impl OsmEntity {
-    fn from_initial_element(initial_element: OsmXmlElement) -> Result<OsmEntity> {
-        let maybe_id = initial_element.attr_map.get("id").map(|x| x.parse());
-
-        match maybe_id {
-            Some(Ok(parsed_id)) => Ok(OsmEntity {
-                global_id: parsed_id,
+    fn new(initial_element: OsmXmlElement) -> Option<OsmEntity> {
+        initial_element
+            .attr_map
+            .get("id")
+            .and_then(|x| x.parse().ok())
+            .map(|id| OsmEntity {
+                global_id: id,
                 osm_type: initial_element.name.clone(),
                 elems: vec![initial_element],
-            }),
-            _ => bail!("Element {} doesn't have a numeric id attribute", initial_element),
-        }
+            })
     }
 }
 
@@ -118,7 +117,7 @@ fn read_geodata<R: Read>(mut parser: EventReader<R>) -> Result<Builder<HeapAlloc
             match e {
                 XmlEvent::EndDocument => break,
                 XmlEvent::StartElement {name, attributes, ..} => {
-                    process_start_element(name, attributes, parser.position(), &mut parsing_state)?
+                    process_start_element(name, attributes, parser.position(), &mut parsing_state)
                 },
                 XmlEvent::EndElement {name} => {
                     process_end_element(name, &mut parsing_state);
@@ -136,7 +135,7 @@ fn process_start_element(
     attrs: Vec<OwnedAttribute>,
     input_position: TextPosition,
     parsing_state: &mut ParsingState
-) -> Result<()>
+)
 {
     let osm_elem = OsmXmlElement::new(name, attrs, input_position);
     match parsing_state.current_entity {
@@ -144,12 +143,12 @@ fn process_start_element(
             entity.elems.push(osm_elem);
         },
         None => {
-            parsing_state.current_entity = Some(
-                OsmEntity::from_initial_element(osm_elem)?
-            );
+            let new_entity = OsmEntity::new(osm_elem);
+            if new_entity.is_some() {
+                parsing_state.current_entity = new_entity;
+            }
         },
     }
-    Ok(())
 }
 
 fn process_end_element(name: OwnedName, parsing_state: &mut ParsingState) {
