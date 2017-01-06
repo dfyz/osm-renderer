@@ -116,6 +116,7 @@ struct ParsingState {
 
 fn read_geodata<R: Read>(parser: EventReader<R>) -> Result<Builder<HeapAllocator>, Box<Error>> {
     let mut message = Builder::new_default();
+
     let mut parsing_state = ParsingState {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
@@ -159,19 +160,27 @@ fn process_start_element(name: OwnedName, attrs: Vec<OwnedAttribute>, parsing_st
 }
 
 fn process_end_element(name: OwnedName, parsing_state: &mut ParsingState) {
-    let maybe_storage = {
+    let is_final_entity_element =
         if let Some(ref entity) = parsing_state.current_entity {
-            if name.local_name == entity.osm_type {
-                match entity.osm_type.as_ref() {
-                    "node" => Some(&mut parsing_state.node_storage),
-                    "way" => Some(&mut parsing_state.way_storage),
-                    "relation" => Some(&mut parsing_state.relation_storage),
-                    _ => None,
-                }
-            } else { None }
-        } else { None }
+            entity.osm_type == name.local_name
+        } else {
+            false
+        };
+
+    if !is_final_entity_element {
+        return
+    }
+
+    let entity = parsing_state.current_entity.take().unwrap();
+
+    let maybe_storage = match entity.osm_type.as_ref() {
+        "node" => Some(&mut parsing_state.node_storage),
+        "way" => Some(&mut parsing_state.way_storage),
+        "relation" => Some(&mut parsing_state.relation_storage),
+        _ => None,
     };
+
     if let Some(storage) = maybe_storage {
-        storage.add(parsing_state.current_entity.take().unwrap());
+        storage.add(entity);
     }
 }
