@@ -22,7 +22,7 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     let parsed_xml = parse_osm_xml(parser)?;
 
     info!("Converting geodata to internal format");
-    let message = convert_to_message(parsed_xml);
+    let message = convert_to_message(parsed_xml)?;
 
     ::capnp::serialize_packed::write_message(&mut writer, &message)
         .chain_err(|| "Failed to write the imported data to the output file")?;
@@ -176,12 +176,18 @@ fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
     }
 }
 
-fn convert_to_message(osm_xml: ParsedOsmXml) -> Builder<HeapAllocator> {
+fn convert_to_message(osm_xml: ParsedOsmXml) -> Result<Builder<HeapAllocator>> {
     let mut message = Builder::new_default();
     {
-        let mut geodata = message.init_root::<geodata::Builder>();
+        let geodata = message.init_root::<geodata::Builder>();
 
-        let nodes = geodata.init_nodes(osm_xml.node_storage.entities.len() as u32);
+        let mut nodes = geodata.init_nodes(osm_xml.node_storage.entities.len() as u32);
+
+        for (i, node_in) in osm_xml.node_storage.entities.iter().enumerate() {
+            let mut node_out = nodes.borrow().get(i as u32);
+
+            node_out.set_global_id(node_in.global_id);
+        }
     }
-    message
+    Ok(message)
 }
