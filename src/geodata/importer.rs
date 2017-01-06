@@ -18,7 +18,11 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     let parser = EventReader::new(BufReader::new(input_file));
     let mut writer = BufWriter::new(output_file);
 
-    let message = read_geodata(parser)?;
+    info!("Parsing XML");
+    let parsed_xml = parse_osm_xml(parser)?;
+
+    info!("Converting geodata to internal format");
+    let message = convert_to_message(parsed_xml);
 
     ::capnp::serialize_packed::write_message(&mut writer, &message)
         .chain_err(|| "Failed to write the imported data to the output file")?;
@@ -91,7 +95,7 @@ impl OsmEntityStorage {
     }
 }
 
-struct ParsingState {
+struct ParsedOsmXml {
     node_storage: OsmEntityStorage,
     way_storage: OsmEntityStorage,
     relation_storage: OsmEntityStorage,
@@ -99,42 +103,36 @@ struct ParsingState {
     current_entity: Option<OsmEntity>,
 }
 
-fn read_geodata<R: Read>(mut parser: EventReader<R>) -> Result<Builder<HeapAllocator>> {
-    let mut message = Builder::new_default();
-
-    let mut parsing_state = ParsingState {
+fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
+    let mut parsing_state = ParsedOsmXml {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
         relation_storage: OsmEntityStorage::new(),
         current_entity: None,
     };
 
-    {
-        let mut geodata = message.init_root::<geodata::Builder>();
-
-        loop {
-            let e = parser.next().chain_err(|| "Failed to parse the input file")?;
-            match e {
-                XmlEvent::EndDocument => break,
-                XmlEvent::StartElement {name, attributes, ..} => {
-                    process_start_element(name, attributes, parser.position(), &mut parsing_state)
-                },
-                XmlEvent::EndElement {name} => {
-                    process_end_element(name, &mut parsing_state);
-                },
-                _ => {}
-            }
+    loop {
+        let e = parser.next().chain_err(|| "Failed to parse the input file")?;
+        match e {
+            XmlEvent::EndDocument => break,
+            XmlEvent::StartElement {name, attributes, ..} => {
+                process_start_element(name, attributes, parser.position(), &mut parsing_state)
+            },
+            XmlEvent::EndElement {name} => {
+                process_end_element(name, &mut parsing_state);
+            },
+            _ => {}
         }
     }
 
-    Ok(message)
+    Ok(parsing_state)
 }
 
 fn process_start_element(
     name: OwnedName,
     attrs: Vec<OwnedAttribute>,
     input_position: TextPosition,
-    parsing_state: &mut ParsingState
+    parsing_state: &mut ParsedOsmXml
 )
 {
     let osm_elem = OsmXmlElement::new(name, attrs, input_position);
@@ -151,7 +149,7 @@ fn process_start_element(
     }
 }
 
-fn process_end_element(name: OwnedName, parsing_state: &mut ParsingState) {
+fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
     let is_final_entity_element =
         if let Some(ref entity) = parsing_state.current_entity {
             entity.osm_type == name.local_name
@@ -176,4 +174,12 @@ fn process_end_element(name: OwnedName, parsing_state: &mut ParsingState) {
     if let Some(storage) = maybe_storage {
         storage.add(entity);
     }
+}
+
+fn convert_to_message(osm_xml: ParsedOsmXml) -> Builder<HeapAllocator> {
+    let mut message = Builder::new_default();
+    {
+        let mut geodata = message.init_root::<geodata::Builder>();
+    }
+    message
 }
