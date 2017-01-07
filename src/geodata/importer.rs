@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read};
 
-use capnp::message::{HeapAllocator, Builder};
-use geodata_capnp::geodata;
+use capnp::message::{Allocator, Builder};
+use geodata_capnp::{geodata,tag_list};
 use xml::attribute::OwnedAttribute;
 use xml::common::{Position,TextPosition};
 use xml::name::OwnedName;
@@ -22,7 +22,8 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     let parsed_xml = parse_osm_xml(parser)?;
 
     info!("Converting geodata to internal format");
-    let message = convert_to_message(parsed_xml)?;
+    let mut message = Builder::new_default();
+    convert_to_message(&mut message, parsed_xml)?;
 
     ::capnp::serialize_packed::write_message(&mut writer, &message)
         .chain_err(|| "Failed to write the imported data to the output file")?;
@@ -57,7 +58,8 @@ impl ::std::fmt::Display for OsmXmlElement {
 
 struct OsmEntity {
     global_id: u64,
-    elems: Vec<OsmXmlElement>,
+    initial_elem: OsmXmlElement,
+    additional_elems: Vec<OsmXmlElement>,
 }
 
 impl OsmEntity {
@@ -68,8 +70,17 @@ impl OsmEntity {
             .and_then(|x| x.parse().ok())
             .map(|id| OsmEntity {
                 global_id: id,
-                elems: vec![initial_element],
+                initial_elem: initial_element,
+                additional_elems: vec![],
             })
+    }
+
+    fn get_elems_by_name<'a>(self: &'a OsmEntity, name: &str) -> Vec<&'a OsmXmlElement> {
+        self
+            .additional_elems
+            .iter()
+            .filter(|x| x.name == name)
+            .collect::<Vec<_>>()
     }
 }
 
@@ -137,7 +148,7 @@ fn process_start_element(
     let osm_elem = OsmXmlElement::new(name, attrs, input_position);
     match parsing_state.current_entity_with_type {
         Some((ref mut entity, _)) => {
-            entity.elems.push(osm_elem);
+            entity.additional_elems.push(osm_elem);
         },
         None => {
             let new_entity = OsmEntity::new(osm_elem);
@@ -175,18 +186,59 @@ fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
     }
 }
 
-fn convert_to_message(osm_xml: ParsedOsmXml) -> Result<Builder<HeapAllocator>> {
-    let mut message = Builder::new_default();
-    {
-        let geodata = message.init_root::<geodata::Builder>();
-
-        let mut nodes = geodata.init_nodes(osm_xml.node_storage.entities.len() as u32);
-
-        for (i, node_in) in osm_xml.node_storage.entities.iter().enumerate() {
-            let mut node_out = nodes.borrow().get(i as u32);
-
-            node_out.set_global_id(node_in.global_id);
-        }
+fn get_required_attr(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<String> {
+    match osm_elem.attr_map.get(attr_name) {
+        Some(value) => Ok(value.clone()),
+        None => bail!("Element {} doesn't have required attribute: {}", osm_elem, attr_name),
     }
-    Ok(message)
+}
+
+fn parse_required_attr<T>(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<T>
+    where
+        T: ::std::str::FromStr,
+        T::Err : ::std::error::Error + ::std::marker::Send + 'static
+{
+    let value = get_required_attr(osm_elem, attr_name)?;
+
+    let parsed_value = value
+        .parse::<T>()
+        .chain_err(|| format!("Failed to parse the value of attribute {} for element {}", attr_name, osm_elem))?;
+
+    Ok(parsed_value)
+}
+
+fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> Result<()> {
+    let tags_in = osm_entity.get_elems_by_name("tag");
+    let mut tags_out = tag_builder.borrow().init_tags(tags_in.len() as u32);
+
+    for (i, tag_in) in tags_in.iter().enumerate() {
+        let mut tag_out = tags_out.borrow().get(i as u32);
+        tag_out.set_key(&get_required_attr(&tag_in, "k")?);
+        tag_out.set_value(&get_required_attr(&tag_in, "v")?);
+    }
+
+    Ok(())
+}
+
+fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsmXml) -> Result<()> {
+    let geodata = message.init_root::<geodata::Builder>();
+
+    let mut nodes = geodata.init_nodes(osm_xml.node_storage.entities.len() as u32);
+
+    for (i, node_in) in osm_xml.node_storage.entities.iter().enumerate() {
+        let mut node_out = nodes.borrow().get(i as u32);
+
+        node_out.set_global_id(node_in.global_id);
+
+        {
+            let mut coords = node_out.borrow().init_coords();
+
+            coords.set_lat(parse_required_attr(&node_in.initial_elem, "lat")?);
+            coords.set_lon(parse_required_attr(&node_in.initial_elem, "lon")?);
+        }
+
+        collect_tags(&mut node_out.borrow().init_tags(), &node_in)?;
+    }
+
+    Ok(())
 }
