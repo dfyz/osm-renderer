@@ -51,7 +51,7 @@ impl OsmXmlElement {
 }
 
 impl ::std::fmt::Display for OsmXmlElement {
-    fn fmt(self: &OsmXmlElement, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
         write!(f, "<{}> at {}", self.name, self.input_position)
     }
 }
@@ -75,7 +75,7 @@ impl OsmEntity {
             })
     }
 
-    fn get_elems_by_name<'a>(self: &'a OsmEntity, name: &str) -> Vec<&'a OsmXmlElement> {
+    fn get_elems_by_name<'a>(&'a self, name: &str) -> Vec<&'a OsmXmlElement> {
         self
             .additional_elems
             .iter()
@@ -97,13 +97,13 @@ impl OsmEntityStorage {
         }
     }
 
-    fn add(self: &mut OsmEntityStorage, entity: OsmEntity) {
+    fn add(&mut self, entity: OsmEntity) {
         let old_size = self.entities.len();
         self.global_id_to_local_id.insert(entity.global_id, old_size);
         self.entities.push(entity);
     }
 
-    fn translate_id(self: & OsmEntityStorage, global_id: u64) -> Result<usize> {
+    fn translate_id(&self, global_id: u64) -> Result<usize> {
         match self.global_id_to_local_id.get(&global_id) {
             Some(value) => Ok(*value),
             None => bail!("Failed to find an entity with ID = {}", global_id),
