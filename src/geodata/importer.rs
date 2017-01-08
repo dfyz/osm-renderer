@@ -227,26 +227,27 @@ fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> 
     Ok(())
 }
 
+macro_rules! fill_message_part {
+    ($entity_in:ident, $entity_out:ident, $geodata:expr, $init_part:ident, $storage:expr, $fill_part:block) => {{
+        let mut entities_out = $geodata.borrow().$init_part($storage.entities.len() as u32);
+        for (i, $entity_in) in $storage.entities.iter().enumerate() {
+            let mut $entity_out = entities_out.borrow().get(i as u32);
+            $entity_out.set_global_id($entity_in.global_id);
+            $fill_part
+            collect_tags(&mut $entity_out.init_tags(), &$entity_in)?;
+        }
+    }}
+}
+
 fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsmXml) -> Result<()> {
     let mut geodata = message.init_root::<geodata::Builder>();
 
-    {
-        let mut nodes = geodata.borrow().init_nodes(osm_xml.node_storage.entities.len() as u32);
-        for (i, node_in) in osm_xml.node_storage.entities.iter().enumerate() {
-            let mut node_out = nodes.borrow().get(i as u32);
+    fill_message_part!(node_in, node_out, geodata, init_nodes, osm_xml.node_storage, {
+        let mut coords = node_out.borrow().init_coords();
 
-            node_out.set_global_id(node_in.global_id);
-
-            {
-                let mut coords = node_out.borrow().init_coords();
-
-                coords.set_lat(parse_required_attr(&node_in.initial_elem, "lat")?);
-                coords.set_lon(parse_required_attr(&node_in.initial_elem, "lon")?);
-            }
-
-            collect_tags(&mut node_out.init_tags(), &node_in)?;
-        }
-    }
+        coords.set_lat(parse_required_attr(&node_in.initial_elem, "lat")?);
+        coords.set_lon(parse_required_attr(&node_in.initial_elem, "lon")?);
+    });
 
     {
         let mut ways = geodata.borrow().init_ways(osm_xml.way_storage.entities.len() as u32);
