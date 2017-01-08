@@ -267,7 +267,7 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
     fill_message_part!(rel_in, rel_out, geodata, init_relations, osm_xml.relation_storage, {
         let members = rel_in.get_elems_by_name("member");
 
-        let collect_members = |member_type: &str| {
+        let collect_members = |member_type| {
             members
                 .iter()
                 .filter(|x| x.attr_map.get("type").map(|x| x.as_ref()) == Some(member_type))
