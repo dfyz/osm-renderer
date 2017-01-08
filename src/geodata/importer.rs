@@ -240,7 +240,7 @@ macro_rules! fill_message_part {
 }
 
 macro_rules! collect_references {
-    ($refs_in:ident, $entity:expr, $init_part:ident, $storage:expr) => {{
+    ($refs_in:expr, $entity:expr, $init_part:ident, $storage:expr) => {{
         let mut refs_out = $entity.borrow().$init_part($refs_in.len() as u32);
         for (i, ref_in) in $refs_in.iter().enumerate() {
             let local_node_id = $storage.translate_id(parse_required_attr(&ref_in, "ref")?)?;
@@ -267,17 +267,15 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
     fill_message_part!(rel_in, rel_out, geodata, init_relations, osm_xml.relation_storage, {
         let members = rel_in.get_elems_by_name("member");
 
-        let node_members = members
-            .iter()
-            .filter(|x| x.attr_map.get("type") == Some(&"node".to_string()))
-            .collect::<Vec<_>>();
-        collect_references!(node_members, rel_out, init_local_node_ids, osm_xml.node_storage);
+        let collect_members = |member_type: &str| {
+            members
+                .iter()
+                .filter(|x| x.attr_map.get("type") == Some(&member_type.to_string()))
+                .collect::<Vec<_>>()
+        };
 
-        let way_members = members
-            .iter()
-            .filter(|x| x.attr_map.get("type") == Some(&"way".to_string()))
-            .collect::<Vec<_>>();
-        collect_references!(way_members, rel_out, init_local_way_ids, osm_xml.way_storage);
+        collect_references!(collect_members("node"), rel_out, init_local_node_ids, osm_xml.node_storage);
+        collect_references!(collect_members("way"), rel_out, init_local_way_ids, osm_xml.way_storage);
     });
 
     Ok(())
