@@ -249,64 +249,42 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
         coords.set_lon(parse_required_attr(&node_in.initial_elem, "lon")?);
     });
 
-    {
-        let mut ways = geodata.borrow().init_ways(osm_xml.way_storage.entities.len() as u32);
-        for (i, way_in) in osm_xml.way_storage.entities.iter().enumerate() {
-            let mut way_out = ways.borrow().get(i as u32);
-
-            way_out.set_global_id(way_in.global_id);
-
-            {
-                let nds_in = way_in.get_elems_by_name("nd");
-                let mut nds_out = way_out.borrow().init_local_node_ids(nds_in.len() as u32);
-                for (j, nd_in) in nds_in.iter().enumerate() {
-                    let local_node_id = osm_xml.node_storage.translate_id(parse_required_attr(&nd_in, "ref")?)?;
-                    nds_out.set(j as u32, local_node_id as u32);
-                }
-            }
-
-            collect_tags(&mut way_out.init_tags(), &way_in)?;
+    fill_message_part!(way_in, way_out, geodata, init_ways, osm_xml.way_storage, {
+        let nds_in = way_in.get_elems_by_name("nd");
+        let mut nds_out = way_out.borrow().init_local_node_ids(nds_in.len() as u32);
+        for (j, nd_in) in nds_in.iter().enumerate() {
+            let local_node_id = osm_xml.node_storage.translate_id(parse_required_attr(&nd_in, "ref")?)?;
+            nds_out.set(j as u32, local_node_id as u32);
         }
-    }
+    });
 
-    {
-        let mut relations = geodata.borrow().init_relations(osm_xml.relation_storage.entities.len() as u32);
-        for (i, rel_in) in osm_xml.relation_storage.entities.iter().enumerate() {
-            let mut rel_out = relations.borrow().get(i as u32);
+    fill_message_part!(rel_in, rel_out, geodata, init_relations, osm_xml.relation_storage, {
+        let members = rel_in.get_elems_by_name("member");
 
-            rel_out.set_global_id(rel_in.global_id);
-
-            {
-                let members = rel_in.get_elems_by_name("member");
-
-                let node_members_in = members
-                    .iter()
-                    .filter(|x| x.attr_map.get("type") == Some(&"node".to_string()))
-                    .collect::<Vec<_>>();
-                {
-                    let mut node_members_out = rel_out.borrow().init_local_node_ids(node_members_in.len() as u32);
-                    for (j, node_member_in) in node_members_in.iter().enumerate() {
-                        let local_node_id = osm_xml.node_storage.translate_id(parse_required_attr(&node_member_in, "ref")?)?;
-                        node_members_out.set(j as u32, local_node_id as u32);
-                    }
-                }
-
-                let way_members_in = members
-                    .iter()
-                    .filter(|x| x.attr_map.get("type") == Some(&"way".to_string()))
-                    .collect::<Vec<_>>();
-                {
-                    let mut way_members_out = rel_out.borrow().init_local_way_ids(way_members_in.len() as u32);
-                    for (j, way_member_in) in way_members_in.iter().enumerate() {
-                        let local_way_id = osm_xml.way_storage.translate_id(parse_required_attr(&way_member_in, "ref")?)?;
-                        way_members_out.set(j as u32, local_way_id as u32);
-                    }
-                }
+        let node_members_in = members
+            .iter()
+            .filter(|x| x.attr_map.get("type") == Some(&"node".to_string()))
+            .collect::<Vec<_>>();
+        {
+            let mut node_members_out = rel_out.borrow().init_local_node_ids(node_members_in.len() as u32);
+            for (j, node_member_in) in node_members_in.iter().enumerate() {
+                let local_node_id = osm_xml.node_storage.translate_id(parse_required_attr(&node_member_in, "ref")?)?;
+                node_members_out.set(j as u32, local_node_id as u32);
             }
-
-            collect_tags(&mut rel_out.init_tags(), &rel_in)?;
         }
-    }
+
+        let way_members_in = members
+            .iter()
+            .filter(|x| x.attr_map.get("type") == Some(&"way".to_string()))
+            .collect::<Vec<_>>();
+        {
+            let mut way_members_out = rel_out.borrow().init_local_way_ids(way_members_in.len() as u32);
+            for (j, way_member_in) in way_members_in.iter().enumerate() {
+                let local_way_id = osm_xml.way_storage.translate_id(parse_required_attr(&way_member_in, "ref")?)?;
+                way_members_out.set(j as u32, local_way_id as u32);
+            }
+        }
+    });
 
     Ok(())
 }
