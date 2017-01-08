@@ -19,3 +19,6 @@ pub mod geodata_capnp {
 pub mod geodata {
     pub mod importer;
 }
+
+pub mod coords;
+pub mod tile;
