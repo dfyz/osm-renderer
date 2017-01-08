@@ -270,7 +270,7 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
         let collect_members = |member_type: &str| {
             members
                 .iter()
-                .filter(|x| x.attr_map.get("type") == Some(&member_type.to_string()))
+                .filter(|x| x.attr_map.get("type").map(|x| x.as_ref()) == Some(member_type))
                 .collect::<Vec<_>>()
         };
 
