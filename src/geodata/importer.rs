@@ -381,6 +381,19 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
 }
 
 fn get_tile_references(geodata: geodata::Reader<>) -> TileIdToReferences {
+
+    fn insert_entity_id_to_tiles<'a>(
+        result: &mut TileIdToReferences,
+        nodes: ::capnp::struct_list::Reader<'a, node::Owned<>>,
+        local_node_ids: ::capnp::primitive_list::Reader<'a, u32>,
+        get_refs: &Fn(&mut TileReferences) -> &mut BTreeSet<u32>,
+        entity_id: u32
+    ) {
+        for node_ref in local_node_ids.iter() {
+            get_refs(result.tile_ref_by_node(nodes, node_ref)).insert(entity_id);
+        }
+    }
+
     let mut result: TileIdToReferences = Default::default();
     let all_nodes = geodata.get_nodes().unwrap();
 
@@ -391,23 +404,18 @@ fn get_tile_references(geodata: geodata::Reader<>) -> TileIdToReferences {
     let all_ways = geodata.get_ways().unwrap();
     for i in 0..all_ways.len() {
         let local_node_ids = all_ways.get(i).get_local_node_ids().unwrap();
-        for node_ref in local_node_ids.iter() {
-            result.tile_ref_by_node(all_nodes, node_ref).local_way_ids.insert(i);
-        }
+        insert_entity_id_to_tiles(&mut result, all_nodes, local_node_ids, &|x| &mut x.local_way_ids, i);
     }
 
     let all_relations = geodata.get_relations().unwrap();
     for i in 0..all_relations.len() {
         let local_node_ids = all_relations.get(i).get_local_node_ids().unwrap();
-        for node_ref in local_node_ids.iter() {
-            result.tile_ref_by_node(all_nodes, node_ref).local_relation_ids.insert(i);
-        }
+        insert_entity_id_to_tiles(&mut result, all_nodes, local_node_ids, &|x| &mut x.local_relation_ids, i);
 
         let local_ways_ids = all_relations.get(i).get_local_way_ids().unwrap();
         for way_ref in local_ways_ids.iter() {
-            for node_ref in all_ways.get(way_ref).get_local_node_ids().unwrap().iter() {
-                result.tile_ref_by_node(all_nodes, node_ref).local_relation_ids.insert(i);
-            }
+            let local_node_ids = all_ways.get(way_ref).get_local_node_ids().unwrap();
+            insert_entity_id_to_tiles(&mut result, all_nodes, local_node_ids, &|x| &mut x.local_relation_ids, i);
         }
     }
 
