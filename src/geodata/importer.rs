@@ -239,9 +239,12 @@ fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> 
     let mut tags_in = osm_entity
         .get_elems_by_name("tag")
         .into_iter()
-        .map(|x| (get_required_attr(x, "k"), get_required_attr(x, "v")))
-        .filter(|x| x.0.is_ok() && x.1.is_ok())
-        .map(|x| (x.0.unwrap(), x.1.unwrap()))
+        .filter_map(|x| {
+            match (get_required_attr(x, "k"), get_required_attr(x, "v")) {
+                (Ok(k), Ok(v)) => Some((k, v)),
+                _ => None,
+            }
+        })
         .collect::<Vec<_>>();
 
     tags_in.sort();
