@@ -35,21 +35,30 @@ pub fn import(input: &str, output: &str) -> Result<()> {
 
 struct OsmXmlElement {
     name: String,
-    attr_map: HashMap<String, String>,
+    attrs: Vec<(String, String)>,
     input_position: TextPosition,
 }
 
 impl OsmXmlElement {
     fn new(name: OwnedName, attrs: Vec<OwnedAttribute>, input_position: TextPosition) -> OsmXmlElement {
-        let mut attr_map = HashMap::new();
-        for a in attrs.into_iter() {
-            attr_map.insert(a.name.local_name, a.value);
-        }
+        let mut attrs = attrs.into_iter().map(|x| (x.name.local_name, x.value)).collect::<Vec<_>>();
+        attrs.sort();
         OsmXmlElement {
             name: name.local_name,
-            attr_map: attr_map,
+            attrs: attrs,
             input_position: input_position
         }
+    }
+
+    fn get_attr(&self, name: &str) -> Option<&String> {
+        self
+            .attrs
+            .binary_search_by(|probe| {
+                let probe_str: &str = probe.0.as_ref();
+                probe_str.cmp(name)
+            })
+            .ok()
+            .map(|idx| &self.attrs[idx].1)
     }
 }
 
@@ -68,8 +77,7 @@ struct OsmEntity {
 impl OsmEntity {
     fn new(initial_element: OsmXmlElement) -> Option<OsmEntity> {
         initial_element
-            .attr_map
-            .get("id")
+            .get_attr("id")
             .and_then(|x| x.parse().ok())
             .map(|id| OsmEntity {
                 global_id: id,
@@ -207,7 +215,7 @@ fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
 }
 
 fn get_required_attr(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<String> {
-    match osm_elem.attr_map.get(attr_name) {
+    match osm_elem.get_attr(attr_name) {
         Some(value) => Ok(value.clone()),
         None => bail!("Element {} doesn't have required attribute: {}", osm_elem, attr_name),
     }
@@ -326,7 +334,7 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
         let collect_members = |member_type| {
             members
                 .iter()
-                .filter(|x| x.attr_map.get("type").map(|x| x.as_ref()) == Some(member_type))
+                .filter(|x| x.get_attr("type").map(|x| x.as_ref()) == Some(member_type))
                 .collect::<Vec<_>>()
         };
 
