@@ -1,13 +1,16 @@
 use errors::*;
 
-use std::collections::HashMap;
+use coords;
+use tile;
+
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read};
 
 use capnp::message::{Allocator, Builder};
-use geodata_capnp::{geodata,tag_list};
+use geodata_capnp::{geodata, node, tag_list};
 use xml::attribute::OwnedAttribute;
-use xml::common::{Position,TextPosition};
+use xml::common::{Position, TextPosition};
 use xml::name::OwnedName;
 use xml::reader::{EventReader, XmlEvent};
 
@@ -228,10 +231,11 @@ fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> 
 }
 
 macro_rules! fill_message_part {
-    ($entity_in:ident, $entity_out:ident, $geodata:expr, $init_part:ident, $storage:expr, $fill_part:block) => {{
+    ($entity_in:ident, $entity_out:ident, $geodata:expr, $init_part:ident, $storage:expr, $local_id:ident, $fill_part:block) => {{
         let mut entities_out = $geodata.borrow().$init_part($storage.entities.len() as u32);
         for (i, $entity_in) in $storage.entities.iter().enumerate() {
-            let mut $entity_out = entities_out.borrow().get(i as u32);
+            let $local_id = i as u32;
+            let mut $entity_out = entities_out.borrow().get($local_id);
             $entity_out.set_global_id($entity_in.global_id);
             $fill_part
             collect_tags(&mut $entity_out.init_tags(), &$entity_in)?;
@@ -243,28 +247,70 @@ macro_rules! collect_references {
     ($refs_in:expr, $entity:expr, $init_part:ident, $storage:expr) => {{
         let mut refs_out = $entity.borrow().$init_part($refs_in.len() as u32);
         for (i, ref_in) in $refs_in.iter().enumerate() {
-            let local_node_id = $storage.translate_id(parse_required_attr(&ref_in, "ref")?)?;
-            refs_out.set(i as u32, local_node_id as u32);
+            let local_ref_id = $storage.translate_id(parse_required_attr(&ref_in, "ref")?)?;
+            refs_out.set(i as u32, local_ref_id as u32);
         }
     }}
+}
+
+macro_rules! copy_vec_to_capnproto {
+    ($entity:expr, $init_array:ident, $vec:expr) => {{
+        let mut elems_out = $entity.borrow().$init_array($vec.len() as u32);
+        for (i, elem_in) in $vec.iter().enumerate() {
+            elems_out.set(i as u32, *elem_in);
+        }
+    }}
+}
+
+#[derive(Default)]
+struct TileReferences {
+    local_node_ids: BTreeSet<u32>,
+    local_way_ids: BTreeSet<u32>,
+    local_relation_ids: BTreeSet<u32>,
+}
+
+#[derive(Default)]
+struct TileIdToReferences {
+    refs: BTreeMap<(u32, u32), TileReferences>,
+}
+
+impl TileIdToReferences {
+    fn tile_ref_by_node<'a>(&mut self, nodes: ::capnp::struct_list::Reader<'a, node::Owned<>>, local_node_id: u32) -> &mut TileReferences {
+        let coords = nodes
+            .get(local_node_id)
+            .get_coords()
+            .unwrap();
+        let node_tile = tile::coords_to_max_zoom_tile(&coords);
+        self.refs.entry((node_tile.x, node_tile.y)).or_insert(Default::default())
+    }
+}
+
+impl<'a> coords::Coords for ::geodata_capnp::coords::Reader<'a> {
+    fn lat(&self) -> f64 {
+        self.get_lat()
+    }
+
+    fn lon(&self) -> f64 {
+        self.get_lon()
+    }
 }
 
 fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsmXml) -> Result<()> {
     let mut geodata = message.init_root::<geodata::Builder>();
 
-    fill_message_part!(node_in, node_out, geodata, init_nodes, osm_xml.node_storage, {
+    fill_message_part!(node_in, node_out, geodata, init_nodes, osm_xml.node_storage, local_id, {
         let mut coords = node_out.borrow().init_coords();
 
         coords.set_lat(parse_required_attr(&node_in.initial_elem, "lat")?);
         coords.set_lon(parse_required_attr(&node_in.initial_elem, "lon")?);
     });
 
-    fill_message_part!(way_in, way_out, geodata, init_ways, osm_xml.way_storage, {
+    fill_message_part!(way_in, way_out, geodata, init_ways, osm_xml.way_storage, local_id, {
         let nds_in = way_in.get_elems_by_name("nd");
         collect_references!(nds_in, way_out, init_local_node_ids, osm_xml.node_storage);
     });
 
-    fill_message_part!(rel_in, rel_out, geodata, init_relations, osm_xml.relation_storage, {
+    fill_message_part!(rel_in, rel_out, geodata, init_relations, osm_xml.relation_storage, local_id, {
         let members = rel_in.get_elems_by_name("member");
 
         let collect_members = |member_type| {
@@ -278,5 +324,53 @@ fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsm
         collect_references!(collect_members("way"), rel_out, init_local_way_ids, osm_xml.way_storage);
     });
 
+    let tile_references = get_tile_references(geodata.borrow_as_reader());
+
+    let mut tiles = geodata.init_tiles(tile_references.refs.len() as u32);
+    for (i, (&(tx, ty), value)) in tile_references.refs.iter().enumerate() {
+        let mut tile = tiles.borrow().get(i as u32);
+
+        tile.set_tile_x(tx);
+        tile.set_tile_y(ty);
+
+        copy_vec_to_capnproto!(tile, init_local_node_ids, value.local_node_ids);
+        copy_vec_to_capnproto!(tile, init_local_way_ids, value.local_way_ids);
+        copy_vec_to_capnproto!(tile, init_local_relation_ids, value.local_relation_ids);
+    }
+
     Ok(())
+}
+
+fn get_tile_references(geodata: geodata::Reader<>) -> TileIdToReferences {
+    let mut result: TileIdToReferences = Default::default();
+    let all_nodes = geodata.get_nodes().unwrap();
+
+    for i in 0..all_nodes.len() {
+        result.tile_ref_by_node(all_nodes, i).local_node_ids.insert(i);
+    }
+
+    let all_ways = geodata.get_ways().unwrap();
+    for i in 0..all_ways.len() {
+        let local_node_ids = all_ways.get(i).get_local_node_ids().unwrap();
+        for node_ref in local_node_ids.iter() {
+            result.tile_ref_by_node(all_nodes, node_ref).local_way_ids.insert(i);
+        }
+    }
+
+    let all_relations = geodata.get_relations().unwrap();
+    for i in 0..all_relations.len() {
+        let local_node_ids = all_relations.get(i).get_local_node_ids().unwrap();
+        for node_ref in local_node_ids.iter() {
+            result.tile_ref_by_node(all_nodes, node_ref).local_relation_ids.insert(i);
+        }
+
+        let local_ways_ids = all_relations.get(i).get_local_way_ids().unwrap();
+        for way_ref in local_ways_ids.iter() {
+            for node_ref in all_ways.get(way_ref).get_local_node_ids().unwrap().iter() {
+                result.tile_ref_by_node(all_nodes, node_ref).local_relation_ids.insert(i);
+            }
+        }
+    }
+
+    result
 }

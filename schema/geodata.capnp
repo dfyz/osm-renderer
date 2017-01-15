@@ -34,8 +34,8 @@ struct Relation {
 }
 
 struct Tile {
-    tileX @0 :UInt64;
-    tileY @1 :UInt64;
+    tileX @0 :UInt32;
+    tileY @1 :UInt32;
     localNodeIds @2 :List(UInt32);
     localWayIds @3 :List(UInt32);
     localRelationIds @4 :List(UInt32);
