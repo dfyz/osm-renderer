@@ -114,11 +114,12 @@ impl OsmEntityStorage {
         self.entities.push(entity);
     }
 
-    fn translate_id(&self, global_id: u64) -> Result<usize> {
-        match self.global_id_to_local_id.get(&global_id) {
-            Some(value) => Ok(*value),
-            None => bail!("Failed to find an entity with ID = {}", global_id),
+    fn translate_id(&self, global_id: u64) -> Option<usize> {
+        let result = self.global_id_to_local_id.get(&global_id);
+        if result.is_none() {
+            warn!("Failed to find an entity with ID = {}", global_id);
         }
+        result.map(|x| *x)
     }
 }
 
@@ -275,10 +276,18 @@ macro_rules! fill_message_part {
 
 macro_rules! collect_references {
     ($refs_in:expr, $entity:expr, $init_part:ident, $storage:expr) => {{
-        let mut refs_out = $entity.borrow().$init_part($refs_in.len() as u32);
-        for (i, ref_in) in $refs_in.iter().enumerate() {
-            let local_ref_id = $storage.translate_id(parse_required_attr(&ref_in, "ref")?)?;
-            refs_out.set(i as u32, local_ref_id as u32);
+        let valid_refs = $refs_in
+            .iter()
+            .filter_map(|x| {
+                x
+                    .get_attr("ref")
+                    .and_then(|y| y.parse().ok())
+                    .and_then(|y| $storage.translate_id(y))
+            })
+            .collect::<Vec<_>>();
+        let mut refs_out = $entity.borrow().$init_part(valid_refs.len() as u32);
+        for (i, local_ref_id) in valid_refs.iter().enumerate() {
+            refs_out.set(i as u32, *local_ref_id as u32);
         }
     }}
 }
