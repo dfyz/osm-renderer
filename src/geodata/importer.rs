@@ -236,13 +236,22 @@ fn parse_required_attr<T>(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<T
 }
 
 fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> Result<()> {
-    let tags_in = osm_entity.get_elems_by_name("tag");
+    let mut tags_in = osm_entity
+        .get_elems_by_name("tag")
+        .into_iter()
+        .map(|x| (get_required_attr(x, "k"), get_required_attr(x, "v")))
+        .filter(|x| x.0.is_ok() && x.1.is_ok())
+        .map(|x| (x.0.unwrap(), x.1.unwrap()))
+        .collect::<Vec<_>>();
+
+    tags_in.sort();
+
     let mut tags_out = tag_builder.borrow().init_tags(tags_in.len() as u32);
 
-    for (i, tag_in) in tags_in.iter().enumerate() {
+    for (i, &(ref k, ref v)) in tags_in.iter().enumerate() {
         let mut tag_out = tags_out.borrow().get(i as u32);
-        tag_out.set_key(&get_required_attr(&tag_in, "k")?);
-        tag_out.set_value(&get_required_attr(&tag_in, "v")?);
+        tag_out.set_key(&k);
+        tag_out.set_value(&v);
     }
 
     Ok(())
