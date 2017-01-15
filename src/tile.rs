@@ -12,6 +12,14 @@ pub struct Tile {
     pub y: u32,
 }
 
+#[derive(Eq, PartialEq, Debug)]
+pub struct TileRange {
+    pub min_x: u32,
+    pub max_x: u32,
+    pub min_y: u32,
+    pub max_y: u32,
+}
+
 /// Returns the smallest possible tile that contains a given geopoint.
 /// # Examples
 /// ```
@@ -30,8 +38,39 @@ pub fn coords_to_max_zoom_tile<C: Coords>(coords: &C) -> Tile {
     }
 }
 
-pub fn tile_to_max_zoom_tiles(tile: &Tile) -> TileIterator {
-    TileIterator {}
+/// Return the range of all smallest tiles that are covered by a given tile.
+/// # Examples
+/// ```
+/// use renderer::tile::{tile_to_max_zoom_tile_range,Tile,TileRange};
+/// assert_eq!(tile_to_max_zoom_tile_range(&Tile { zoom: 0, x: 0, y: 0 }), TileRange {
+///     min_x: 0,
+///     max_x: 262143,
+///     min_y: 0,
+///     max_y: 262143,
+/// });
+/// assert_eq!(tile_to_max_zoom_tile_range(&Tile { zoom: 15, x: 19805, y: 10244 }), TileRange {
+///     min_x: 158440,
+///     max_x: 158447,
+///     min_y: 81952,
+///     max_y: 81959,
+/// });
+/// assert_eq!(tile_to_max_zoom_tile_range(&Tile { zoom: 18, x: 239662, y: 158582 }), TileRange {
+///     min_x: 239662,
+///     max_x: 239662,
+///     min_y: 158582,
+///     max_y: 158582,
+/// });
+/// ```
+pub fn tile_to_max_zoom_tile_range(tile: &Tile) -> TileRange {
+    let blow_up = |x| x * (1 << (MAX_ZOOM - tile.zoom));
+    let (min_x, min_y) = (blow_up(tile.x), blow_up(tile.y));
+    let delta = blow_up(1) - 1;
+    TileRange {
+        min_x: min_x,
+        max_x: min_x + delta,
+        min_y: min_y,
+        max_y: min_y + delta,
+    }
 }
 
 /// Projects a given geopoint to Web Mercator coordinates for a given zoom level.
@@ -56,15 +95,4 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
     };
 
     (rescale(x), rescale(y))
-}
-
-pub struct TileIterator {
-}
-
-impl Iterator for TileIterator {
-    type Item = Tile;
-
-    fn next(&mut self) -> Option<Tile> {
-        None
-    }
 }
