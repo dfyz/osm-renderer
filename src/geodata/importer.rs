@@ -130,12 +130,22 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
         current_entity_with_type: None,
     };
 
+    let mut elem_count = 0;
     loop {
         let e = parser.next().chain_err(|| "Failed to parse the input file")?;
         match e {
             XmlEvent::EndDocument => break,
             XmlEvent::StartElement {name, attributes, ..} => {
-                process_start_element(name, attributes, parser.position(), &mut parsing_state)
+                process_start_element(name, attributes, parser.position(), &mut parsing_state);
+                elem_count += 1;
+                if elem_count % 100000 == 0 {
+                    info!(
+                        "Got {} nodes, {} ways and {} relations",
+                        parsing_state.node_storage.entities.len(),
+                        parsing_state.way_storage.entities.len(),
+                        parsing_state.relation_storage.entities.len()
+                    );
+                }
             },
             XmlEvent::EndElement {name} => {
                 process_end_element(name, &mut parsing_state);
