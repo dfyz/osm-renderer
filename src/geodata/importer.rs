@@ -28,7 +28,7 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     let mut message = Builder::new_default();
     convert_to_message(&mut message, parsed_xml)?;
 
-    ::capnp::serialize_packed::write_message(&mut writer, &message)
+    ::capnp::serialize::write_message(&mut writer, &message)
         .chain_err(|| "Failed to write the imported data to the output file")?;
     Ok(())
 }
