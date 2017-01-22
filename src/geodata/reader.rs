@@ -25,7 +25,7 @@ impl<'a> GeodataReader<'a> {
         let input_file = Mmap::open_path(file_name, Protection::Read)
             .chain_err(|| format!("Failed to map {} to memory", file_name))?;
 
-        let handle = GeodataHandle::try_new(
+        let handle = OwningHandle::try_new(
             Box::new(input_file),
             |x| {
                 let message = serialize::read_message_from_words(
