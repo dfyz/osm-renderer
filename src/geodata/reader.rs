@@ -52,7 +52,7 @@ impl<'a> GeodataReader<'a> {
         self.get_reader().get_nodes().unwrap().len()
     }
 
-    fn get_reader(&self) -> &geodata::Reader {
+    pub fn get_reader(&self) -> &geodata::Reader {
         &self.handle
     }
 }
