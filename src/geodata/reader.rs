@@ -6,10 +6,10 @@ use capnp::serialize;
 use capnp::message::{Reader, ReaderOptions};
 use geodata_capnp::geodata;
 use memmap::{Mmap, Protection};
-use owning_ref::{OwningHandle, OwningRef};
+use owning_ref::OwningHandle;
 
 type GeodataHandle<'a> = OwningHandle<
-    OwningRef<Box<Mmap>, [Word]>,
+    Box<Mmap>,
     OwningHandle<
         Box<Reader<SliceSegments<'a>>>,
         Box<geodata::Reader<'a>>
@@ -25,16 +25,11 @@ impl<'a> GeodataReader<'a> {
         let input_file = Mmap::open_path(file_name, Protection::Read)
             .chain_err(|| format!("Failed to map {} to memory", file_name))?;
 
-        let backing_storage = OwningRef::new(
-            Box::new(input_file))
-                .map(|x| Word::bytes_to_words(unsafe {x.as_slice()})
-        );
-
         let handle = GeodataHandle::try_new(
-            backing_storage,
+            Box::new(input_file),
             |x| {
                 let message = serialize::read_message_from_words(
-                    unsafe{&*x}.as_ref(),
+                    Word::bytes_to_words(unsafe{(&*x).as_slice()}),
                     ReaderOptions {
                         traversal_limit_in_words: u64::max_value(),
                         nesting_limit: i32::max_value(),
