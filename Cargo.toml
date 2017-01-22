@@ -16,3 +16,6 @@ memmap = "*"
 owning_ref = "*"
 slog-stdlog = "*"
 xml-rs = "*"
+
+[profile.release]
+debug = true
