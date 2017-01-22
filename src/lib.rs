@@ -1,11 +1,10 @@
 extern crate capnp;
-
 #[macro_use]
 extern crate error_chain;
-
 #[macro_use]
 extern crate log;
-
+extern crate memmap;
+extern crate owning_ref;
 extern crate xml;
 
 pub mod errors {
@@ -18,6 +17,7 @@ pub mod geodata_capnp {
 
 pub mod geodata {
     pub mod importer;
+    pub mod reader;
 }
 
 pub mod coords;
