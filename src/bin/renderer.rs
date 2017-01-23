@@ -19,23 +19,48 @@ fn get_command_line_arg_value<T: std::str::FromStr>(matches: &clap::ArgMatches, 
     }
 }
 
+fn get_name<'a>(entity: &OsmEntity<'a>) -> Option<&'a str> {
+    let tags = entity.tags();
+    tags.get_by_key("name")
+}
+
 fn print_tile_contents(geodata_file: &str, tile: renderer::tile::Tile) -> renderer::errors::Result<()> {
     let reader = renderer::geodata::reader::GeodataReader::new(geodata_file)?;
 
     let entities = reader.get_entities_in_tile(&tile);
 
     let mut unnamed_node_count = 0;
+    let mut unnamed_way_count = 0;
+    let mut unnamed_relation_count = 0;
+
     for node in entities.nodes {
-        let tags = node.tags();
-        match tags.get_by_key("name") {
+        match get_name(&node) {
             Some(value) => {
-                info!("NODE: {} ({})", value, node.global_id());
+                info!("NODE: {}", value);
             },
             None => unnamed_node_count += 1,
         };
     }
 
-    info!("Also, {} unnamed nodes", unnamed_node_count);
+    for way in entities.ways {
+        match get_name(&way) {
+            Some(value) => {
+                info!("WAY: {} ({} nodes)", value, way.node_count());
+            },
+            None => unnamed_way_count += 1,
+        }
+    }
+
+    for relation in entities.relations {
+        match get_name(&relation) {
+            Some(value) => {
+                info!("RELATION: {} ({} ways, {} nodes)", value, relation.way_count(), relation.node_count());
+            },
+            None => unnamed_relation_count += 1,
+        }
+    }
+
+    info!("Unnamed: {} nodes, {} ways, {} relations", unnamed_node_count, unnamed_way_count, unnamed_relation_count);
 
     Ok(())
 }

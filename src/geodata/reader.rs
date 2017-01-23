@@ -28,6 +28,8 @@ pub trait OsmEntity<'a> {
 #[derive(Default)]
 pub struct OsmEntities<'a> {
     pub nodes: Vec<Node<'a>>,
+    pub ways: Vec<Way<'a>>,
+    pub relations: Vec<Relation<'a>>,
 }
 
 pub struct GeodataReader<'a> {
@@ -69,6 +71,10 @@ impl<'a> GeodataReader<'a> {
 
         let mut result: OsmEntities<'a> = Default::default();
 
+        let nodes = self.get_reader().get_nodes().unwrap();
+        let ways = self.get_reader().get_ways().unwrap();
+        let relations = self.get_reader().get_relations().unwrap();
+
         while start_from_index < tiles.len() {
             let first_good_tile_index = next_good_tile(tiles, &bounds, start_from_index);
 
@@ -83,7 +89,21 @@ impl<'a> GeodataReader<'a> {
             while (current_tile.get_tile_x() == current_x) && (current_tile.get_tile_y() <= bounds.max_y) {
                 for node_id in current_tile.get_local_node_ids().unwrap().iter() {
                     result.nodes.push(Node {
-                        reader: self.get_reader().get_nodes().unwrap().get(node_id)
+                        reader: nodes.get(node_id),
+                    });
+                }
+
+                for way_id in current_tile.get_local_way_ids().unwrap().iter() {
+                    result.ways.push(Way {
+                        geodata: self.get_reader(),
+                        reader: ways.get(way_id),
+                    });
+                }
+
+                for relation_id in current_tile.get_local_relation_ids().unwrap().iter() {
+                    result.relations.push(Relation {
+                        geodata: self.get_reader(),
+                        reader: relations.get(relation_id),
                     });
                 }
 
@@ -144,19 +164,25 @@ impl<'a> Tags<'a> {
     }
 }
 
+macro_rules! implement_osm_entity {
+    ($type_name:ty) => {
+        impl<'a> OsmEntity<'a> for $type_name {
+            fn global_id(&self) -> u64 {
+                self.reader.get_global_id()
+            }
+
+            fn tags(&self) -> Tags<'a> {
+                Tags::new(self.reader.get_tags().unwrap())
+            }
+        }
+    }
+}
+
 pub struct Node<'a> {
-    reader: geodata_capnp::node::Reader<'a>
+    reader: geodata_capnp::node::Reader<'a>,
 }
 
-impl<'a> OsmEntity<'a> for Node<'a> {
-    fn global_id(&self) -> u64 {
-        self.reader.get_global_id()
-    }
-
-    fn tags(&self) -> Tags<'a> {
-        Tags::new(self.reader.get_tags().unwrap())
-    }
-}
+implement_osm_entity!(Node<'a>);
 
 impl<'a> Coords for Node<'a> {
     fn lat(&self) -> f64 {
@@ -165,6 +191,55 @@ impl<'a> Coords for Node<'a> {
 
     fn lon(&self) -> f64 {
         self.reader.get_coords().unwrap().get_lon()
+    }
+}
+
+pub struct Way<'a> {
+    geodata: &'a geodata_capnp::geodata::Reader<'a>,
+    reader: geodata_capnp::way::Reader<'a>,
+}
+
+implement_osm_entity!(Way<'a>);
+
+macro_rules! implement_node_methods {
+    () => {
+        pub fn node_count(&self) -> u32 {
+            self.reader.get_local_node_ids().unwrap().len()
+        }
+
+        pub fn get_node(&self, index: u32) -> Node<'a> {
+            let node_id = self.reader.get_local_node_ids().unwrap().get(index);
+            Node {
+                reader: self.geodata.get_nodes().unwrap().get(node_id),
+            }
+        }
+    }
+}
+
+impl<'a> Way<'a> {
+    implement_node_methods!();
+}
+
+pub struct Relation<'a> {
+    geodata: &'a geodata_capnp::geodata::Reader<'a>,
+    reader: geodata_capnp::relation::Reader<'a>,
+}
+
+implement_osm_entity!(Relation<'a>);
+
+impl<'a> Relation<'a> {
+    implement_node_methods!();
+
+    pub fn way_count(&self) -> u32 {
+        self.reader.get_local_way_ids().unwrap().len()
+    }
+
+    pub fn get_way(&self, index: u32) -> Way<'a> {
+        let way_id = self.reader.get_local_way_ids().unwrap().get(index);
+        Way {
+            geodata: self.geodata,
+            reader: self.geodata.get_ways().unwrap().get(way_id),
+        }
     }
 }
 
