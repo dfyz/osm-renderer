@@ -1,6 +1,8 @@
 use errors::*;
 
 use std::cmp::Ordering;
+use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 
 use capnp::Word;
 use capnp::serialize::SliceSegments;
@@ -27,9 +29,9 @@ pub trait OsmEntity<'a> {
 
 #[derive(Default)]
 pub struct OsmEntities<'a> {
-    pub nodes: Vec<Node<'a>>,
-    pub ways: Vec<Way<'a>>,
-    pub relations: Vec<Relation<'a>>,
+    pub nodes: HashSet<Node<'a>>,
+    pub ways: HashSet<Way<'a>>,
+    pub relations: HashSet<Relation<'a>>,
 }
 
 pub struct GeodataReader<'a> {
@@ -88,20 +90,20 @@ impl<'a> GeodataReader<'a> {
 
             while (current_tile.get_tile_x() == current_x) && (current_tile.get_tile_y() <= bounds.max_y) {
                 for node_id in current_tile.get_local_node_ids().unwrap().iter() {
-                    result.nodes.push(Node {
+                    result.nodes.insert(Node {
                         reader: nodes.get(node_id),
                     });
                 }
 
                 for way_id in current_tile.get_local_way_ids().unwrap().iter() {
-                    result.ways.push(Way {
+                    result.ways.insert(Way {
                         geodata: self.get_reader(),
                         reader: ways.get(way_id),
                     });
                 }
 
                 for relation_id in current_tile.get_local_relation_ids().unwrap().iter() {
-                    result.relations.push(Relation {
+                    result.relations.insert(Relation {
                         geodata: self.get_reader(),
                         reader: relations.get(relation_id),
                     });
@@ -166,6 +168,20 @@ impl<'a> Tags<'a> {
 
 macro_rules! implement_osm_entity {
     ($type_name:ty) => {
+        impl<'a> PartialEq for $type_name {
+            fn eq(&self, other: &$type_name) -> bool {
+                self.global_id() == other.global_id()
+            }
+        }
+
+        impl<'a> Eq for $type_name {}
+
+        impl<'a> Hash for $type_name {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.global_id().hash(state);
+            }
+        }
+
         impl<'a> OsmEntity<'a> for $type_name {
             fn global_id(&self) -> u64 {
                 self.reader.get_global_id()
