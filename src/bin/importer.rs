@@ -5,7 +5,7 @@ extern crate slog_stdlog;
 
 extern crate renderer;
 
-use clap::{App,Arg};
+use clap::{App, Arg};
 
 fn main() {
     slog_stdlog::init().unwrap();
@@ -36,6 +36,7 @@ fn main() {
                 let description = if i == 0 { "Reason" } else { "Caused by" };
                 error!("{}: {}", description, suberror);
             }
+            std::process::exit(1);
         }
     }
 }
