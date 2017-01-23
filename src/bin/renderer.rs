@@ -1,84 +1,76 @@
-extern crate capnp;
+#[macro_use]
+extern crate clap;
+#[macro_use]
+extern crate log;
+extern crate slog_stdlog;
+
 extern crate renderer;
 
-use capnp::struct_list;
-use renderer::geodata::reader::GeodataReader;
-use renderer::tile;
+use clap::{App, Arg};
+use renderer::geodata::reader::OsmEntity;
 
-fn next_good_tile<'a>(tiles: struct_list::Reader<'a, renderer::geodata_capnp::tile::Owned>, bounds: &tile::TileRange, start_index: u32) -> Option<u32> {
-    let mut lo = start_index;
-    let mut hi = tiles.len();
+fn get_command_line_arg_value<T: std::str::FromStr>(matches: &clap::ArgMatches, arg: &str) -> T {
+    match value_t!(matches.value_of(arg), T) {
+        Ok(val) => val,
+        Err(e) => {
+            error!("Failed to parse {}: {}", arg, e);
+            std::process::exit(1);
+        },
+    }
+}
 
-    let get_tile_xy = |idx| {
-        let tile = tiles.get(idx);
-        (tile.get_tile_x(), tile.get_tile_y())
-    };
+fn print_tile_contents(geodata_file: &str, tile: renderer::tile::Tile) -> renderer::errors::Result<()> {
+    let reader = renderer::geodata::reader::GeodataReader::new(geodata_file)?;
 
-    let large_enough = |idx| get_tile_xy(idx) >= (bounds.min_x, bounds.min_y);
-    let small_enough = |idx| get_tile_xy(idx) <= (bounds.max_x, bounds.max_y);
+    let entities = reader.get_entities_in_tile(&tile);
 
-    while lo + 1 < hi {
-        let mid = (lo + hi - 1) / 2;
-
-        if large_enough(mid) {
-            hi = mid + 1;
-        } else {
-            lo = mid + 1;
-        }
+    let mut unnamed_node_count = 0;
+    for node in entities.nodes {
+        let tags = node.tags();
+        match tags.get_by_key("name") {
+            Some(value) => {
+                info!("NODE: {} ({})", value, node.global_id());
+            },
+            None => unnamed_node_count += 1,
+        };
     }
 
-    if large_enough(lo) && small_enough(lo) {
-        Some(lo)
-    } else {
-        None
-    }
+    info!("Also, {} unnamed nodes", unnamed_node_count);
+
+    Ok(())
 }
 
 fn main() {
-    let reader = GeodataReader::new("mow.bin").unwrap();
+    slog_stdlog::init().unwrap();
 
-    let rdr = reader.get_reader();
+    let matches =
+        App::new("OSM renderer")
+            .arg(Arg::with_name("ZOOM").required(true).index(1))
+            .arg(Arg::with_name("X").required(true).index(2))
+            .arg(Arg::with_name("Y").required(true).index(3))
+            .arg(Arg::with_name("GEODATA_FILE").required(true).index(4))
+            .get_matches();
 
-    let t = tile::Tile {
-        zoom: 0,
-        x: 0,
-        y: 0,
+    let zoom = get_command_line_arg_value(&matches, "ZOOM");
+    let x = get_command_line_arg_value(&matches, "X");
+    let y = get_command_line_arg_value(&matches, "Y");
+    let geodata_file = matches.value_of("GEODATA_FILE").unwrap();
+
+    let tile = renderer::tile::Tile {
+        zoom: zoom,
+        x: x,
+        y: y,
     };
 
-    let mut bounds = tile::tile_to_max_zoom_tile_range(&t);
-
-    let g_tiles = rdr.get_tiles().unwrap();
-    let mut start = 0;
-
-    let mut tile_count = 0;
-    let mut node_count = 0;
-    let mut way_count = 0;
-
-    while start < g_tiles.len() {
-        let first_good = next_good_tile(g_tiles, &bounds, start);
-
-        if first_good.is_none() {
-            break;
-        }
-
-        let mut current_index = first_good.unwrap();
-        let mut current_tile = g_tiles.get(current_index);
-        let current_x = current_tile.get_tile_x();
-        while current_x == current_tile.get_tile_x() && bounds.max_y >= current_tile.get_tile_y() {
-            node_count += current_tile.get_local_node_ids().unwrap().len();
-            way_count += current_tile.get_local_way_ids().unwrap().len();
-            tile_count += 1;
-
-            current_index += 1;
-            if current_index >= g_tiles.len() {
-                break;
+    match print_tile_contents(geodata_file, tile) {
+        Ok(_) => {},
+        Err(e) => {
+            for (i, suberror) in e.iter().enumerate() {
+                let description = if i == 0 { "Reason" } else { "Caused by" };
+                error!("{}: {}", description, suberror);
             }
-            current_tile = g_tiles.get(current_index);
+            std::process::exit(1);
         }
-
-        start = current_index;
-        bounds.min_x = current_x + 1;
     }
-
-    println!("{} tiles, {} named nodes, {} named ways", tile_count, node_count, way_count);
 }
+
