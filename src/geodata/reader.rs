@@ -122,7 +122,7 @@ impl<'a> Tags<'a> {
             let mid_value = self.reader.get(mid);
             match mid_value.get_key().unwrap().cmp(key) {
                 Ordering::Less => lo = mid + 1,
-                Ordering::Greater => hi = mid - 1,
+                Ordering::Greater => hi = mid,
                 Ordering::Equal => return Some(mid_value.get_value().unwrap()),
             }
         }
