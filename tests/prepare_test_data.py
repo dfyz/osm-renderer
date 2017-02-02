@@ -43,7 +43,7 @@ def main():
         bounds = mercantile.bounds(tile)
 
         def is_good(lat, lon):
-            return (bounds.south <= lat <= bounds.north) and (bounds.west <= lon <= bounds.east)
+            return (bounds.south < lat <= bounds.north) and (bounds.west <= lon < bounds.east)
 
         good_nodes = set([node_id for node_id, coords in node_to_coords.items() if is_good(*coords)])
         good_ways = set([way_id for way_id, refs in way_to_nodes.items() if refs & good_nodes])
