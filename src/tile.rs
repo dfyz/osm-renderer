@@ -77,10 +77,10 @@ pub fn tile_to_max_zoom_tile_range(tile: &Tile) -> TileRange {
 /// # Examples
 /// ```
 /// use renderer::tile::coords_to_xy;
-/// assert_eq!(coords_to_xy(&(55.747764f64, 37.437745f64), 5), (4948, 2561));
+/// assert_eq!(coords_to_xy(&(55.747764f64, 37.437745f64), 5), (4947, 2561));
 /// assert_eq!(coords_to_xy(&(55.747764f64, 37.437745f64), 18), (40533333, 20981065));
-/// assert_eq!(coords_to_xy(&(40.1222f64, 20.6852f64), 0), (143, 97));
-/// assert_eq!(coords_to_xy(&(-35.306536f64, 149.126545f64), 10), (239663, 158582));
+/// assert_eq!(coords_to_xy(&(40.1222f64, 20.6852f64), 0), (142, 96));
+/// assert_eq!(coords_to_xy(&(-35.306536f64, 149.126545f64), 10), (239662, 158582));
 /// ```
 pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
     let (lat_rad, lon_rad) = (coords.lat().to_radians(), coords.lon().to_radians());
@@ -91,7 +91,7 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
     let rescale = |x: f64| {
         let factor = x / (2f64 * PI);
         let dimension_in_pixels = (TILE_SIZE * (1 << zoom)) as f64;
-        (factor * dimension_in_pixels).round() as u32
+        (factor * dimension_in_pixels) as u32
     };
 
     (rescale(x), rescale(y))
