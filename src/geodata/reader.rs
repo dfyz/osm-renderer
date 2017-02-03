@@ -78,7 +78,7 @@ impl<'a> GeodataReader<'a> {
         let relations = self.get_reader().get_relations().unwrap();
 
         while start_from_index < tiles.len() {
-            let first_good_tile_index = next_good_tile(tiles, &bounds, start_from_index);
+            let first_good_tile_index = next_good_tile(tiles, &mut bounds, start_from_index);
 
             if first_good_tile_index.is_none() {
                 break;
@@ -259,35 +259,49 @@ impl<'a> Relation<'a> {
     }
 }
 
-fn next_good_tile<'a>(tiles: struct_list::Reader<'a, geodata_capnp::tile::Owned>, bounds: &tile::TileRange, start_index: u32) -> Option<u32> {
+fn next_good_tile<'a>(tiles: struct_list::Reader<'a, geodata_capnp::tile::Owned>, bounds: &mut tile::TileRange, start_index: u32) -> Option<u32> {
     if start_index >= tiles.len() {
         return None;
     }
-
-    let mut lo = start_index;
-    let mut hi = tiles.len() - 1;
 
     let get_tile_xy = |idx| {
         let tile = tiles.get(idx);
         (tile.get_tile_x(), tile.get_tile_y())
     };
 
-    let large_enough = |idx| get_tile_xy(idx) >= (bounds.min_x, bounds.min_y);
-    let small_enough = |idx| get_tile_xy(idx) <= (bounds.max_x, bounds.max_y);
+    let find_smallest_feasible_index = |from, min_x, min_y| {
+        let large_enough = |idx| get_tile_xy(idx) >= (min_x, min_y);
 
-    while lo < hi {
-        let mid = (lo + hi) / 2;
+        let mut lo = from;
+        let mut hi = tiles.len() - 1;
 
-        if large_enough(mid) {
-            hi = mid;
-        } else {
-            lo = mid + 1;
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+
+            if large_enough(mid) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
         }
+
+        if large_enough(lo) { Some(lo) } else { None }
+    };
+
+    let mut current_index = start_index;
+    while let Some(next_index) = find_smallest_feasible_index(current_index, bounds.min_x, bounds.min_y) {
+        if get_tile_xy(next_index) > (bounds.max_x, bounds.max_y) {
+            return None;
+        }
+
+        let found_x = tiles.get(next_index).get_tile_x();
+        if found_x == bounds.min_x {
+            return Some(next_index);
+        }
+
+        current_index = next_index;
+        bounds.min_x = found_x;
     }
 
-    if large_enough(lo) && small_enough(lo) {
-        Some(lo)
-    } else {
-        None
-    }
+    None
 }
