@@ -17,5 +17,8 @@ owning_ref = "*"
 slog-stdlog = "*"
 xml-rs = "*"
 
+[dev-dependencies]
+rustc-serialize = "*"
+
 [profile.release]
 debug = true
