@@ -28,7 +28,7 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile) -> Result<Vec<u8>>
             if w.node_count() == 0 {
                 continue;
             }
-            cs::cairo_set_source_rgb(cr, 0.0, 4.0, 0.0);
+            cs::cairo_set_source_rgb(cr, 0.0, 1.0, 0.0);
             let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
             cs::cairo_move_to(cr, x, y);
             for i in 1..w.node_count() {
