@@ -55,7 +55,7 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile) -> Result<Vec<u8>>
 fn to_cairo_xy(entity: &Coords, tile: &Tile) -> (f64, f64) {
     let coords = (entity.lat(), entity.lon());
     let (x, y) = coords_to_xy(&coords, tile.zoom);
-    let translate_coord = |c, tile_c| (c - TILE_SIZE * tile_c) as f64;
+    let translate_coord = |c, tile_c| (c as f64 - (TILE_SIZE * tile_c) as f64);
     let real_x = translate_coord(x, tile.x);
     let real_y = translate_coord(y, tile.y);
     (real_x, real_y)
