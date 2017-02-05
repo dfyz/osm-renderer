@@ -1,10 +1,12 @@
 use errors::*;
 
+use coords::Coords;
 use cs;
 use geodata::reader::OsmEntities;
 use libc;
-use std::{ffi, slice};
-use tile::{Tile, TILE_SIZE};
+use std::f64::consts::PI;
+use std::slice;
+use tile::{coords_to_xy, Tile, TILE_SIZE};
 
 unsafe extern "C" fn write_func(closure: *mut libc::c_void, data: *mut u8, len: libc::c_uint) -> cs::enums::Status {
     let png_bytes: &mut Vec<u8> = &mut *(closure as *mut Vec<u8>);
@@ -20,17 +22,17 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile) -> Result<Vec<u8>>
 
         let cr = cs::cairo_create(s);
 
-        cs::cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
-        cs::cairo_set_font_size(cr, 48.0);
-        let text = ffi::CString::new("джигурда").unwrap();
+        let translate_coord = |c, tile_c| (c - TILE_SIZE * tile_c) as f64;
+        for n in entities.nodes.iter() {
+            let coords = (n.lat(), n.lon());
+            let (x, y) = coords_to_xy(&coords, tile.zoom);
+            let real_x = translate_coord(x, tile.x);
+            let real_y = translate_coord(y, tile.y);
 
-        cs::cairo_move_to(cr, 10.0, 50.0);
-        cs::cairo_show_text(cr, text.as_ptr() as *const libc::c_char);
-
-        let font_name = ffi::CString::new("Comic Sans MS").unwrap();
-        cs::cairo_select_font_face(cr, font_name.as_ptr() as *const libc::c_char, cs::enums::FontSlant::Normal, cs::enums::FontWeight::Normal);
-        cs::cairo_move_to(cr, 10.0, 100.0);
-        cs::cairo_show_text(cr, text.as_ptr() as *const libc::c_char);
+            cs::cairo_arc(cr, real_x, real_y, 4.0, 0.0, 2.0*PI);
+            cs::cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
+            cs::cairo_fill(cr);
+        }
 
         cs::cairo_destroy(cr);
 
