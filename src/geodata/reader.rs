@@ -38,8 +38,11 @@ pub struct GeodataReader<'a> {
     handle: GeodataHandle<'a>,
 }
 
+unsafe impl<'a> Send for GeodataReader<'a> {}
+unsafe impl<'a> Sync for GeodataReader<'a> {}
+
 impl<'a> GeodataReader<'a> {
-    pub fn new(file_name: &str) -> Result<GeodataReader> {
+    pub fn new(file_name: &str) -> Result<GeodataReader<'a>> {
         let input_file = Mmap::open_path(file_name, Protection::Read)
             .chain_err(|| format!("Failed to map {} to memory", file_name))?;
 
