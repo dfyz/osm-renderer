@@ -8,6 +8,7 @@ build = "build.rs"
 capnpc = "*"
 
 [dependencies]
+cairo-sys-rs = "*"
 capnp = "*"
 clap = "*"
 error-chain = "*"
