@@ -8,16 +8,20 @@ build = "build.rs"
 capnpc = "*"
 
 [dependencies]
-cairo-sys-rs = "*"
 capnp = "*"
 clap = "*"
 error-chain = "*"
 hyper = "0.10"
+libc = "*"
 log = "*"
 memmap = "*"
 owning_ref = "*"
 slog-stdlog = "*"
 xml-rs = "*"
+
+[dependencies.cairo-sys-rs]
+version = "*"
+features = ["v1_14", "png"]
 
 [dev-dependencies]
 rustc-serialize = "*"
