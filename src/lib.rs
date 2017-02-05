@@ -1,6 +1,8 @@
 extern crate capnp;
+extern crate cairo_sys as cs;
 #[macro_use] extern crate error_chain;
 extern crate hyper;
+extern crate libc;
 #[macro_use] extern crate log;
 extern crate memmap;
 extern crate owning_ref;
@@ -20,5 +22,6 @@ pub mod geodata {
 }
 
 pub mod coords;
+pub mod drawer;
 pub mod http_server;
 pub mod tile;

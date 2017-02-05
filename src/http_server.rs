@@ -1,5 +1,6 @@
 use errors::*;
 
+use drawer::draw_tile;
 use geodata::reader::GeodataReader;
 use hyper::header::{ContentLength, ContentType};
 use hyper::method::Method;
@@ -36,7 +37,7 @@ impl<'a> Handler for TileServer<'a> {
             Ok(content) => {
                 *resp.status_mut() = StatusCode::Ok;
                 resp.headers_mut().set(ContentType::png());
-                write_bytes_to_response(resp, content);
+                write_bytes_to_response(resp, &content);
             },
             Err(e) => {
                 *resp.status_mut() = StatusCode::InternalServerError;
@@ -48,8 +49,10 @@ impl<'a> Handler for TileServer<'a> {
 }
 
 impl<'a> TileServer<'a> {
-    fn draw_tile_contents(&self, tile: &Tile) -> Result<&[u8]> {
-        Ok(&[])
+    fn draw_tile_contents(&self, tile: &Tile) -> Result<Vec<u8>> {
+        let entities = self.reader.get_entities_in_tile(&tile);
+        let tile_png_bytes = draw_tile(&entities, &tile)?;
+        Ok(tile_png_bytes)
     }
 }
 
