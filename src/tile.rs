@@ -1,5 +1,6 @@
 use coords::Coords;
 
+use std::cmp::{max, min};
 use std::f64::consts::PI;
 
 pub const MAX_ZOOM: u8 = 18;
@@ -37,6 +38,27 @@ pub fn coords_to_max_zoom_tile<C: Coords>(coords: &C) -> Tile {
         y: tile_index(y),
     }
 }
+
+/// Compute the bounding box of the two smallest tiles that contain both arguments.
+/// # Examples
+/// ```
+/// use renderer::tile::{coords_pair_to_max_zoom_tile_range, TileRange};
+/// let c1 = (55.73510, 37.56457);
+/// let c2 = (55.73855, 37.56927);
+/// assert_eq!(coords_pair_to_max_zoom_tile_range(&c1, &c2), TileRange { min_x: 158425, max_x: 158429, min_y: 81969, max_y: 81973 });
+/// assert_eq!(coords_pair_to_max_zoom_tile_range(&c2, &c1), TileRange { min_x: 158425, max_x: 158429, min_y: 81969, max_y: 81973 });
+/// ```
+pub fn coords_pair_to_max_zoom_tile_range<C: Coords>(coords1: &C, coords2: &C) -> TileRange {
+    let tile1 = coords_to_max_zoom_tile(coords1);
+    let tile2 = coords_to_max_zoom_tile(coords2);
+    TileRange {
+        min_x: min(tile1.x, tile2.x),
+        max_x: max(tile1.x, tile2.x),
+        min_y: min(tile1.y, tile2.y),
+        max_y: max(tile1.y, tile2.y),
+    }
+}
+
 
 /// Return the range of all smallest tiles that are covered by a given tile.
 /// # Examples

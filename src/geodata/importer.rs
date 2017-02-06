@@ -313,15 +313,21 @@ struct TileIdToReferences {
     refs: BTreeMap<(u32, u32), TileReferences>,
 }
 
+type NodeReader<'a> = ::capnp::struct_list::Reader<'a, node::Owned<>>;
+
 impl TileIdToReferences {
-    fn tile_ref_by_node<'a>(&mut self, nodes: ::capnp::struct_list::Reader<'a, node::Owned<>>, local_node_id: u32) -> &mut TileReferences {
-        let coords = nodes
-            .get(local_node_id)
-            .get_coords()
-            .unwrap();
-        let node_tile = tile::coords_to_max_zoom_tile(&coords);
+    fn tile_ref_by_node<'a>(&mut self, nodes: NodeReader<'a>, local_node_id: u32) -> &mut TileReferences {
+        let node_tile = tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_id));
         self.refs.entry((node_tile.x, node_tile.y)).or_insert(Default::default())
     }
+
+    fn tile_ref_by_xy<'a>(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
+        self.refs.entry((tile_x, tile_y)).or_insert(Default::default())
+    }
+}
+
+fn get_coords_for_node<'a>(nodes: NodeReader<'a>, local_node_id: u32) -> ::geodata_capnp::coords::Reader<'a> {
+    nodes.get(local_node_id).get_coords().unwrap()
 }
 
 impl<'a> coords::Coords for ::geodata_capnp::coords::Reader<'a> {
@@ -384,13 +390,30 @@ fn get_tile_references(geodata: geodata::Reader<>) -> TileIdToReferences {
 
     fn insert_entity_id_to_tiles<'a>(
         result: &mut TileIdToReferences,
-        nodes: ::capnp::struct_list::Reader<'a, node::Owned<>>,
+        nodes: NodeReader<'a>,
+        nodes_are_isolated: bool,
         local_node_ids: ::capnp::primitive_list::Reader<'a, u32>,
         get_refs: &Fn(&mut TileReferences) -> &mut BTreeSet<u32>,
         entity_id: u32
     ) {
-        for node_ref in local_node_ids.iter() {
-            get_refs(result.tile_ref_by_node(nodes, node_ref)).insert(entity_id);
+        if local_node_ids.len() == 0 {
+            return;
+        }
+        if nodes_are_isolated || local_node_ids.len() == 1 {
+            for node_ref in local_node_ids.iter() {
+                 get_refs(result.tile_ref_by_node(nodes, node_ref)).insert(entity_id);
+            }
+            return;
+        }
+        for i in 1..local_node_ids.len() {
+            let coords1 = get_coords_for_node(nodes, local_node_ids.get(i - 1));
+            let coords2 = get_coords_for_node(nodes, local_node_ids.get(i));
+            let tile_range = tile::coords_pair_to_max_zoom_tile_range(&coords1, &coords2);
+            for x in tile_range.min_x .. tile_range.max_x + 1 {
+                for y in tile_range.min_y .. tile_range.max_y + 1 {
+                    get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
+                }
+            }
         }
     }
 
@@ -404,18 +427,18 @@ fn get_tile_references(geodata: geodata::Reader<>) -> TileIdToReferences {
     let all_ways = geodata.get_ways().unwrap();
     for i in 0..all_ways.len() {
         let local_node_ids = all_ways.get(i).get_local_node_ids().unwrap();
-        insert_entity_id_to_tiles(&mut result, all_nodes, local_node_ids, &|x| &mut x.local_way_ids, i);
+        insert_entity_id_to_tiles(&mut result, all_nodes, false, local_node_ids, &|x| &mut x.local_way_ids, i);
     }
 
     let all_relations = geodata.get_relations().unwrap();
     for i in 0..all_relations.len() {
         let local_node_ids = all_relations.get(i).get_local_node_ids().unwrap();
-        insert_entity_id_to_tiles(&mut result, all_nodes, local_node_ids, &|x| &mut x.local_relation_ids, i);
+        insert_entity_id_to_tiles(&mut result, all_nodes, true, local_node_ids, &|x| &mut x.local_relation_ids, i);
 
         let local_ways_ids = all_relations.get(i).get_local_way_ids().unwrap();
         for way_ref in local_ways_ids.iter() {
             let local_node_ids = all_ways.get(way_ref).get_local_node_ids().unwrap();
-            insert_entity_id_to_tiles(&mut result, all_nodes, local_node_ids, &|x| &mut x.local_relation_ids, i);
+            insert_entity_id_to_tiles(&mut result, all_nodes, false, local_node_ids, &|x| &mut x.local_relation_ids, i);
         }
     }
 

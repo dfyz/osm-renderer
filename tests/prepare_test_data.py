@@ -24,7 +24,7 @@ def main():
     way_to_nodes = {}
     for way in root.findall('way'):
         a = way.attrib
-        way_to_nodes[a['id']] = set([w.attrib['ref'] for w in way.findall('nd')])
+        way_to_nodes[a['id']] = [w.attrib['ref'] for w in way.findall('nd')]
 
     relation_to_ways = {}
     relation_to_nodes = {}
@@ -42,11 +42,24 @@ def main():
     for tile in mercantile.tiles(*BOUNDS, ZOOMS):
         bounds = mercantile.bounds(tile)
 
-        def is_good(lat, lon):
+        def is_good_node(lat, lon):
             return (bounds.south < lat <= bounds.north) and (bounds.west <= lon < bounds.east)
 
-        good_nodes = set([node_id for node_id, coords in node_to_coords.items() if is_good(*coords)])
-        good_ways = set([way_id for way_id, refs in way_to_nodes.items() if refs & good_nodes])
+        def is_good_way(refs):
+            node_list = [node_to_coords[r] for r in refs if r in node_to_coords]
+            for i in range(1, len(node_list)):
+                (lat1, lon1) = node_list[i - 1]
+                (lat2, lon2) = node_list[i]
+                south = min(lat1, lat2)
+                north = max(lat1, lat2)
+                west = min(lon1, lon2)
+                east = max(lon1, lon2)
+                if tile in mercantile.tiles(west, south, east, north, [tile.z]):
+                    return True
+            return False
+
+        good_nodes = set([node_id for node_id, coords in node_to_coords.items() if is_good_node(*coords)])
+        good_ways = set([way_id for way_id, refs in way_to_nodes.items() if (set(refs) & good_nodes) or is_good_way(refs)])
         good_relations = set(
             [rel_id for rel_id, refs in relation_to_nodes.items() if refs & good_nodes] +
             [rel_id for rel_id, refs in relation_to_ways.items() if refs & good_ways]
