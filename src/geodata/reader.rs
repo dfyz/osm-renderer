@@ -151,7 +151,12 @@ impl<'a> Tags<'a> {
                 Ordering::Equal => return Some(mid_value.get_value().unwrap()),
             }
         }
-        None
+        let final_candidate = self.reader.get(lo);
+        if final_candidate.get_key().unwrap() == key {
+            Some(final_candidate.get_value().unwrap())
+        } else {
+            None
+        }
     }
 
     pub fn get(&self, index: u32) -> geodata_capnp::tag::Reader<'a> {
