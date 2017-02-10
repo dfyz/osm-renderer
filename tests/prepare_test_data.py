@@ -39,7 +39,7 @@ def main():
         relation_to_ways[rel_id] = filter_by_type('way')
 
     test_data = []
-    for tile in mercantile.tiles(*BOUNDS, ZOOMS):
+    for tile in mercantile.tiles(*BOUNDS, zooms=ZOOMS):
         bounds = mercantile.bounds(tile)
 
         def is_good_node(lat, lon):
