@@ -69,15 +69,15 @@ def main():
             'zoom': tile.z,
             'x': tile.x,
             'y': tile.y,
-            'nodes': list(good_nodes),
-            'ways': list(good_ways),
-            'relations': list(good_relations),
+            'nodes': sorted(list(good_nodes)),
+            'ways': sorted(list(good_ways)),
+            'relations': sorted(list(good_relations)),
         }
 
         test_data.append(tile_data)
 
     with open(OUTPUT_FILE, 'w') as out:
-        json.dump(test_data, out)
+        json.dump(test_data, out, sort_keys=True)
 
 
 if __name__ == '__main__':
