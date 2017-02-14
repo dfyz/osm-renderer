@@ -35,20 +35,24 @@ pub struct Tile {
     relations: IdsWithTags,
 }
 
-fn compare_ids(
+fn compare_ids<'a>(
     entity_type: &str,
     tile: &renderer::tile::Tile,
     actual: &BTreeSet<u64>,
     expected: &BTreeSet<u64>,
-    actual_ids_with_tags: &IdsWithTags,
+    actual_ids_with_tags: &HashMap<u64, renderer::geodata::reader::Tags<'a>>,
     expected_ids_with_tags: &IdsWithTags
 ) {
     for e in expected.iter() {
         match actual.get(e) {
             Some(_) => {
-                let actual_tags = actual_ids_with_tags.get(e).map(|x| x.clone()).unwrap_or(Default::default());
-                let expected_tags = expected_ids_with_tags.get(e).map(|x| x.clone()).unwrap_or(Default::default());
-                assert_eq!(actual_tags, expected_tags, "Different tag sets for {} {}", entity_type, e);
+                if let Some(expected_tags) = expected_ids_with_tags.get(e) {
+                    let actual_tags = actual_ids_with_tags.get(e).expect(&format!("Expected to have tags for {} {}", entity_type, e));
+                    for (k, v) in expected_tags.iter() {
+                        let actual_tag = actual_tags.get_by_key(k);
+                        assert!(Some(v.as_ref()) == actual_tag, "Expected {}={} for {} {}, found {:?}", k, v, entity_type, e, actual_tag);
+                    }
+                }
             },
             None => assert!(actual.contains(e), "{} {} is expected to be present in tile {:?}", entity_type, e, tile),
         }
@@ -175,19 +179,12 @@ fn test_nano_moscow_import() {
 
         let tile_content = reader.get_entities_in_tile(&tile);
 
-        fn collect_tags<'a>(tags: &renderer::geodata::reader::Tags<'a>) -> Tags {
-            (0..tags.len())
-                .map(|x| {
-                    let t = tags.get(x);
-                    (t.get_key().unwrap().to_string(), t.get_value().unwrap().to_string())
-                })
-                .collect::<HashMap<_, _>>()
-        };
-
-        fn collect_ids_with_tags<'a, E: Eq + Hash + OsmEntity<'a>>(entity: &HashSet<E>) -> IdsWithTags {
+        fn collect_ids_with_tags<'a, E>(entity: &HashSet<E>) -> HashMap<u64, renderer::geodata::reader::Tags<'a>>
+            where E : Eq + Hash + OsmEntity<'a>
+        {
             entity
                 .iter()
-                .map(|x| (x.global_id(), collect_tags(&x.tags())))
+                .map(|x| (x.global_id(), x.tags()))
                 .collect::<HashMap<_, _>>()
         }
 
