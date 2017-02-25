@@ -6,12 +6,14 @@ build = "build.rs"
 
 [build-dependencies]
 capnpc = "*"
+lalrpop = "*"
 
 [dependencies]
 capnp = "*"
 clap = "*"
 error-chain = "*"
 hyper = "0.10"
+lalrpop-util = "*"
 libc = "*"
 log = "*"
 memmap = "*"
