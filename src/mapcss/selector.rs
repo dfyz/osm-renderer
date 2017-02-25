@@ -1,11 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum WayType {
     Area,
     Line,
     All,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ObjectType {
     Node,
     Way(WayType),
@@ -15,6 +15,9 @@ pub enum ObjectType {
     All,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Selector {
-    object_type: ObjectType,
+    pub object_type: ObjectType,
+    pub min_zoom: Option<u8>,
+    pub max_zoom: Option<u8>,
 }

@@ -1,8 +1,14 @@
+use lalrpop_util::ParseError;
 use mapcss::selector::*;
+use std::str::FromStr;
 
 grammar;
 
-pub ObjectType: ObjectType = {
+extern {
+    type Error = String;
+}
+
+ObjectType: ObjectType = {
     "node" => ObjectType::Node,
     "area" => ObjectType::Way(WayType::Area),
     "line" => ObjectType::Way(WayType::Line),
@@ -12,3 +18,31 @@ pub ObjectType: ObjectType = {
     "meta" => ObjectType::Meta,
     "*" => ObjectType::All,
 };
+
+Number = r"\d+";
+
+ZoomLevel: u8 = Number =>? {
+    u8::from_str(<>)
+        .map_err(|e| ParseError::User {
+            error: format!("Invalid zoom value: {}", <>),
+        })
+};
+
+ZoomLevels: (Option<u8>, Option<u8>) = {
+    <ZoomLevel> "-" =>
+        (Some(<>), None),
+    "-" <ZoomLevel> =>
+        (None, Some(<>)),
+    <mn:ZoomLevel> "-" <mx:ZoomLevel> =>
+        (Some(mn), Some(mx)),
+};
+
+pub Selector: Selector =
+    <ty:ObjectType>
+    <zoom:("|z" <ZoomLevels>)?> => {
+        Selector {
+            object_type: ty,
+            min_zoom: zoom.and_then(|x| x.0),
+            max_zoom: zoom.and_then(|x| x.1),
+        }
+    };
