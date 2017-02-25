@@ -39,7 +39,7 @@ mod tests {
             max_zoom: Some(3),
         }));
         assert!(parse_Selector("way|z-").is_err());
-        assert!(parse_Selector("ObjectType::node|z").is_err());
+        assert!(parse_Selector("node|z").is_err());
         assert!(parse_Selector("way|z12-123456").is_err());
     }
 }
