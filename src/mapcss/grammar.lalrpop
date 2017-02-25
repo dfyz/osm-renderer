@@ -1,0 +1,14 @@
+use mapcss::selector::*;
+
+grammar;
+
+pub ObjectType: ObjectType = {
+    "node" => ObjectType::Node,
+    "area" => ObjectType::Way(WayType::Area),
+    "line" => ObjectType::Way(WayType::Line),
+    "way" => ObjectType::Way(WayType::All),
+    "relation" => ObjectType::Relation,
+    "canvas" => ObjectType::Canvas,
+    "meta" => ObjectType::Meta,
+    "*" => ObjectType::All,
+};

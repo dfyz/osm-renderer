@@ -1,4 +1,5 @@
 extern crate capnpc;
+extern crate lalrpop;
 
 use capnpc::CompilerCommand;
 
@@ -19,4 +20,6 @@ fn main() {
         .file("schema/geodata.capnp")
         .run()
         .expect("Failed to compile Cap'N'Proto files");
+
+    lalrpop::process_root().unwrap();
 }
