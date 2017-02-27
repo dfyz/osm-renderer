@@ -1,48 +1,65 @@
 use lalrpop_util::ParseError;
-use mapcss::selector::*;
-use std::str::FromStr;
+use mapcss::ast::*;
+use mapcss::token::{Tok, ZoomLevels};
 
-grammar;
+grammar<'a>(input: &'a str);
 
 extern {
+    type Location = usize;
     type Error = String;
+
+    enum Tok<'a> {
+        Identifier => Tok::Identifier(<&'a str>),
+        String => Tok::String(<&'a str>),
+        Regex => Tok::Regex(<&'a str>),
+        Number => Tok::Number(<f64>),
+        ZoomRange => Tok::ZoomRange(<ZoomLevels>),
+        Eval => Tok::Eval(<&'a str>),
+
+        "[" => Tok::LeftBracket,
+        "]" => Tok::RightBracket,
+        "{" => Tok::LeftBrace,
+        "}" => Tok::RightBrace,
+        "(" => Tok::LeftParens,
+        ")" => Tok::RightParens,
+
+        "=" => Tok::Equal,
+        "!=" => Tok::NotEqual,
+        "<" => Tok::Less,
+        ">" => Tok::Greater,
+        "<=" => Tok::LessOrEqual,
+        ">=" => Tok::GreaterOrEqual,
+        "=~" => Tok::RegexMatch,
+
+        "!" => Tok::Bang,
+        "." => Tok::Dot,
+        "-" => Tok::Hyphen,
+        ":" => Tok::Colon,
+        "::" => Tok::DoubleColon,
+        ";" => Tok::SemiColon,
+    }
 }
 
-ObjectType: ObjectType = {
-    "node" => ObjectType::Node,
-    "area" => ObjectType::Way(WayType::Area),
-    "line" => ObjectType::Way(WayType::Line),
-    "way" => ObjectType::Way(WayType::All),
-    "relation" => ObjectType::Relation,
-    "canvas" => ObjectType::Canvas,
-    "meta" => ObjectType::Meta,
-    "*" => ObjectType::All,
-};
-
-Number = r"\d+";
-
-ZoomLevel: u8 = Number =>? {
-    u8::from_str(<>)
-        .map_err(|e| ParseError::User {
-            error: format!("Invalid zoom value: {}", <>),
-        })
-};
-
-ZoomLevels: (Option<u8>, Option<u8>) = {
-    <ZoomLevel> "-" =>
-        (Some(<>), None),
-    "-" <ZoomLevel> =>
-        (None, Some(<>)),
-    <mn:ZoomLevel> "-" <mx:ZoomLevel> =>
-        (Some(mn), Some(mx)),
-};
-
 pub Selector: Selector =
-    <ty:ObjectType>
-    <zoom:("|z" <ZoomLevels>)?> => {
-        Selector {
-            object_type: ty,
-            min_zoom: zoom.and_then(|x| x.0),
-            max_zoom: zoom.and_then(|x| x.1),
-        }
+    <object_type:Identifier>
+    <zoom:ZoomRange?> =>? {
+        let known_object_type = match object_type {
+            "node" => Ok(ObjectType::Node),
+            "area" => Ok(ObjectType::Way(WayType::Area)),
+            "line" => Ok(ObjectType::Way(WayType::Line)),
+            "way" => Ok(ObjectType::Way(WayType::All)),
+            "relation" => Ok(ObjectType::Relation),
+            "canvas" => Ok(ObjectType::Canvas),
+            "meta" => Ok(ObjectType::Meta),
+            "*" => Ok(ObjectType::All),
+            _ => Err(ParseError::User {
+                error: format!("Invalid selector object type: {}", object_type),
+            }),
+        }?;
+
+        Ok(Selector {
+            object_type: known_object_type,
+            min_zoom: zoom.and_then(|x| x.min_zoom),
+            max_zoom: zoom.and_then(|x| x.max_zoom),
+        })
     };
