@@ -20,8 +20,6 @@ extern {
         "]" => Tok::RightBracket,
         "{" => Tok::LeftBrace,
         "}" => Tok::RightBrace,
-        "(" => Tok::LeftParens,
-        ")" => Tok::RightParens,
 
         "=" => Tok::Equal,
         "!=" => Tok::NotEqual,
@@ -33,7 +31,6 @@ extern {
 
         "!" => Tok::Bang,
         "." => Tok::Dot,
-        "-" => Tok::Hyphen,
         ":" => Tok::Colon,
         "::" => Tok::DoubleColon,
         ";" => Tok::SemiColon,
