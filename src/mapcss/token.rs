@@ -1,3 +1,8 @@
+use errors::*;
+
+use std::iter::Peekable;
+use std::str::CharIndices;
+
 pub type ZoomLevel = Option<u8>;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -7,7 +12,7 @@ pub struct ZoomLevels {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Tok<'a> {
+pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
     Regex(&'a str),
@@ -29,91 +34,119 @@ pub enum Tok<'a> {
     RegexMatch,
 
     Bang,
+    QuestionMark,
     Dot,
     Colon,
     DoubleColon,
     SemiColon,
+
+    Eof,
 }
 
-// Grouped by the first symbol, sorted by decreasing length in each group
-// to make sure we always capture the longest token.
-const SIMPLE_TOKEN_MATCH_TABLE: &'static [(&'static str, Tok<'static>)] = &[
-    // The unambigous tokens form the first group.
-    ("[", Tok::LeftBracket),
-    ("]", Tok::RightBracket),
-    ("{", Tok::LeftBrace),
-    ("}", Tok::RightBrace),
-    (".", Tok::Dot),
-    (";", Tok::SemiColon),
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct InputPosition {
+    line: usize,
+    character: usize,
+}
 
-    ("=~", Tok::RegexMatch),
-    ("=", Tok::Equal),
-
-    ("!=", Tok::NotEqual),
-    ("!", Tok::Bang),
-
-    ("<=", Tok::LessOrEqual),
-    ("<", Tok::Less),
-
-    (">=", Tok::GreaterOrEqual),
-    (">", Tok::Greater),
-
-    ("::", Tok::DoubleColon),
-    (":", Tok::Colon),
-];
-
-type TokenResult<'a> = Result<(usize, Tok<'a>, usize), String>;
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct TokenWithPosition<'a> {
+    token: Token<'a>,
+    position: InputPosition,
+}
 
 pub struct Tokenizer<'a> {
     text: &'a str,
-    chars: Vec<(usize, char)>,
-    char_index: usize,
+    chars: Peekable<CharIndices<'a>>,
+    current_position: InputPosition,
+    had_newline: bool,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Tokenizer<'a> {
         Tokenizer {
             text: input,
-            chars: input.char_indices().collect(),
-            char_index: 0,
+            chars: input.char_indices().peekable(),
+            current_position: InputPosition {
+                line: 1,
+                character: 0,
+            },
+            had_newline: false,
         }
     }
 
-    fn consume(&mut self, token: Tok<'a>, char_count: usize) -> TokenResult<'a> {
-        let result = (self.char_index, token, self.char_index + char_count);
-        self.char_index += char_count;
-        Ok(result)
+    fn next_significant_char(&mut self) -> Option<(usize, char)> {
+        loop {
+            let idx_ch = self.next_char();
+            match idx_ch {
+                None => return None,
+                Some((_, ch)) => {
+                    if ch.is_whitespace() {
+                        continue;
+                    }
+
+                    return idx_ch;
+                },
+            }
+        }
     }
 
-    fn get_current_char(&self) -> char {
-        self.chars[self.char_index].1
+    fn next_char(&mut self) -> Option<(usize, char)> {
+        let res = self.chars.next();
+
+        if self.had_newline {
+            self.current_position.line += 1;
+            self.current_position.character = 0;
+            self.had_newline = false;
+        }
+
+        self.current_position.character += 1;
+        self.had_newline = match res {
+            Some((_, '\n')) => true,
+            _ => false,
+        };
+
+        res
     }
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
-    type Item = TokenResult<'a>;
+    type Item = Result<TokenWithPosition<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let None = self.chars.get(self.char_index) {
-            return None;
-        }
-
-        for &(ref simple_token, ref token_type) in SIMPLE_TOKEN_MATCH_TABLE {
-            let has_match = simple_token
-                .chars()
-                .enumerate()
-                .all(|(offset, ch)| {
-                    let text_index = self.char_index + offset;
-                    match self.chars.get(text_index) {
-                        Some(&(_, text_ch)) if ch == text_ch => true,
-                        _ => false,
-                    }
-                });
-            if has_match {
-                return Some(self.consume(*token_type, simple_token.chars().count()));
-            }
-        }
-
-        Some(Err(format!("Unrecognized symbol: {}", self.get_current_char())))
+        self
+            .next_significant_char()
+            .map(|(idx, ch)| Ok(TokenWithPosition {
+                token: Token::String(&self.text[idx .. idx + ch.len_utf8()]),
+                position: self.current_position,
+            }))
     }
 }
+
+// Grouped by the first symbol, sorted by decreasing length in each group
+// to make sure we always capture the longest token.
+const SIMPLE_TOKEN_MATCH_TABLE: &'static [(&'static str, Token<'static>)] = &[
+    // The unambigous tokens form the first group.
+    ("[", Token::LeftBracket),
+    ("]", Token::RightBracket),
+    ("{", Token::LeftBrace),
+    ("}", Token::RightBrace),
+    (".", Token::Dot),
+    (";", Token::SemiColon),
+    ("?", Token::QuestionMark),
+
+    ("=~", Token::RegexMatch),
+    ("=", Token::Equal),
+
+    ("!=", Token::NotEqual),
+    ("!", Token::Bang),
+
+    ("<=", Token::LessOrEqual),
+    ("<", Token::Less),
+
+    (">=", Token::GreaterOrEqual),
+    (">", Token::Greater),
+
+    ("::", Token::DoubleColon),
+    (":", Token::Colon),
+];
