@@ -45,14 +45,14 @@ pub enum Token<'a> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct InputPosition {
-    line: usize,
-    character: usize,
+    pub line: usize,
+    pub character: usize,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TokenWithPosition<'a> {
-    token: Token<'a>,
-    position: InputPosition,
+    pub token: Token<'a>,
+    pub position: InputPosition,
 }
 
 pub struct Tokenizer<'a> {
