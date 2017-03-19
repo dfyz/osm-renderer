@@ -39,8 +39,6 @@ pub enum Token<'a> {
     Colon,
     DoubleColon,
     SemiColon,
-
-    Eof,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -75,27 +73,23 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn next_significant_char(&mut self) -> Option<Result<(usize, char)>> {
+    fn read_token(&mut self, idx: usize, ch: char) -> Result<TokenWithPosition<'a>> {
+        bail!("Invalid token");
+    }
+
+    fn next_significant_char(&mut self) -> Result<Option<(usize, char)>> {
         loop {
             let idx_ch = self.next_char();
             match idx_ch {
-                None => return None,
+                None => return Ok(None),
                 Some((_, ch)) => {
                     if ch.is_whitespace() {
                         continue;
                     }
-                    if ch == '/' {
-                        match self.try_skip_comment() {
-                            Err(e) => {
-                                return Some(Err(e));
-                            },
-                            Ok(true) => {
-                                continue;
-                            },
-                            Ok(false) => {},
-                        }
+                    if ch == '/' && self.try_skip_comment()? {
+                        continue;
                     }
-                    return idx_ch.map(|x| Ok(x));
+                    return Ok(idx_ch);
                 },
             }
         }
@@ -162,41 +156,33 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<TokenWithPosition<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self
-            .next_significant_char()
-            .map(|x| x.and_then(
-                |(idx, ch)| Ok(TokenWithPosition {
-                    token: Token::String(&self.text[idx .. idx + ch.len_utf8()]),
-                    position: self.current_position,
-                })
-            ))
+        match self.next_significant_char() {
+            Err(err) => Some(Err(err)),
+            Ok(None) => None,
+            Ok(Some((idx, ch))) => Some(self.read_token(idx, ch)),
+        }
     }
 }
 
-// Grouped by the first symbol, sorted by decreasing length in each group
-// to make sure we always capture the longest token.
-const SIMPLE_TOKEN_MATCH_TABLE: &'static [(&'static str, Token<'static>)] = &[
-    // The unambigous tokens form the first group.
-    ("[", Token::LeftBracket),
-    ("]", Token::RightBracket),
-    ("{", Token::LeftBrace),
-    ("}", Token::RightBrace),
-    (".", Token::Dot),
-    (";", Token::SemiColon),
-    ("?", Token::QuestionMark),
+const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
+    (('!', '='), Token::NotEqual),
+    (('<', '='), Token::LessOrEqual),
+    (('>', '='), Token::GreaterOrEqual),
+    (('=', '~'), Token::RegexMatch),
+    ((':', ':'), Token::DoubleColon),
+];
 
-    ("=~", Token::RegexMatch),
-    ("=", Token::Equal),
-
-    ("!=", Token::NotEqual),
-    ("!", Token::Bang),
-
-    ("<=", Token::LessOrEqual),
-    ("<", Token::Less),
-
-    (">=", Token::GreaterOrEqual),
-    (">", Token::Greater),
-
-    ("::", Token::DoubleColon),
-    (":", Token::Colon),
+const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
+    ('[', Token::LeftBracket),
+    (']', Token::RightBracket),
+    ('{', Token::LeftBrace),
+    ('}', Token::RightBrace),
+    ('=', Token::Equal),
+    ('<', Token::Less),
+    ('>', Token::Greater),
+    ('!', Token::Bang),
+    ('?', Token::QuestionMark),
+    ('.', Token::Dot),
+    (':', Token::Colon),
+    (';', Token::SemiColon),
 ];
