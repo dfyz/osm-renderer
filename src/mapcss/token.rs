@@ -1,4 +1,8 @@
-use errors::*;
+error_chain! {
+    errors {
+        LexerError(pos: InputPosition)
+    }
+}
 
 use std::iter::Peekable;
 use std::str::CharIndices;
@@ -73,8 +77,26 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    fn read_token_or_eof(&mut self) -> Result<Option<TokenWithPosition<'a>>> {
+        if let Some((idx, ch)) = self.next_significant_char()? {
+            let token = self.read_token(idx, ch)?;
+            Ok(Some(token))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn read_token(&mut self, idx: usize, ch: char) -> Result<TokenWithPosition<'a>> {
-        bail!("Invalid token");
+        if let Some(&(_, next_ch)) = self.chars.peek() {
+            if let Some(token) = get_two_char_simple_token(ch, next_ch) {
+                self.next_char();
+                return Ok(with_pos(token, self.current_position));
+            }
+        }
+        if let Some(token) = get_one_char_simple_token(ch) {
+            return Ok(with_pos(token, self.current_position));
+        }
+        bail!("Unexpected symbol: {}", ch);
     }
 
     fn next_significant_char(&mut self) -> Result<Option<(usize, char)>> {
@@ -156,33 +178,67 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<TokenWithPosition<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.next_significant_char() {
-            Err(err) => Some(Err(err)),
+        let token_or_err = self
+            .read_token_or_eof()
+            .chain_err(|| ErrorKind::LexerError(self.current_position));
+        match token_or_err {
             Ok(None) => None,
-            Ok(Some((idx, ch))) => Some(self.read_token(idx, ch)),
+            Ok(Some(token)) => Some(Ok(token)),
+            Err(err) => Some(Err(err)),
         }
     }
 }
 
-const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
-    (('!', '='), Token::NotEqual),
-    (('<', '='), Token::LessOrEqual),
-    (('>', '='), Token::GreaterOrEqual),
-    (('=', '~'), Token::RegexMatch),
-    ((':', ':'), Token::DoubleColon),
-];
+fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
+    const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
+        (('!', '='), Token::NotEqual),
+        (('<', '='), Token::LessOrEqual),
+        (('>', '='), Token::GreaterOrEqual),
+        (('=', '~'), Token::RegexMatch),
+        ((':', ':'), Token::DoubleColon),
+    ];
 
-const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
-    ('[', Token::LeftBracket),
-    (']', Token::RightBracket),
-    ('{', Token::LeftBrace),
-    ('}', Token::RightBrace),
-    ('=', Token::Equal),
-    ('<', Token::Less),
-    ('>', Token::Greater),
-    ('!', Token::Bang),
-    ('?', Token::QuestionMark),
-    ('.', Token::Dot),
-    (':', Token::Colon),
-    (';', Token::SemiColon),
-];
+    TWO_LETTER_MATCH_TABLE
+        .iter()
+        .filter_map(|&(x, token)|
+            if x == (fst, snd) {
+                Some(token)
+            } else {
+                None
+            })
+        .next()
+}
+
+fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
+    const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
+        ('[', Token::LeftBracket),
+        (']', Token::RightBracket),
+        ('{', Token::LeftBrace),
+        ('}', Token::RightBrace),
+        ('=', Token::Equal),
+        ('<', Token::Less),
+        ('>', Token::Greater),
+        ('!', Token::Bang),
+        ('?', Token::QuestionMark),
+        ('.', Token::Dot),
+        (':', Token::Colon),
+        (';', Token::SemiColon),
+    ];
+
+    ONE_LETTER_MATCH_TABLE
+        .iter()
+        .filter_map(|&(x, token)|
+            if x == ch {
+                Some(token)
+            } else {
+                None
+            })
+        .next()
+}
+
+fn with_pos<'a>(token: Token<'a>, position: InputPosition) -> TokenWithPosition<'a> {
+    TokenWithPosition {
+        token: token,
+        position: position,
+    }
+}
