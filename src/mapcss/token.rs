@@ -77,15 +77,6 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_token_or_eof(&mut self) -> Result<Option<TokenWithPosition<'a>>> {
-        if let Some((idx, ch)) = self.next_significant_char()? {
-            let token = self.read_token(idx, ch)?;
-            Ok(Some(token))
-        } else {
-            Ok(None)
-        }
-    }
-
     fn read_token(&mut self, idx: usize, ch: char) -> Result<TokenWithPosition<'a>> {
         if let Some(&(_, next_ch)) = self.chars.peek() {
             if let Some(token) = get_two_char_simple_token(ch, next_ch) {
@@ -99,20 +90,19 @@ impl<'a> Tokenizer<'a> {
         bail!("Unexpected symbol: {}", ch);
     }
 
-    fn next_significant_char(&mut self) -> Result<Option<(usize, char)>> {
+    fn next_significant_char(&mut self) -> Result<(usize, char)> {
         loop {
-            let idx_ch = self.next_char();
-            match idx_ch {
-                None => return Ok(None),
-                Some((_, ch)) => {
+            match self.next_char() {
+                None => bail!("Unexpected end of file"),
+                Some((idx, ch)) => {
                     if ch.is_whitespace() {
                         continue;
                     }
                     if ch == '/' && self.try_skip_comment()? {
                         continue;
                     }
-                    return Ok(idx_ch);
-                },
+                    return Ok((idx, ch));
+                }
             }
         }
     }
@@ -178,13 +168,16 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<TokenWithPosition<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let token_or_err = self
-            .read_token_or_eof()
-            .chain_err(|| ErrorKind::LexerError(self.current_position));
-        match token_or_err {
-            Ok(None) => None,
-            Ok(Some(token)) => Some(Ok(token)),
-            Err(err) => Some(Err(err)),
+        if self.chars.peek().is_none() {
+            None
+        } else {
+            let result =
+                self
+                    .next_significant_char()
+                    .and_then(|(idx, ch)| self.read_token(idx, ch))
+                    .chain_err(|| ErrorKind::LexerError(self.current_position));
+
+            Some(result)
         }
     }
 }
