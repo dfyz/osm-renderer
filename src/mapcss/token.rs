@@ -64,6 +64,8 @@ pub struct Tokenizer<'a> {
     had_newline: bool,
 }
 
+type CharWithPos = (usize, char);
+
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Tokenizer<'a> {
         Tokenizer {
@@ -84,30 +86,55 @@ impl<'a> Tokenizer<'a> {
                 return Ok(with_pos(token, self.current_position));
             }
         }
+
         if let Some(token) = get_one_char_simple_token(ch) {
             return Ok(with_pos(token, self.current_position));
         }
-        bail!("Unexpected symbol: {}", ch);
+
+        if can_start_identifier(ch) {
+            let pos = self.current_position;
+            let identifier = with_pos(self.read_identifier(idx, ch), pos);
+            Ok(identifier)
+        } else {
+            bail!("Unexpected symbol: {}", ch)
+        }
     }
 
-    fn next_significant_char(&mut self) -> Result<(usize, char)> {
+    fn read_identifier(&mut self, start_idx: usize, ch: char) -> Token<'a> {
+        let mut last_good_char_with_pos = (start_idx, ch);
+        while let Some(&(_, next_ch)) = self.chars.peek() {
+            if can_continue_identifier(next_ch) {
+                last_good_char_with_pos = self.next_char().unwrap();
+            } else {
+                break;
+            }
+        }
+        let (end_idx, last_char) = last_good_char_with_pos;
+        Token::Identifier(&self.text[start_idx .. end_idx + last_char.len_utf8()])
+    }
+
+    fn next_significant_char(&mut self) -> Option<Result<CharWithPos>> {
         loop {
             match self.next_char() {
-                None => bail!("Unexpected end of file"),
+                None => return None,
                 Some((idx, ch)) => {
                     if ch.is_whitespace() {
                         continue;
                     }
-                    if ch == '/' && self.try_skip_comment()? {
-                        continue;
+                    if ch == '/' {
+                        match self.try_skip_comment() {
+                            Err(err) => return Some(Err(err)),
+                            Ok(true) => continue,
+                            _ => {},
+                        }
                     }
-                    return Ok((idx, ch));
+                    return Some(Ok((idx, ch)));
                 }
             }
         }
     }
 
-    fn next_char(&mut self) -> Option<(usize, char)> {
+    fn next_char(&mut self) -> Option<CharWithPos> {
         let res = self.chars.next();
 
         if self.had_newline {
@@ -168,17 +195,11 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<TokenWithPosition<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.chars.peek().is_none() {
-            None
-        } else {
-            let result =
-                self
-                    .next_significant_char()
-                    .and_then(|(idx, ch)| self.read_token(idx, ch))
-                    .chain_err(|| ErrorKind::LexerError(self.current_position));
-
-            Some(result)
-        }
+        self.next_significant_char().map(|x| {
+            x
+                .and_then(|(idx, ch)| self.read_token(idx, ch))
+                .chain_err(|| ErrorKind::LexerError(self.current_position))
+        })
     }
 }
 
@@ -227,6 +248,16 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
                 None
             })
         .next()
+}
+
+fn can_start_identifier(ch: char) -> bool {
+    ch == '-'
+    || (ch >= 'a' && ch <= 'z')
+}
+
+fn can_continue_identifier(ch: char) -> bool {
+    can_start_identifier(ch)
+    || (ch >= '0' && ch <= '9')
 }
 
 fn with_pos<'a>(token: Token<'a>, position: InputPosition) -> TokenWithPosition<'a> {
