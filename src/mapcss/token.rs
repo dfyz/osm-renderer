@@ -93,8 +93,11 @@ impl<'a> Tokenizer<'a> {
 
         if can_start_identifier(ch) {
             let pos = self.current_position;
-            let identifier = with_pos(self.read_identifier(idx, ch), pos);
-            Ok(identifier)
+            Ok(with_pos(self.read_identifier(idx, ch), pos))
+        } else if ch == '"' {
+            let pos = self.current_position;
+            let string = self.read_string(idx + ch.len_utf8())?;
+            Ok(with_pos(string, pos))
         } else {
             bail!("Unexpected symbol: {}", ch)
         }
@@ -111,6 +114,23 @@ impl<'a> Tokenizer<'a> {
         }
         let (end_idx, last_char) = last_good_char_with_pos;
         Token::Identifier(&self.text[start_idx .. end_idx + last_char.len_utf8()])
+    }
+
+    fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>> {
+        let mut end_idx = start_idx;
+        let mut terminated_correctly = false;
+        while let Some((next_idx, next_ch)) = self.next_char() {
+            end_idx = next_idx;
+            if next_ch == '"' {
+                terminated_correctly = true;
+                break;
+            }
+        }
+        if !terminated_correctly {
+            bail!("Unterminated string")
+        } else {
+            Ok(Token::String(&self.text[start_idx .. end_idx]))
+        }
     }
 
     fn next_significant_char(&mut self) -> Option<Result<CharWithPos>> {
