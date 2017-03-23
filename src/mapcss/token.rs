@@ -19,7 +19,6 @@ pub struct ZoomLevels {
 pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
-    Regex(&'a str),
     Number(f64),
     ZoomRange(ZoomLevels),
     Eval(&'a str),
