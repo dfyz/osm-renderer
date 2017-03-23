@@ -89,7 +89,12 @@ impl<'a> Tokenizer<'a> {
             return Ok(with_pos(token, self.current_position));
         }
 
-        if can_start_identifier(ch) {
+        if ch == '*' {
+            let pos = self.current_position;
+            self.next_char();
+            let identifier = Token::Identifier(&self.text[idx .. idx + 1]);
+            Ok(with_pos(identifier, pos))
+        } else if can_start_identifier(ch) {
             let pos = self.current_position;
             Ok(with_pos(self.read_identifier(idx, ch), pos))
         } else if ch == '"' {
