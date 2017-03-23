@@ -271,13 +271,18 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
 }
 
 fn can_start_identifier(ch: char) -> bool {
-    ch == '-'
-    || (ch >= 'a' && ch <= 'z')
+    match ch {
+        '-' | '_' | 'a' ... 'z' => true,
+        _ => false,
+    }
 }
 
 fn can_continue_identifier(ch: char) -> bool {
-    can_start_identifier(ch)
-    || (ch >= '0' && ch <= '9')
+    match ch {
+        '0' ... '9' => true,
+        ch if can_start_identifier(ch) => true,
+        _ => false,
+    }
 }
 
 fn with_pos<'a>(token: Token<'a>, position: InputPosition) -> TokenWithPosition<'a> {
