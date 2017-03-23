@@ -21,7 +21,6 @@ pub enum Token<'a> {
     String(&'a str),
     Number(f64),
     ZoomRange(ZoomLevels),
-    Eval(&'a str),
 
     LeftBracket,
     RightBracket,
