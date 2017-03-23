@@ -41,6 +41,7 @@ pub enum Token<'a> {
     Colon,
     DoubleColon,
     SemiColon,
+    Comma,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -260,6 +261,7 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
         ('.', Token::Dot),
         (':', Token::Colon),
         (';', Token::SemiColon),
+        (',', Token::Comma),
     ];
 
     ONE_LETTER_MATCH_TABLE
