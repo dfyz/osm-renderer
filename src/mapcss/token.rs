@@ -338,14 +338,14 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
 
 fn can_start_identifier(ch: char) -> bool {
     match ch {
-        '-' | '_' | 'a' ... 'z' => true,
+        '_' | 'a' ... 'z' => true,
         _ => false,
     }
 }
 
 fn can_continue_identifier(ch: char) -> bool {
     match ch {
-        '0' ... '9' => true,
+        '-' | '0' ... '9' => true,
         ch if can_start_identifier(ch) => true,
         _ => false,
     }
