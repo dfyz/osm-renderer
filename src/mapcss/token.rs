@@ -102,6 +102,10 @@ impl<'a> Tokenizer<'a> {
             let pos = self.current_position;
             let string = self.read_string(idx + ch.len_utf8())?;
             Ok(with_pos(string, pos))
+        } else if ch == '|' {
+            let pos = self.current_position;
+            let zoom_range = self.read_zoom_range()?;
+            Ok(with_pos(zoom_range, pos))
         } else {
             bail!("Unexpected symbol: {}", ch)
         }
@@ -109,9 +113,10 @@ impl<'a> Tokenizer<'a> {
 
     fn read_identifier(&mut self, start_idx: usize, ch: char) -> Token<'a> {
         let mut last_good_char_with_pos = (start_idx, ch);
-        while let Some(&(_, next_ch)) = self.chars.peek() {
+        while let Some(&(next_idx, next_ch)) = self.chars.peek() {
             if can_continue_identifier(next_ch) {
-                last_good_char_with_pos = self.next_char().unwrap();
+                self.next_char();
+                last_good_char_with_pos = (next_idx, next_ch);
             } else {
                 break;
             }
@@ -134,6 +139,56 @@ impl<'a> Tokenizer<'a> {
             bail!("Unterminated string")
         } else {
             Ok(Token::String(&self.text[start_idx .. end_idx]))
+        }
+    }
+
+    fn read_zoom_range(&mut self) -> Result<Token<'a>> {
+        self.expect_char('z')?;
+        let min_zoom = self.read_zoom_level();
+        let had_hyphen = {
+            if let Some(&(_, '-')) = self.chars.peek() {
+                self.next_char();
+                true
+            } else {
+                false
+            }
+        };
+        let max_zoom = self.read_zoom_level();
+
+        if min_zoom.is_none() && max_zoom.is_none() {
+            bail!("A zoom range should have either minumum or maximum level")
+        } else {
+            Ok(Token::ZoomRange(
+                ZoomLevels {
+                    min_zoom: min_zoom,
+                    max_zoom: if had_hyphen { max_zoom } else { min_zoom },
+                }
+            ))
+        }
+    }
+
+    fn read_zoom_level(&mut self) -> ZoomLevel {
+        match self.read_digit() {
+            Some(num1) => match self.read_digit() {
+                Some(num2) => Some(10 * num1 + num2),
+                None => Some(num1),
+            },
+            None => None,
+        }
+    }
+
+    fn read_digit(&mut self) -> Option<u8> {
+        match self.chars.peek() {
+            Some(&(_, ch)) => {
+                match ch.to_digit(10) {
+                    Some(digit) => {
+                        self.next_char();
+                        Some(digit as u8)
+                    },
+                    None => None,
+                }
+            },
+            _ => None,
         }
     }
 
@@ -174,6 +229,13 @@ impl<'a> Tokenizer<'a> {
         };
 
         res
+    }
+
+    fn expect_char(&mut self, expected_ch: char) -> Result<()> {
+        match self.next_char() {
+            Some((_, actual_ch)) if actual_ch == expected_ch => Ok(()),
+            _ => bail!("Expected '{}' character", expected_ch),
+        }
     }
 
     fn try_skip_comment(&mut self) -> Result<bool> {
