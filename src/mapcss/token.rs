@@ -425,3 +425,50 @@ fn with_pos<'a>(token: Token<'a>, position: InputPosition) -> TokenWithPosition<
         position: position,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tokenize<'a>(s: &'a str) -> Vec<Option<TokenWithPosition<'a>>> {
+        Tokenizer::new(s)
+            .map(|x| x.ok())
+            .collect::<Vec<_>>()
+    }
+
+    fn tok(s: &str, expected: Vec<Option<(Token, usize, usize)>>) {
+        assert_eq!(tokenize(s), expected.iter().map(|x| x.map(|(token, line, ch)| {
+            TokenWithPosition {
+                token: token,
+                position: InputPosition {
+                    line: line,
+                    character: ch,
+                }
+            }
+        })).collect::<Vec<_>>())
+    }
+
+    #[test]
+    fn test_identifiers() {
+        tok("width", vec![
+            Some((Token::Identifier("width"), 1, 1)),
+        ]);
+        tok("sports_centre", vec![
+            Some((Token::Identifier("sports_centre"), 1, 1)),
+        ]);
+        tok("font-family", vec![
+            Some((Token::Identifier("font-family"), 1, 1)),
+        ]);
+        tok("waterway=mill_pond", vec![
+            Some((Token::Identifier("waterway"), 1, 1)),
+            Some((Token::Equal, 1, 9)),
+            Some((Token::Identifier("mill_pond"), 1, 10)),
+        ]);
+        tok("text-anchor-vertical: above;", vec![
+            Some((Token::Identifier("text-anchor-vertical"), 1, 1)),
+            Some((Token::Colon, 1, 21)),
+            Some((Token::Identifier("above"), 1, 23)),
+            Some((Token::SemiColon, 1, 28)),
+        ]);
+    }
+}
