@@ -78,33 +78,24 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_token(&mut self, idx: usize, ch: char) -> Result<TokenWithPosition<'a>> {
+    fn read_token(&mut self, idx: usize, ch: char) -> Result<Token<'a>> {
         if let Some(&(_, next_ch)) = self.chars.peek() {
             if let Some(token) = get_two_char_simple_token(ch, next_ch) {
                 self.next_char();
-                return Ok(with_pos(token, self.current_position));
+                return Ok(token);
             }
         }
 
         if let Some(token) = get_one_char_simple_token(ch) {
-            return Ok(with_pos(token, self.current_position));
-        }
-
-        if ch == '*' {
-            let pos = self.current_position;
-            let identifier = Token::Identifier(&self.text[idx .. idx + 1]);
-            Ok(with_pos(identifier, pos))
+            Ok(token)
+        } else if ch == '*' {
+            Ok(Token::Identifier(&self.text[idx .. idx + 1]))
         } else if can_start_identifier(ch) {
-            let pos = self.current_position;
-            Ok(with_pos(self.read_identifier(idx, ch), pos))
+            Ok(self.read_identifier(idx, ch))
         } else if ch == '"' {
-            let pos = self.current_position;
-            let string = self.read_string(idx + ch.len_utf8())?;
-            Ok(with_pos(string, pos))
+            self.read_string(idx + ch.len_utf8())
         } else if ch == '|' {
-            let pos = self.current_position;
-            let zoom_range = self.read_zoom_range()?;
-            Ok(with_pos(zoom_range, pos))
+            self.read_zoom_range()
         } else {
             bail!("Unexpected symbol: {}", ch)
         }
@@ -282,7 +273,11 @@ impl<'a> Iterator for Tokenizer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.next_significant_char().map(|x| {
             x
-                .and_then(|(idx, ch)| self.read_token(idx, ch))
+                .and_then(|(idx, ch)| {
+                    let pos = self.current_position;
+                    let token = self.read_token(idx, ch)?;
+                    Ok(with_pos(token, pos))
+                })
                 .chain_err(|| ErrorKind::LexerError(self.current_position))
         })
     }
