@@ -94,10 +94,12 @@ impl<'a> Tokenizer<'a> {
             Ok(self.read_identifier(idx, ch))
         } else if ch == '"' {
             self.read_string(idx + ch.len_utf8())
+        } else if ch == '-' || ch.to_digit(10).is_some() {
+            self.read_number(ch)
         } else if ch == '|' {
             self.read_zoom_range()
         } else {
-            bail!("Unexpected symbol: {}", ch)
+            bail!("Unexpected symbol: '{}'", ch)
         }
     }
 
@@ -129,6 +131,50 @@ impl<'a> Tokenizer<'a> {
             bail!("Unterminated string")
         } else {
             Ok(Token::String(&self.text[start_idx .. end_idx]))
+        }
+    }
+
+    fn read_number(&mut self, mut first_ch: char) -> Result<Token<'a>> {
+        let sign = if first_ch == '-' {
+            match self.next_char() {
+                Some((_, next_ch)) => first_ch = next_ch,
+                None => bail!("Expected a digit after '-'"),
+            }
+            -1.0_f64
+        } else {
+            1.0_f64
+        };
+
+        let mut number = match first_ch.to_digit(10) {
+            Some(digit) => sign * (digit as f64),
+            None => bail!("Expected a digit instead of '{}'", first_ch),
+        };
+
+        let mut had_dot = false;
+        let mut digits_after_dot = 0;
+
+        while let Some(&(_, next_ch)) = self.chars.peek() {
+            if let Some(digit) = next_ch.to_digit(10) {
+                let float_digit = digit as f64;
+                if had_dot {
+                    digits_after_dot += 1;
+                    number += 10.0_f64.powi(-digits_after_dot) * float_digit;
+                } else {
+                    number = 10.0_f64 * number + float_digit;
+                }
+                self.next_char();
+            } else if next_ch == '.' && !had_dot {
+                had_dot = true;
+                self.next_char();
+            } else {
+                break;
+            }
+        }
+
+        if had_dot && (digits_after_dot == 0) {
+            bail!("Expected a digit after '.'")
+        } else {
+            Ok(Token::Number(number))
         }
     }
 
