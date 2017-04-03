@@ -15,6 +15,7 @@ pub enum Token<'a> {
     String(&'a str),
     Number(f64),
     ZoomRange { min_zoom: ZoomLevel, max_zoom: ZoomLevel },
+    Color { r: u8, g: u8, b: u8 },
 
     LeftBracket,
     RightBracket,
@@ -92,6 +93,8 @@ impl<'a> Tokenizer<'a> {
             self.read_number(ch)
         } else if ch == '|' {
             self.read_zoom_range()
+        } else if ch == '#' {
+            self.read_color()
         } else {
             bail!("Unexpected symbol: '{}'", ch)
         }
@@ -172,6 +175,26 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    fn read_color(&mut self) -> Result<Token<'a>> {
+        Ok(Token::Color {
+            r: self.read_color_component()?,
+            g: self.read_color_component()?,
+            b: self.read_color_component()?,
+        })
+    }
+
+    fn read_color_component(&mut self) -> Result<u8> {
+        let mut read_hex_digit = || -> Result<u8> {
+            match self.read_digit(16) {
+                Some(digit) => Ok(digit),
+                None => bail!("Expected a hexadecimal digit"),
+            }
+        };
+        let digit1 = read_hex_digit()?;
+        let digit2 = read_hex_digit()?;
+        Ok(16 * digit1 + digit2)
+    }
+
     fn read_zoom_range(&mut self) -> Result<Token<'a>> {
         self.expect_char('z')?;
         let min_zoom = self.read_zoom_level();
@@ -196,8 +219,8 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn read_zoom_level(&mut self) -> ZoomLevel {
-        match self.read_digit() {
-            Some(num1) => match self.read_digit() {
+        match self.read_digit(10) {
+            Some(num1) => match self.read_digit(10) {
                 Some(num2) => Some(10 * num1 + num2),
                 None => Some(num1),
             },
@@ -205,10 +228,10 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_digit(&mut self) -> Option<u8> {
+    fn read_digit(&mut self, radix: u32) -> Option<u8> {
         match self.chars.peek() {
             Some(&(_, ch)) => {
-                match ch.to_digit(10) {
+                match ch.to_digit(radix) {
                     Some(digit) => {
                         self.next_char();
                         Some(digit as u8)
