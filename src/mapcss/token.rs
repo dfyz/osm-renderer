@@ -76,7 +76,7 @@ impl<'a> Tokenizer<'a> {
     fn read_token(&mut self, idx: usize, ch: char) -> Result<Token<'a>> {
         if let Some(next_ch) = self.peek_char() {
             if let Some(token) = get_two_char_simple_token(ch, next_ch) {
-                self.next_char();
+                self.advance();
                 return Ok(token);
             }
         }
@@ -104,7 +104,7 @@ impl<'a> Tokenizer<'a> {
         let mut last_good_char_with_pos = (start_idx, ch);
         while let Some(&(next_idx, next_ch)) = self.chars.peek() {
             if can_continue_identifier(next_ch) {
-                self.next_char();
+                self.advance();
                 last_good_char_with_pos = (next_idx, next_ch);
             } else {
                 break;
@@ -117,7 +117,7 @@ impl<'a> Tokenizer<'a> {
     fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>> {
         let mut end_idx = start_idx;
         let mut terminated_correctly = false;
-        while let Some((next_idx, next_ch)) = self.next_char() {
+        while let Some((next_idx, next_ch)) = self.next_char_with_pos() {
             end_idx = next_idx;
             if next_ch == '"' {
                 terminated_correctly = true;
@@ -134,7 +134,7 @@ impl<'a> Tokenizer<'a> {
     fn read_number(&mut self, mut first_ch: char) -> Result<Token<'a>> {
         let sign = if first_ch == '-' {
             match self.next_char() {
-                Some((_, next_ch)) => first_ch = next_ch,
+                Some(next_ch) => first_ch = next_ch,
                 None => bail!("Expected a digit after '-'"),
             }
             -1.0_f64
@@ -159,10 +159,10 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     number = 10.0_f64 * number + float_digit;
                 }
-                self.next_char();
+                self.advance();
             } else if next_ch == '.' && !had_dot {
                 had_dot = true;
-                self.next_char();
+                self.advance();
             } else {
                 break;
             }
@@ -200,7 +200,7 @@ impl<'a> Tokenizer<'a> {
         let min_zoom = self.read_zoom_level();
         let had_hyphen = {
             if let Some('-') = self.peek_char() {
-                self.next_char();
+                self.advance();
                 true
             } else {
                 false
@@ -233,7 +233,7 @@ impl<'a> Tokenizer<'a> {
             Some(ch) => {
                 match ch.to_digit(radix) {
                     Some(digit) => {
-                        self.next_char();
+                        self.advance();
                         Some(digit as u8)
                     },
                     None => None,
@@ -245,7 +245,7 @@ impl<'a> Tokenizer<'a> {
 
     fn next_significant_char(&mut self) -> Option<Result<CharWithPos>> {
         loop {
-            match self.next_char() {
+            match self.next_char_with_pos() {
                 None => return None,
                 Some((idx, ch)) => {
                     if ch.is_whitespace() {
@@ -264,7 +264,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn next_char(&mut self) -> Option<CharWithPos> {
+    fn next_char_with_pos(&mut self) -> Option<CharWithPos> {
         let res = self.chars.next();
 
         if self.had_newline {
@@ -282,13 +282,21 @@ impl<'a> Tokenizer<'a> {
         res
     }
 
+    fn next_char(&mut self) -> Option<char> {
+        self.next_char_with_pos().map(|x| x.1)
+    }
+
+    fn advance(&mut self) {
+        self.next_char();
+    }
+
     fn peek_char(&mut self) -> Option<char> {
         self.chars.peek().map(|x| x.1)
     }
 
     fn expect_char(&mut self, expected_ch: char) -> Result<()> {
         match self.next_char() {
-            Some((_, actual_ch)) if actual_ch == expected_ch => Ok(()),
+            Some(actual_ch) if actual_ch == expected_ch => Ok(()),
             _ => bail!("Expected '{}' character", expected_ch),
         }
     }
@@ -296,11 +304,11 @@ impl<'a> Tokenizer<'a> {
     fn try_skip_comment(&mut self) -> Result<bool> {
         match self.peek_char() {
             Some('/') => {
-                self.next_char();
+                self.advance();
                 self.skip_line_comment();
             },
             Some('*') => {
-                self.next_char();
+                self.advance();
                 self.skip_block_comment()?;
             },
             _ => {
@@ -311,7 +319,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn skip_line_comment(&mut self) {
-        while let Some((_, ch)) = self.next_char() {
+        while let Some(ch) = self.next_char() {
             if ch == '\n' {
                 return;
             }
@@ -319,10 +327,10 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn skip_block_comment(&mut self) -> Result<()> {
-        while let Some((_, ch)) = self.next_char() {
+        while let Some(ch) = self.next_char() {
             match (ch, self.peek_char()) {
                 ('*', Some('/')) => {
-                    self.next_char();
+                    self.advance();
                     return Ok(());
                 }
                 _ => {},
