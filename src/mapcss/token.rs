@@ -9,18 +9,12 @@ use std::str::CharIndices;
 
 pub type ZoomLevel = Option<u8>;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct ZoomLevels {
-    pub min_zoom: ZoomLevel,
-    pub max_zoom: ZoomLevel,
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
     Number(f64),
-    ZoomRange(ZoomLevels),
+    ZoomRange { min_zoom: ZoomLevel, max_zoom: ZoomLevel },
 
     LeftBracket,
     RightBracket,
@@ -194,12 +188,10 @@ impl<'a> Tokenizer<'a> {
         if min_zoom.is_none() && max_zoom.is_none() {
             bail!("A zoom range should have either minumum or maximum level")
         } else {
-            Ok(Token::ZoomRange(
-                ZoomLevels {
-                    min_zoom: min_zoom,
-                    max_zoom: if had_hyphen { max_zoom } else { min_zoom },
-                }
-            ))
+            Ok(Token::ZoomRange {
+                min_zoom: min_zoom,
+                max_zoom: if had_hyphen { max_zoom } else { min_zoom },
+            })
         }
     }
 
