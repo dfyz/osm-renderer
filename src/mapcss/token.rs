@@ -406,7 +406,7 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
 
 fn can_start_identifier(ch: char) -> bool {
     match ch {
-        '_' | 'a' ... 'z' => true,
+        '_' | 'a' ... 'z' | 'A' ... 'Z' => true,
         _ => false,
     }
 }
