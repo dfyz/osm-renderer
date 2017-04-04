@@ -578,4 +578,44 @@ mod tests {
             (Token::RightBrace, 5, 41),
         ]);
     }
+
+    #[test]
+    fn test3() {
+        tok(r#"
+            node|z14-[railway=signal]["railway:signal:direction"]["railway:signal:speed_limit_distant:deactivated"=yes]::deactivatedcross
+            {
+                icon-image: "icons/light-signal-deactivated-18.png";
+                text-allow-overlap: true;
+            }
+            "#,
+        vec![
+            (Token::Identifier("node"), 1, 1),
+            (Token::ZoomRange { min_zoom: Some(14), max_zoom: None }, 1, 5),
+            (Token::LeftBracket, 1, 10),
+            (Token::Identifier("railway"), 1, 11),
+            (Token::Equal, 1, 18),
+            (Token::Identifier("signal"), 1, 19),
+            (Token::RightBracket, 1, 25),
+            (Token::LeftBracket, 1, 26),
+            (Token::String("railway:signal:direction"), 1, 27),
+            (Token::RightBracket, 1, 53),
+            (Token::LeftBracket, 1, 54),
+            (Token::String("railway:signal:speed_limit_distant:deactivated"), 1, 55),
+            (Token::Equal, 1, 103),
+            (Token::Identifier("yes"), 1, 104),
+            (Token::RightBracket, 1, 107),
+            (Token::DoubleColon, 1, 108),
+            (Token::Identifier("deactivatedcross"), 1, 110),
+            (Token::LeftBrace, 2, 1),
+            (Token::Identifier("icon-image"), 3, 5),
+            (Token::Colon, 3, 15),
+            (Token::String("icons/light-signal-deactivated-18.png"), 3, 17),
+            (Token::SemiColon, 3, 56),
+            (Token::Identifier("text-allow-overlap"), 4, 5),
+            (Token::Colon, 4, 23),
+            (Token::Identifier("true"), 4, 25),
+            (Token::SemiColon, 4, 29),
+            (Token::RightBrace, 5, 1),
+        ])
+    }
 }
