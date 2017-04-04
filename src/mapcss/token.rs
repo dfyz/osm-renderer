@@ -430,9 +430,9 @@ fn with_pos<'a>(token: Token<'a>, position: InputPosition) -> TokenWithPosition<
 mod tests {
     use super::*;
 
-    fn tokenize<'a>(s: &'a str) -> Vec<Option<TokenWithPosition<'a>>> {
+    fn tokenize<'a>(s: &'a str) -> Vec<TokenWithPosition<'a>> {
         Tokenizer::new(s)
-            .map(|x| x.ok())
+            .map(|x| x.expect("Unexpected lexer error"))
             .collect::<Vec<_>>()
     }
 
@@ -442,8 +442,8 @@ mod tests {
         lines.iter().map(|x| &x[space_count ..]).collect::<Vec<_>>().join("\n")
     }
 
-    fn tok(s: &str, expected: Vec<Option<(Token, usize, usize)>>) {
-        assert_eq!(tokenize(&unindent(s)), expected.iter().map(|x| x.map(|(token, line, ch)| {
+    fn tok(s: &str, expected: Vec<(Token, usize, usize)>) {
+        assert_eq!(tokenize(&unindent(s)), expected.iter().map(|&(token, line, ch)| {
             TokenWithPosition {
                 token: token,
                 position: InputPosition {
@@ -451,7 +451,7 @@ mod tests {
                     character: ch,
                 }
             }
-        })).collect::<Vec<_>>())
+        }).collect::<Vec<_>>())
     }
 
     #[test]
@@ -469,49 +469,113 @@ mod tests {
             }
             "#,
         vec![
-            Some((Token::Identifier("way"), 2, 1)),
-            Some((Token::ZoomRange { min_zoom: Some(14), max_zoom: None }, 2, 4)),
-            Some((Token::LeftBracket, 2, 9)),
-            Some((Token::Identifier("highway"), 2, 10)),
-            Some((Token::Equal, 2, 17)),
-            Some((Token::Identifier("byway"), 2, 18)),
-            Some((Token::RightBracket, 2, 23)),
-            Some((Token::LeftBracket, 2, 24)),
-            Some((Token::Identifier("bridge"), 2, 25)),
-            Some((Token::QuestionMark, 2, 31)),
-            Some((Token::RightBracket, 2, 32)),
-            Some((Token::Comma, 2, 33)),
-            Some((Token::Identifier("*"), 3, 1)),
-            Some((Token::DoubleColon, 3, 2)),
-            Some((Token::Identifier("*"), 3, 4)),
-            Some((Token::LeftBrace, 3, 6)),
-            Some((Token::Identifier("color"), 4, 5)),
-            Some((Token::Colon, 4, 10)),
-            Some((Token::Color { r: 255, g: 204, b: 0 }, 4, 12)),
-            Some((Token::SemiColon, 4, 19)),
-            Some((Token::Identifier("dashes"), 5, 5)),
-            Some((Token::Colon, 5, 11)),
-            Some((Token::Number(3.0), 5, 13)),
-            Some((Token::Comma, 5, 14)),
-            Some((Token::Number(4.0), 5, 15)),
-            Some((Token::SemiColon, 5, 16)),
-            Some((Token::Identifier("linejoin"), 6, 5)),
-            Some((Token::Colon, 6, 13)),
-            Some((Token::Identifier("round"), 6, 15)),
-            Some((Token::SemiColon, 6, 20)),
-            Some((Token::Identifier("width"), 7, 5)),
-            Some((Token::Colon, 7, 10)),
-            Some((Token::Number(1.5), 7, 12)),
-            Some((Token::SemiColon, 7, 15)),
-            Some((Token::Identifier("y-index"), 8, 5)),
-            Some((Token::Colon, 8, 12)),
-            Some((Token::Number(4.0), 8, 14)),
-            Some((Token::SemiColon, 8, 15)),
-            Some((Token::Identifier("z-index"), 9, 5)),
-            Some((Token::Colon, 9, 12)),
-            Some((Token::Number(-900.0), 9, 14)),
-            Some((Token::SemiColon, 9, 18)),
-            Some((Token::RightBrace, 10, 1)),
+            (Token::Identifier("way"), 2, 1),
+            (Token::ZoomRange { min_zoom: Some(14), max_zoom: None }, 2, 4),
+            (Token::LeftBracket, 2, 9),
+            (Token::Identifier("highway"), 2, 10),
+            (Token::Equal, 2, 17),
+            (Token::Identifier("byway"), 2, 18),
+            (Token::RightBracket, 2, 23),
+            (Token::LeftBracket, 2, 24),
+            (Token::Identifier("bridge"), 2, 25),
+            (Token::QuestionMark, 2, 31),
+            (Token::RightBracket, 2, 32),
+            (Token::Comma, 2, 33),
+            (Token::Identifier("*"), 3, 1),
+            (Token::DoubleColon, 3, 2),
+            (Token::Identifier("*"), 3, 4),
+            (Token::LeftBrace, 3, 6),
+            (Token::Identifier("color"), 4, 5),
+            (Token::Colon, 4, 10),
+            (Token::Color { r: 255, g: 204, b: 0 }, 4, 12),
+            (Token::SemiColon, 4, 19),
+            (Token::Identifier("dashes"), 5, 5),
+            (Token::Colon, 5, 11),
+            (Token::Number(3.0), 5, 13),
+            (Token::Comma, 5, 14),
+            (Token::Number(4.0), 5, 15),
+            (Token::SemiColon, 5, 16),
+            (Token::Identifier("linejoin"), 6, 5),
+            (Token::Colon, 6, 13),
+            (Token::Identifier("round"), 6, 15),
+            (Token::SemiColon, 6, 20),
+            (Token::Identifier("width"), 7, 5),
+            (Token::Colon, 7, 10),
+            (Token::Number(1.5), 7, 12),
+            (Token::SemiColon, 7, 15),
+            (Token::Identifier("y-index"), 8, 5),
+            (Token::Colon, 8, 12),
+            (Token::Number(4.0), 8, 14),
+            (Token::SemiColon, 8, 15),
+            (Token::Identifier("z-index"), 9, 5),
+            (Token::Colon, 9, 12),
+            (Token::Number(-900.0), 9, 14),
+            (Token::SemiColon, 9, 18),
+            (Token::RightBrace, 10, 1),
+        ]);
+    }
+
+    #[test]
+    fn test2() {
+        tok(r#"
+            line|z12-14[piste:lift=j-bar],
+            line|z12-14[piste:lift=magic_carpet],
+            line|z19-[power=line],
+            way|z-16[highway=secondary]
+            {width: 2.5;opacity: 0.6;dashes: 0.9,18;}
+            "#,
+        vec![
+            (Token::Identifier("line"), 1, 1),
+            (Token::ZoomRange { min_zoom: Some(12), max_zoom: Some(14) }, 1, 5),
+            (Token::LeftBracket, 1, 12),
+            (Token::Identifier("piste"), 1, 13),
+            (Token::Colon, 1, 18),
+            (Token::Identifier("lift"), 1, 19),
+            (Token::Equal, 1, 23),
+            (Token::Identifier("j-bar"), 1, 24),
+            (Token::RightBracket, 1, 29),
+            (Token::Comma, 1, 30),
+            (Token::Identifier("line"), 2, 1),
+            (Token::ZoomRange { min_zoom: Some(12), max_zoom: Some(14) }, 2, 5),
+            (Token::LeftBracket, 2, 12),
+            (Token::Identifier("piste"), 2, 13),
+            (Token::Colon, 2, 18),
+            (Token::Identifier("lift"), 2, 19),
+            (Token::Equal, 2, 23),
+            (Token::Identifier("magic_carpet"), 2, 24),
+            (Token::RightBracket, 2, 36),
+            (Token::Comma, 2, 37),
+            (Token::Identifier("line"), 3, 1),
+            (Token::ZoomRange { min_zoom: Some(19), max_zoom: None }, 3, 5),
+            (Token::LeftBracket, 3, 10),
+            (Token::Identifier("power"), 3, 11),
+            (Token::Equal, 3, 16),
+            (Token::Identifier("line"), 3, 17),
+            (Token::RightBracket, 3, 21),
+            (Token::Comma, 3, 22),
+            (Token::Identifier("way"), 4, 1),
+            (Token::ZoomRange { min_zoom: None, max_zoom: Some(16) }, 4, 4),
+            (Token::LeftBracket, 4, 9),
+            (Token::Identifier("highway"), 4, 10),
+            (Token::Equal, 4, 17),
+            (Token::Identifier("secondary"), 4, 18),
+            (Token::RightBracket, 4, 27),
+            (Token::LeftBrace, 5, 1),
+            (Token::Identifier("width"), 5, 2),
+            (Token::Colon, 5, 7),
+            (Token::Number(2.5), 5, 9),
+            (Token::SemiColon, 5, 12),
+            (Token::Identifier("opacity"), 5, 13),
+            (Token::Colon, 5, 20),
+            (Token::Number(0.6000000000000001), 5, 22),
+            (Token::SemiColon, 5, 25),
+            (Token::Identifier("dashes"), 5, 26),
+            (Token::Colon, 5, 32),
+            (Token::Number(0.9), 5, 34),
+            (Token::Comma, 5, 37),
+            (Token::Number(18.0), 5, 38),
+            (Token::SemiColon, 5, 40),
+            (Token::RightBrace, 5, 41),
         ]);
     }
 }
