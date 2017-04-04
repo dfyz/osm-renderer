@@ -436,8 +436,14 @@ mod tests {
             .collect::<Vec<_>>()
     }
 
+    fn unindent(s: &str) -> String {
+        let lines = s.trim_matches('\n').split('\n').collect::<Vec<_>>();
+        let space_count = lines[0].chars().take_while(|x| *x == ' ').count();
+        lines.iter().map(|x| &x[space_count ..]).collect::<Vec<_>>().join("\n")
+    }
+
     fn tok(s: &str, expected: Vec<Option<(Token, usize, usize)>>) {
-        assert_eq!(tokenize(s), expected.iter().map(|x| x.map(|(token, line, ch)| {
+        assert_eq!(tokenize(&unindent(s)), expected.iter().map(|x| x.map(|(token, line, ch)| {
             TokenWithPosition {
                 token: token,
                 position: InputPosition {
@@ -449,26 +455,63 @@ mod tests {
     }
 
     #[test]
-    fn test_identifiers() {
-        tok("width", vec![
-            Some((Token::Identifier("width"), 1, 1)),
-        ]);
-        tok("sports_centre", vec![
-            Some((Token::Identifier("sports_centre"), 1, 1)),
-        ]);
-        tok("font-family", vec![
-            Some((Token::Identifier("font-family"), 1, 1)),
-        ]);
-        tok("waterway=mill_pond", vec![
-            Some((Token::Identifier("waterway"), 1, 1)),
-            Some((Token::Equal, 1, 9)),
-            Some((Token::Identifier("mill_pond"), 1, 10)),
-        ]);
-        tok("text-anchor-vertical: above;", vec![
-            Some((Token::Identifier("text-anchor-vertical"), 1, 1)),
-            Some((Token::Colon, 1, 21)),
-            Some((Token::Identifier("above"), 1, 23)),
-            Some((Token::SemiColon, 1, 28)),
+    fn test1() {
+        tok(r#"
+            /* this is a comment */
+            way|z14-[highway=byway][bridge?],
+            *::* {
+                color: #ffcc00;
+                dashes: 3,4;
+                linejoin: round; // this is a comment, too
+                width: 1.5;
+                y-index: 4;
+                z-index: -900;
+            }
+            "#,
+        vec![
+            Some((Token::Identifier("way"), 2, 1)),
+            Some((Token::ZoomRange { min_zoom: Some(14), max_zoom: None }, 2, 4)),
+            Some((Token::LeftBracket, 2, 9)),
+            Some((Token::Identifier("highway"), 2, 10)),
+            Some((Token::Equal, 2, 17)),
+            Some((Token::Identifier("byway"), 2, 18)),
+            Some((Token::RightBracket, 2, 23)),
+            Some((Token::LeftBracket, 2, 24)),
+            Some((Token::Identifier("bridge"), 2, 25)),
+            Some((Token::QuestionMark, 2, 31)),
+            Some((Token::RightBracket, 2, 32)),
+            Some((Token::Comma, 2, 33)),
+            Some((Token::Identifier("*"), 3, 1)),
+            Some((Token::DoubleColon, 3, 2)),
+            Some((Token::Identifier("*"), 3, 4)),
+            Some((Token::LeftBrace, 3, 6)),
+            Some((Token::Identifier("color"), 4, 5)),
+            Some((Token::Colon, 4, 10)),
+            Some((Token::Color { r: 255, g: 204, b: 0 }, 4, 12)),
+            Some((Token::SemiColon, 4, 19)),
+            Some((Token::Identifier("dashes"), 5, 5)),
+            Some((Token::Colon, 5, 11)),
+            Some((Token::Number(3.0), 5, 13)),
+            Some((Token::Comma, 5, 14)),
+            Some((Token::Number(4.0), 5, 15)),
+            Some((Token::SemiColon, 5, 16)),
+            Some((Token::Identifier("linejoin"), 6, 5)),
+            Some((Token::Colon, 6, 13)),
+            Some((Token::Identifier("round"), 6, 15)),
+            Some((Token::SemiColon, 6, 20)),
+            Some((Token::Identifier("width"), 7, 5)),
+            Some((Token::Colon, 7, 10)),
+            Some((Token::Number(1.5), 7, 12)),
+            Some((Token::SemiColon, 7, 15)),
+            Some((Token::Identifier("y-index"), 8, 5)),
+            Some((Token::Colon, 8, 12)),
+            Some((Token::Number(4.0), 8, 14)),
+            Some((Token::SemiColon, 8, 15)),
+            Some((Token::Identifier("z-index"), 9, 5)),
+            Some((Token::Colon, 9, 12)),
+            Some((Token::Number(-900.0), 9, 14)),
+            Some((Token::SemiColon, 9, 18)),
+            Some((Token::RightBrace, 10, 1)),
         ]);
     }
 }
