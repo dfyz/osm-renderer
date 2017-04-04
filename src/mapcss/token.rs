@@ -618,4 +618,23 @@ mod tests {
             (Token::RightBrace, 5, 1),
         ])
     }
+
+    #[test]
+    fn test_errors() {
+        let malformed_strings = [
+            "/*abc",
+            "-",
+            "123.",
+            "\"abc",
+            "|z-",
+            "#",
+            "&",
+            "+",
+        ];
+        for s in &malformed_strings {
+            let errors = Tokenizer::new(s).collect::<Vec<_>>();
+            assert_eq!(1, errors.len(), "Expected exactly one error for {}", s);
+            assert!(errors[0].is_err(), "Expected to have an error for {}", s);
+        }
+    }
 }
