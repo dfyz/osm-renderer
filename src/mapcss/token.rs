@@ -10,12 +10,19 @@ use std::str::CharIndices;
 pub type ZoomLevel = Option<u8>;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Color {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
     Number(f64),
     ZoomRange { min_zoom: ZoomLevel, max_zoom: ZoomLevel },
-    Color { r: u8, g: u8, b: u8 },
+    Color(Color),
 
     LeftBracket,
     RightBracket,
@@ -176,11 +183,11 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn read_color(&mut self) -> Result<Token<'a>> {
-        Ok(Token::Color {
+        Ok(Token::Color(Color {
             r: self.read_color_component()?,
             g: self.read_color_component()?,
             b: self.read_color_component()?,
-        })
+        }))
     }
 
     fn read_color_component(&mut self) -> Result<u8> {
@@ -487,7 +494,7 @@ mod tests {
             (Token::LeftBrace, 3, 6),
             (Token::Identifier("color"), 4, 5),
             (Token::Colon, 4, 10),
-            (Token::Color { r: 255, g: 204, b: 0 }, 4, 12),
+            (Token::Color(Color { r: 255, g: 204, b: 0 }), 4, 12),
             (Token::SemiColon, 4, 19),
             (Token::Identifier("dashes"), 5, 5),
             (Token::Colon, 5, 11),
