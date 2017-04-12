@@ -4,6 +4,7 @@ error_chain! {
     }
 }
 
+use std::fmt;
 use std::iter::Peekable;
 use std::str::CharIndices;
 
@@ -46,6 +47,49 @@ pub enum Token<'a> {
     Comma,
 }
 
+const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
+    (('!', '='), Token::NotEqual),
+    (('<', '='), Token::LessOrEqual),
+    (('>', '='), Token::GreaterOrEqual),
+    (('=', '~'), Token::RegexMatch),
+    ((':', ':'), Token::DoubleColon),
+];
+
+const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
+    ('[', Token::LeftBracket),
+    (']', Token::RightBracket),
+    ('{', Token::LeftBrace),
+    ('}', Token::RightBrace),
+    ('=', Token::Equal),
+    ('<', Token::Less),
+    ('>', Token::Greater),
+    ('!', Token::Bang),
+    ('?', Token::QuestionMark),
+    ('.', Token::Dot),
+    (':', Token::Colon),
+    (';', Token::SemiColon),
+    (',', Token::Comma),
+];
+
+impl<'a> fmt::Display for Token<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for &((ch1, ch2), tok) in TWO_LETTER_MATCH_TABLE {
+            if tok == *self {
+                return write!(f, "{}{}", ch1, ch2);
+            }
+        }
+        for &(ch, tok) in ONE_LETTER_MATCH_TABLE {
+            if tok == *self {
+                return write!(f, "{}", ch);
+            }
+        }
+
+        match self {
+            _ => write!(f, "{:?}", self),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct InputPosition {
     pub line: usize,
@@ -78,6 +122,10 @@ impl<'a> Tokenizer<'a> {
             },
             had_newline: false,
         }
+    }
+
+    pub fn position(&self) -> InputPosition {
+        self.current_position
     }
 
     fn read_token(&mut self, idx: usize, ch: char) -> Result<Token<'a>> {
@@ -364,14 +412,6 @@ impl<'a> Iterator for Tokenizer<'a> {
 }
 
 fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
-    const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
-        (('!', '='), Token::NotEqual),
-        (('<', '='), Token::LessOrEqual),
-        (('>', '='), Token::GreaterOrEqual),
-        (('=', '~'), Token::RegexMatch),
-        ((':', ':'), Token::DoubleColon),
-    ];
-
     TWO_LETTER_MATCH_TABLE
         .iter()
         .filter_map(|&(x, token)|
@@ -384,22 +424,6 @@ fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
 }
 
 fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
-    const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
-        ('[', Token::LeftBracket),
-        (']', Token::RightBracket),
-        ('{', Token::LeftBrace),
-        ('}', Token::RightBrace),
-        ('=', Token::Equal),
-        ('<', Token::Less),
-        ('>', Token::Greater),
-        ('!', Token::Bang),
-        ('?', Token::QuestionMark),
-        ('.', Token::Dot),
-        (':', Token::Colon),
-        (';', Token::SemiColon),
-        (',', Token::Comma),
-    ];
-
     ONE_LETTER_MATCH_TABLE
         .iter()
         .filter_map(|&(x, token)|
