@@ -1,8 +1,4 @@
-error_chain! {
-    errors {
-        LexerError(pos: InputPosition)
-    }
-}
+use mapcss::errors::*;
 
 use std::fmt;
 use std::iter::Peekable;
@@ -151,7 +147,7 @@ impl<'a> Tokenizer<'a> {
         } else if ch == '#' {
             self.read_color()
         } else {
-            bail!("Unexpected symbol: '{}'", ch)
+            self.lexer_error(format!("Unexpected symbol: '{}'", ch))
         }
     }
 
@@ -180,7 +176,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if !terminated_correctly {
-            bail!("Unterminated string")
+            self.lexer_error("Unterminated string")
         } else {
             Ok(Token::String(&self.text[start_idx .. end_idx]))
         }
@@ -190,7 +186,7 @@ impl<'a> Tokenizer<'a> {
         let sign = if first_ch == '-' {
             match self.next_char() {
                 Some(next_ch) => first_ch = next_ch,
-                None => bail!("Expected a digit after '-'"),
+                None => return self.lexer_error("Expected a digit after '-'"),
             }
             -1.0_f64
         } else {
@@ -199,7 +195,7 @@ impl<'a> Tokenizer<'a> {
 
         let mut number = match first_ch.to_digit(10) {
             Some(digit) => sign * (digit as f64),
-            None => bail!("Expected a digit instead of '{}'", first_ch),
+            None => return self.lexer_error(format!("Expected a digit instead of '{}'", first_ch)),
         };
 
         let mut had_dot = false;
@@ -224,7 +220,7 @@ impl<'a> Tokenizer<'a> {
         }
 
         if had_dot && (digits_after_dot == 0) {
-            bail!("Expected a digit after '.'")
+            self.lexer_error("Expected a digit after '.'")
         } else {
             Ok(Token::Number(number))
         }
@@ -242,7 +238,7 @@ impl<'a> Tokenizer<'a> {
         let mut read_hex_digit = || -> Result<u8> {
             match self.read_digit(16) {
                 Some(digit) => Ok(digit),
-                None => bail!("Expected a hexadecimal digit"),
+                None => return self.lexer_error("Expected a hexadecimal digit"),
             }
         };
         let digit1 = read_hex_digit()?;
@@ -264,7 +260,7 @@ impl<'a> Tokenizer<'a> {
         let max_zoom = self.read_zoom_level();
 
         if min_zoom.is_none() && max_zoom.is_none() {
-            bail!("A zoom range should have either minumum or maximum level")
+            self.lexer_error("A zoom range should have either minumum or maximum level")
         } else {
             Ok(Token::ZoomRange {
                 min_zoom: min_zoom,
@@ -352,7 +348,7 @@ impl<'a> Tokenizer<'a> {
     fn expect_char(&mut self, expected_ch: char) -> Result<()> {
         match self.next_char() {
             Some(actual_ch) if actual_ch == expected_ch => Ok(()),
-            _ => bail!("Expected '{}' character", expected_ch),
+            _ => self.lexer_error(format!("Expected '{}' character", expected_ch)),
         }
     }
 
@@ -391,7 +387,11 @@ impl<'a> Tokenizer<'a> {
                 _ => {},
             }
         }
-        bail!("Unterminated block comment");
+        self.lexer_error("Unterminated block comment")
+    }
+
+    fn lexer_error<T, Msg: Into<String>>(&self, message: Msg) -> Result<T> {
+        bail!(ErrorKind::LexerError(message.into(), self.current_position))
     }
 }
 
@@ -400,13 +400,11 @@ impl<'a> Iterator for Tokenizer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_significant_char().map(|x| {
-            x
-                .and_then(|(idx, ch)| {
-                    let pos = self.current_position;
-                    let token = self.read_token(idx, ch)?;
-                    Ok(with_pos(token, pos))
-                })
-                .chain_err(|| ErrorKind::LexerError(self.current_position))
+            x.and_then(|(idx, ch)| {
+                let pos = self.current_position;
+                let token = self.read_token(idx, ch)?;
+                Ok(with_pos(token, pos))
+            })
         })
     }
 }

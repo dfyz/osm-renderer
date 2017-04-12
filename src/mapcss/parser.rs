@@ -1,14 +1,6 @@
-use mapcss::token::{Color, InputPosition, Token, TokenWithPosition, Tokenizer};
+use mapcss::errors::*;
 
-error_chain! {
-    links {
-        LexerError(::mapcss::token::Error, ::mapcss::token::ErrorKind);
-    }
-
-    errors {
-        ParserError(pos: InputPosition)
-    }
-}
+use mapcss::token::{Color, Token, TokenWithPosition, Tokenizer};
 
 #[derive(Debug)]
 pub enum ObjectType {
@@ -121,7 +113,11 @@ impl<'a> Parser<'a> {
     fn read_selector(&mut self, selector_first_token: TokenWithPosition<'a>) -> Result<ConsumedSelector> {
         let selector = match selector_first_token.token {
             Token::Identifier(id) => {
-                let object_type = id_to_object_type(id).chain_err(|| ErrorKind::ParserError(selector_first_token.position))?;
+                let object_type = id_to_object_type(id)
+                    .ok_or_else(|| ErrorKind::ParseError(
+                        format!("Unknown object type: {}", id),
+                        selector_first_token.position
+                    ))?;
                 Selector {
                     object_type: object_type,
                     min_zoom_range: None,
@@ -176,35 +172,31 @@ impl<'a> Parser<'a> {
         match self.tokenizer.next() {
             Some(token) => token.map_err(|x| From::from(x)),
             None => {
-                let msg: Result<TokenWithPosition<'a>> =
-                    Err("Unexpected end of file".into());
-                msg.chain_err(|| ErrorKind::ParserError(self.tokenizer.position()))
+                bail!(ErrorKind::ParseError(String::from("Unexpected end of file"), self.tokenizer.position()))
             },
         }
     }
 
     fn unexpected_token<T>(&self, token: TokenWithPosition<'a>) -> Result<T> {
-        let msg: Result<T> =
-            Err(format!("Unexpected token: {}", token.token).into());
-        msg.chain_err(|| ErrorKind::ParserError(token.position))
+        bail!(ErrorKind::ParseError(format!("Unexpected token: {}", token.token), token.position))
     }
 }
 
-fn id_to_object_type(id: &str) -> Result<ObjectType> {
+fn id_to_object_type(id: &str) -> Option<ObjectType> {
     match id {
-        "*" => Ok(ObjectType::All),
-        "canvas" => Ok(ObjectType::Canvas),
-        "meta" => Ok(ObjectType::Meta),
-        "node" => Ok(ObjectType::Node),
-        "way" => Ok(ObjectType::Way {
+        "*" => Some(ObjectType::All),
+        "canvas" => Some(ObjectType::Canvas),
+        "meta" => Some(ObjectType::Meta),
+        "node" => Some(ObjectType::Node),
+        "way" => Some(ObjectType::Way {
             should_be_closed: None,
         }),
-        "area" => Ok(ObjectType::Way {
+        "area" => Some(ObjectType::Way {
             should_be_closed: Some(true),
         }),
-        "line" => Ok(ObjectType::Way {
+        "line" => Some(ObjectType::Way {
             should_be_closed: Some(false),
         }),
-        _ => bail!(format!("Unknown object type: {}", id)),
+        _ => None,
     }
 }
