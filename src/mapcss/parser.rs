@@ -106,10 +106,10 @@ impl<'a> Parser<'a> {
         let mut selector_start = rule_start;
         loop {
             let consumed_selector = self.read_selector(selector_start)?;
+            rule.selectors.push(consumed_selector.selector);
             if consumed_selector.last_selector {
                 break;
             }
-            rule.selectors.push(consumed_selector.selector);
             selector_start = self.read_token()?;
         }
 
