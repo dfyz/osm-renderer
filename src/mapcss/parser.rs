@@ -14,14 +14,19 @@ pub enum ObjectType {
 #[derive(Debug)]
 pub enum UnaryTestType {
     Exists,
+    NotExists,
     True,
     False,
 }
 
 #[derive(Debug)]
-pub enum BinaryTestType {
+pub enum BinaryStringTestType {
     Equal,
     NotEqual,
+}
+
+#[derive(Debug)]
+pub enum BinaryNumericTestType {
     Less,
     LessOrEqual,
     Greater,
@@ -31,7 +36,8 @@ pub enum BinaryTestType {
 #[derive(Debug)]
 pub enum Test {
     Unary { tag_name: String, test_type: UnaryTestType },
-    BinaryOp { tag_name: String, value: String, test_type: BinaryTestType },
+    BinaryStringCompare { tag_name: String, value: String, test_type: BinaryStringTestType },
+    BinaryNumericCompare { tag_name: String, value: f64, test_type: BinaryNumericTestType }
 }
 
 #[derive(Debug)]
@@ -51,8 +57,8 @@ pub struct Property {
 #[derive(Debug)]
 pub struct Selector {
     object_type: ObjectType,
-    min_zoom_range: Option<u8>,
-    max_zoom_range: Option<u8>,
+    min_zoom: Option<u8>,
+    max_zoom: Option<u8>,
     tests: Vec<Test>,
     layer_id: Option<String>,
 }
@@ -111,7 +117,7 @@ impl<'a> Parser<'a> {
     }
 
     fn read_selector(&mut self, selector_first_token: TokenWithPosition<'a>) -> Result<ConsumedSelector> {
-        let selector = match selector_first_token.token {
+        let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id)
                     .ok_or_else(|| ErrorKind::ParseError(
@@ -120,15 +126,13 @@ impl<'a> Parser<'a> {
                     ))?;
                 Selector {
                     object_type: object_type,
-                    min_zoom_range: None,
-                    max_zoom_range: None,
+                    min_zoom: None,
+                    max_zoom: None,
                     tests: Vec::new(),
                     layer_id: None,
                 }
             },
-            _ => {
-                return self.unexpected_token(selector_first_token);
-            },
+            _ => return self.unexpected_token(selector_first_token),
         };
 
         loop {
@@ -144,7 +148,22 @@ impl<'a> Parser<'a> {
                 Token::Comma => {
                     selector_ended = true;
                 },
-                _ => {},
+                Token::ZoomRange { min_zoom, max_zoom } => {
+                    selector.min_zoom = min_zoom;
+                    selector.max_zoom = max_zoom;
+                },
+                Token::LeftBracket => {
+                    selector.tests.push(self.read_test()?);
+                },
+                Token::Colon => {
+                    // This is a pseudo-class. Even though we don't use them,
+                    // we still have to parse them correctly.
+                    self.read_identifier()?;
+                },
+                Token::DoubleColon => {
+                    selector.layer_id = Some(self.read_identifier()?);
+                }
+                _ => return self.unexpected_token(current_token),
             }
 
             if selector_ended {
@@ -156,15 +175,108 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn read_test(&mut self) -> Result<Test> {
+        let mut starts_with_bang = false;
+
+        let mut current_token = self.read_token()?;
+
+        let lhs = match current_token.token {
+            Token::Identifier(id) => String::from(id),
+            Token::Bang => {
+                starts_with_bang = true;
+                self.read_identifier()?
+            },
+            _ => return self.unexpected_token(current_token),
+        };
+
+        current_token = self.read_token()?;
+
+        if !starts_with_bang {
+            if let Some(binary_op) = to_binary_string_test_type(current_token.token) {
+                current_token = self.read_token()?;
+
+                let rhs = match current_token.token {
+                    Token::Identifier(id) => String::from(id),
+                    Token::Number(num) => num.to_string(),
+                    _ => return self.unexpected_token(current_token),
+                };
+
+                self.expect_test_end()?;
+
+                return Ok(Test::BinaryStringCompare {
+                    tag_name: lhs,
+                    value: rhs,
+                    test_type: binary_op,
+                })
+            }
+
+            if let Some(binary_op) = to_binary_numeric_test_type(current_token.token) {
+                current_token = self.read_token()?;
+
+                let rhs = match current_token.token {
+                    Token::Number(num) => num,
+                    _ => return self.unexpected_token(current_token),
+                };
+
+                self.expect_test_end()?;
+
+                return Ok(Test::BinaryNumericCompare {
+                    tag_name: lhs,
+                    value: rhs,
+                    test_type: binary_op,
+                });
+            }
+        }
+
+        let unary_test_type = match current_token.token {
+            Token::RightBracket => {
+                if starts_with_bang { UnaryTestType::NotExists } else { UnaryTestType::Exists }
+            },
+            Token::QuestionMark => {
+                current_token = self.read_token()?;
+                match current_token.token {
+                    Token::RightBracket => if starts_with_bang { UnaryTestType::False } else { UnaryTestType::True },
+                    Token::Bang if !starts_with_bang => {
+                        self.expect_test_end()?;
+                        UnaryTestType::False
+                    },
+                    _ => return self.unexpected_token(current_token),
+                }
+            },
+            _ => return self.unexpected_token(current_token),
+        };
+
+        Ok(Test::Unary {
+            tag_name: lhs,
+            test_type: unary_test_type,
+        })
+    }
+
+    fn expect_test_end(&mut self) -> Result<()> {
+        let token = self.read_token()?;
+        match token.token {
+            Token::RightBracket => Ok(()),
+            _ => bail!(ErrorKind::ParseError(format!("Expected ], found {} instead", token.token), token.position)),
+        }
+    }
+
     fn read_properties(&mut self) -> Result<Vec<Property>> {
         loop {
-            let next_token = self.read_token()?;
-            match next_token.token {
+            let token = self.read_token()?;
+            match token.token {
                 Token::RightBrace => {
                     return Ok(Vec::new());
                 },
                 _ => {},
             }
+        }
+    }
+
+    fn read_identifier(&mut self) -> Result<String> {
+        let token = self.read_token()?;
+        match token.token {
+            Token::Identifier(id) => Ok(String::from(id)),
+            _ => self.unexpected_token(token),
         }
     }
 
@@ -197,6 +309,24 @@ fn id_to_object_type(id: &str) -> Option<ObjectType> {
         "line" => Some(ObjectType::Way {
             should_be_closed: Some(false),
         }),
+        _ => None,
+    }
+}
+
+fn to_binary_string_test_type<'a>(token: Token<'a>) -> Option<BinaryStringTestType> {
+    match token {
+        Token::Equal => Some(BinaryStringTestType::Equal),
+        Token::NotEqual => Some(BinaryStringTestType::NotEqual),
+        _ => None,
+    }
+}
+
+fn to_binary_numeric_test_type<'a>(token: Token<'a>) -> Option<BinaryNumericTestType> {
+    match token {
+        Token::Less => Some(BinaryNumericTestType::Less),
+        Token::LessOrEqual => Some(BinaryNumericTestType::LessOrEqual),
+        Token::Greater => Some(BinaryNumericTestType::Greater),
+        Token::GreaterOrEqual => Some(BinaryNumericTestType::GreaterOrEqual),
         _ => None,
     }
 }
