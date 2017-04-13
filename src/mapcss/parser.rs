@@ -79,9 +79,9 @@ struct ConsumedSelector {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Parser<'a> {
+    pub fn new(tokenizer: Tokenizer<'a>) -> Parser<'a> {
         Parser {
-            tokenizer: Tokenizer::new(input),
+            tokenizer: tokenizer,
         }
     }
 
