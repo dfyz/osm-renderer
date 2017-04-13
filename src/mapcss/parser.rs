@@ -87,21 +87,23 @@ impl<'a> Parser<'a> {
 
     pub fn parse(&mut self) -> Result<Vec<Rule>> {
         let mut result = Vec::new();
-        while let Some(token) = self.tokenizer.next() {
-            let ok_token = token?;
-            let rule = self.read_rule(ok_token)?;
+        while let Some(rule) = self.read_rule()? {
             result.push(rule);
         }
         Ok(result)
     }
 
-    fn read_rule(&mut self, rule_start: TokenWithPosition<'a>) -> Result<Rule> {
+    fn read_rule(&mut self) -> Result<Option<Rule>> {
+        let mut selector_start = match self.tokenizer.next() {
+            None => return Ok(None),
+            Some(token) => token?,
+        };
+
         let mut rule = Rule {
             selectors: Vec::new(),
             properties: Vec::new(),
         };
 
-        let mut selector_start = rule_start;
         loop {
             let consumed_selector = self.read_selector(selector_start)?;
             rule.selectors.push(consumed_selector.selector);
@@ -113,7 +115,7 @@ impl<'a> Parser<'a> {
 
         rule.properties = self.read_properties()?;
 
-        Ok(rule)
+        Ok(Some(rule))
     }
 
     fn read_selector(&mut self, selector_first_token: TokenWithPosition<'a>) -> Result<ConsumedSelector> {
