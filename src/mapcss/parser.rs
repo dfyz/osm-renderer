@@ -55,12 +55,18 @@ pub struct Property {
 }
 
 #[derive(Debug)]
-pub struct Selector {
+pub struct SingleSelector {
     object_type: ObjectType,
     min_zoom: Option<u8>,
     max_zoom: Option<u8>,
     tests: Vec<Test>,
     layer_id: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum Selector {
+    Single(SingleSelector),
+    Nested { parent: SingleSelector, child: SingleSelector },
 }
 
 #[derive(Debug)]
@@ -73,9 +79,15 @@ pub struct Parser<'a> {
     tokenizer: Tokenizer<'a>,
 }
 
+enum ConsumedSelectorType {
+    Ordinary,
+    Parent,
+    Last,
+}
+
 struct ConsumedSelector {
-    selector: Selector,
-    last_selector: bool,
+    selector: SingleSelector,
+    selector_type: ConsumedSelectorType,
 }
 
 impl<'a> Parser<'a> {
@@ -106,8 +118,42 @@ impl<'a> Parser<'a> {
 
         loop {
             let consumed_selector = self.read_selector(selector_start)?;
-            rule.selectors.push(consumed_selector.selector);
-            if consumed_selector.last_selector {
+
+            let mut expect_more_selectors = match consumed_selector.selector_type {
+                ConsumedSelectorType::Last => false,
+                _ => true,
+            };
+
+            let selector_to_add = match consumed_selector.selector_type {
+                ConsumedSelectorType::Ordinary | ConsumedSelectorType::Last => {
+                    Selector::Single(consumed_selector.selector)
+                },
+                ConsumedSelectorType::Parent => {
+                    let next_token = self.read_token()?;
+                    let child_selector = self.read_selector(next_token)?;
+
+                    match child_selector.selector_type {
+                        ConsumedSelectorType::Parent => {
+                            bail!(ErrorKind::ParseError(
+                                String::from("A child selector can't be a parent to another selector"),
+                                self.tokenizer.position()
+                            ));
+                        },
+                        ConsumedSelectorType::Last => {
+                            expect_more_selectors = false;
+                        },
+                        _ => {},
+                    }
+
+                    Selector::Nested {
+                        parent: consumed_selector.selector,
+                        child: child_selector.selector,
+                    }
+                },
+            };
+
+            rule.selectors.push(selector_to_add);
+            if !expect_more_selectors {
                 break;
             }
             selector_start = self.read_token()?;
@@ -126,7 +172,7 @@ impl<'a> Parser<'a> {
                         format!("Unknown object type: {}", id),
                         selector_first_token.position
                     ))?;
-                Selector {
+                SingleSelector {
                     object_type: object_type,
                     min_zoom: None,
                     max_zoom: None,
@@ -139,16 +185,17 @@ impl<'a> Parser<'a> {
 
         loop {
             let current_token = self.read_token()?;
-            let mut selector_ended = false;
-            let mut last_selector = false;
+            let mut consumed_selector_type = None;
 
             match current_token.token {
                 Token::LeftBrace => {
-                    selector_ended = true;
-                    last_selector = true;
+                    consumed_selector_type = Some(ConsumedSelectorType::Last);
                 },
                 Token::Comma => {
-                    selector_ended = true;
+                    consumed_selector_type = Some(ConsumedSelectorType::Ordinary);
+                },
+                Token::Greater => {
+                    consumed_selector_type = Some(ConsumedSelectorType::Parent);
                 },
                 Token::ZoomRange { min_zoom, max_zoom } => {
                     selector.min_zoom = min_zoom;
@@ -168,10 +215,10 @@ impl<'a> Parser<'a> {
                 _ => return self.unexpected_token(current_token),
             }
 
-            if selector_ended {
+            if let Some(selector_type) = consumed_selector_type {
                 return Ok(ConsumedSelector {
                     selector: selector,
-                    last_selector: last_selector,
+                    selector_type: selector_type,
                 })
             }
         }
