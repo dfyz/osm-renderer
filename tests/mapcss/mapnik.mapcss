@@ -8142,7 +8142,7 @@ node|z17-[aeroway=gate] {
  * Style 'interpolation'
  */
 
-way|z17-[addr:interpolation] {
+way|z17-["addr:interpolation"] {
     color: #888888;
     dashes: 2,4;
     width: 1;
@@ -8153,8 +8153,8 @@ way|z17-[addr:interpolation] {
  * Style 'housenumbers'
  */
 
-node|z17-[addr:housenumber],
-area|z17-[addr:housenumber] {
+node|z17-["addr:housenumber"],
+area|z17-["addr:housenumber"] {
     font-family: "DejaVu Sans Book";
     font-size: 9;
     text: "addr:housenumber";

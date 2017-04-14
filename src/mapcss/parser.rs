@@ -231,6 +231,7 @@ impl<'a> Parser<'a> {
 
         let lhs = match current_token.token {
             Token::Identifier(id) => String::from(id),
+            Token::String(s) => String::from(s),
             Token::Bang => {
                 starts_with_bang = true;
                 self.read_identifier()?
