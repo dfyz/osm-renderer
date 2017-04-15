@@ -44,8 +44,8 @@ pub enum Test {
 pub enum PropertyValue {
     Identifier(String),
     String(String),
-    Numbers(Vec<f64>),
     Color(Color),
+    Numbers(Vec<f64>),
 }
 
 #[derive(Debug)]
@@ -251,7 +251,7 @@ impl<'a> Parser<'a> {
                     _ => return self.unexpected_token(current_token),
                 };
 
-                self.expect_test_end()?;
+                self.expect_simple_token(Token::RightBracket)?;
 
                 return Ok(Test::BinaryStringCompare {
                     tag_name: lhs,
@@ -268,7 +268,7 @@ impl<'a> Parser<'a> {
                     _ => return self.unexpected_token(current_token),
                 };
 
-                self.expect_test_end()?;
+                self.expect_simple_token(Token::RightBracket)?;
 
                 return Ok(Test::BinaryNumericCompare {
                     tag_name: lhs,
@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
                 match current_token.token {
                     Token::RightBracket => if starts_with_bang { UnaryTestType::False } else { UnaryTestType::True },
                     Token::Bang if !starts_with_bang => {
-                        self.expect_test_end()?;
+                        self.expect_simple_token(Token::RightBracket)?;
                         UnaryTestType::False
                     },
                     _ => return self.unexpected_token(current_token),
@@ -302,24 +302,62 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expect_test_end(&mut self) -> Result<()> {
-        let token = self.read_token()?;
-        match token.token {
-            Token::RightBracket => Ok(()),
-            _ => bail!(ErrorKind::ParseError(format!("Expected ], found {} instead", token.token), token.position)),
-        }
-    }
-
     fn read_properties(&mut self) -> Result<Vec<Property>> {
+        let mut result = Vec::new();
         loop {
             let token = self.read_token()?;
             match token.token {
-                Token::RightBrace => {
-                    return Ok(Vec::new());
+                Token::Identifier(id) => {
+                    self.expect_simple_token(Token::Colon)?;
+                    result.push(Property {
+                        name: String::from(id),
+                        value: self.read_property_value()?,
+                    })
                 },
-                _ => {},
+                Token::RightBrace => break,
+                _ => return self.unexpected_token(token),
             }
         }
+        Ok(result)
+    }
+
+    fn read_property_value(&mut self) -> Result<PropertyValue> {
+        let token = self.read_token()?;
+        let mut expect_semicolon = true;
+        let result = match token.token {
+            Token::Identifier(id) => PropertyValue::Identifier(String::from(id)),
+            Token::String(s) => PropertyValue::String(String::from(s)),
+            Token::Color(color) => PropertyValue::Color(color),
+            Token::Number(num) => {
+                expect_semicolon = false;
+                PropertyValue::Numbers(self.read_number_list(num)?)
+            },
+            _ => return self.unexpected_token(token)?,
+        };
+        if expect_semicolon {
+            self.expect_simple_token(Token::SemiColon)?;
+        }
+        Ok(result)
+    }
+
+    fn read_number_list(&mut self, first_num: f64) -> Result<Vec<f64>> {
+        let mut numbers = vec![first_num];
+        let mut consumed_number = true;
+        loop {
+            let next_token = self.read_token()?;
+            match next_token.token {
+                Token::Comma if consumed_number => {
+                    consumed_number = false;
+                },
+                Token::SemiColon if consumed_number => break,
+                Token::Number(next_num) if !consumed_number => {
+                    consumed_number = true;
+                    numbers.push(next_num);
+                },
+                _ => return self.unexpected_token(next_token),
+            }
+        }
+        Ok(numbers)
     }
 
     fn read_identifier(&mut self) -> Result<String> {
@@ -339,8 +377,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn expect_simple_token(&mut self, expected: Token<'static>) -> Result<()> {
+        let token = self.read_token()?;
+        if token.token != expected {
+            bail!(ErrorKind::ParseError(format!("Expected '{}', found '{}' instead", expected, token.token), token.position))
+        } else {
+            Ok(())
+        }
+    }
+
     fn unexpected_token<T>(&self, token: TokenWithPosition<'a>) -> Result<T> {
-        bail!(ErrorKind::ParseError(format!("Unexpected token: {}", token.token), token.position))
+        bail!(ErrorKind::ParseError(format!("Unexpected token: '{}'", token.token), token.position))
     }
 }
 
