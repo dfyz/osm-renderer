@@ -460,6 +460,21 @@ mod tests {
         assert_eq!(rules_str, canonical_rules_str);
     }
 
+    #[test]
+    fn test_parsing_is_idempotent() {
+        let mut mapnik_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        for p in &["tests", "mapcss", "mapnik.parsed.canonical"] {
+            mapnik_path.push(p)
+        }
+
+        let mut canonical = String::new();
+        File::open(mapnik_path).unwrap().read_to_string(&mut canonical).unwrap();
+        let mut parser = Parser::new(Tokenizer::new(&canonical));
+
+        let rules_str = parser.parse().unwrap().iter().map(rule_to_string).collect::<Vec<_>>().join("\n\n");
+        assert_eq!(rules_str, canonical);
+    }
+
     fn rule_to_string(rule: &Rule) -> String {
         format!(
             "{} {{\n{}}}",
