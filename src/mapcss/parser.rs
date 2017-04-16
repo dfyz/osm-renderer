@@ -451,7 +451,8 @@ mod tests {
         let rules = parser.parse().unwrap();
 
         let rules_str = rules.iter().map(rule_to_string).collect::<Vec<_>>().join("\n\n");
-        File::create(&mapnik_path).unwrap().write_all(rules_str.as_bytes()).unwrap();
+        let mapnik_path_parsed = mapnik_path.with_extension("parsed");
+        File::create(&mapnik_path_parsed).unwrap().write_all(rules_str.as_bytes()).unwrap();
     }
 
     fn rule_to_string(rule: &Rule) -> String {
