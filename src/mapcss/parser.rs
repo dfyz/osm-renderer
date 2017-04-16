@@ -496,13 +496,19 @@ mod tests {
             (None, None) => return String::new(),
             (Some(mn), None) => format!("{}-", mn),
             (None, Some(mx)) => format!("-{}", mx),
-            (Some(mn), Some(mx)) => format!("{}-{}", mn, mx),
+            (Some(mn), Some(mx)) => {
+                if mn != mx {
+                    format!("{}-{}", mn, mx)
+                } else {
+                    format!("{}", mn)
+                }
+            },
         };
         format!("|z{}", result)
     }
 
     fn test_to_string(test: &Test) -> String {
-        match test {
+        let result = match test {
             &Test::Unary { ref tag_name, test_type: UnaryTestType::Exists } => tag_name.clone(),
             &Test::Unary { ref tag_name, test_type: UnaryTestType::NotExists } => {
                 format!("!{}", tag_name)
@@ -531,25 +537,26 @@ mod tests {
             &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::GreaterOrEqual } => {
                 format!("{}>={}", tag_name, value)
             },
-        }
+        };
+        format!("[{}]", result)
     }
 
     fn layer_id_to_string(layer_id: &Option<String>) -> String {
         match layer_id {
-            &Some(ref id) => id.clone(),
+            &Some(ref id) => format!("::{}", id.clone()),
             &None => String::new(),
         }
     }
 
     fn property_to_string(prop: &Property) -> String {
-        format!("{}: {};", prop.name, property_value_to_string(&prop.value))
+        format!("    {}: {};", prop.name, property_value_to_string(&prop.value))
     }
 
     fn property_value_to_string(value: &PropertyValue) -> String {
         match value {
-            &PropertyValue::Color(Color { r, g, b }) => format!("#{:x}{:x}{:x}", r, g, b),
+            &PropertyValue::Color(Color { r, g, b }) => format!("#{:02x}{:02x}{:02x}", r, g, b),
             &PropertyValue::Identifier(ref id) => id.clone(),
-            &PropertyValue::String(ref s) => s.clone(),
+            &PropertyValue::String(ref s) => format!("\"{}\"", s),
             &PropertyValue::Numbers(ref nums) => nums.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(",")
         }
     }
