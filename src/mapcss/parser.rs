@@ -508,34 +508,41 @@ mod tests {
     }
 
     fn test_to_string(test: &Test) -> String {
+        let quote = |tag_name: &String| {
+            if tag_name.contains(":") {
+                format!("\"{}\"", tag_name)
+            } else {
+                tag_name.clone()
+            }
+        };
         let result = match test {
             &Test::Unary { ref tag_name, test_type: UnaryTestType::Exists } => tag_name.clone(),
             &Test::Unary { ref tag_name, test_type: UnaryTestType::NotExists } => {
-                format!("!{}", tag_name)
+                format!("!{}", quote(tag_name))
             },
             &Test::Unary { ref tag_name, test_type: UnaryTestType::True } => {
-                format!("{}?", tag_name)
+                format!("{}?", quote(tag_name))
             },
             &Test::Unary { ref tag_name, test_type: UnaryTestType::False } => {
-                format!("!{}?", tag_name)
+                format!("!{}?", quote(tag_name))
             },
             &Test::BinaryStringCompare { ref tag_name, ref value, test_type: BinaryStringTestType::Equal } => {
-                format!("{}={}", tag_name, value)
+                format!("{}={}", quote(tag_name), value)
             },
             &Test::BinaryStringCompare { ref tag_name, ref value, test_type: BinaryStringTestType::NotEqual } => {
-                format!("{}!={}", tag_name, value)
+                format!("{}!={}", quote(tag_name), value)
             },
             &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::Less } => {
-                format!("{}<{}", tag_name, value)
+                format!("{}<{}", quote(tag_name), value)
             },
             &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::LessOrEqual } => {
-                format!("{}<={}", tag_name, value)
+                format!("{}<={}", quote(tag_name), value)
             },
             &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::Greater } => {
-                format!("{}>{}", tag_name, value)
+                format!("{}>{}", quote(tag_name), value)
             },
             &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::GreaterOrEqual } => {
-                format!("{}>={}", tag_name, value)
+                format!("{}>={}", quote(tag_name), value)
             },
         };
         format!("[{}]", result)
