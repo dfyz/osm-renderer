@@ -194,7 +194,7 @@ impl<'a> Tokenizer<'a> {
         };
 
         let mut number = match first_ch.to_digit(10) {
-            Some(digit) => sign * (digit as f64),
+            Some(digit) => digit as f64,
             None => return self.lexer_error(format!("Expected a digit instead of '{}'", first_ch)),
         };
 
@@ -222,7 +222,7 @@ impl<'a> Tokenizer<'a> {
         if had_dot && (digits_after_dot == 0) {
             self.lexer_error("Expected a digit after '.'")
         } else {
-            Ok(Token::Number(number))
+            Ok(Token::Number(sign * number))
         }
     }
 
@@ -494,7 +494,7 @@ mod tests {
                 linejoin: round; // this is a comment, too
                 width: 1.5;
                 y-index: 4;
-                z-index: -900;
+                z-index: -999;
             }
             "#,
         vec![
@@ -538,7 +538,7 @@ mod tests {
             (Token::SemiColon, 8, 15),
             (Token::Identifier("z-index"), 9, 5),
             (Token::Colon, 9, 12),
-            (Token::Number(-900.0), 9, 14),
+            (Token::Number(-999.0), 9, 14),
             (Token::SemiColon, 9, 18),
             (Token::RightBrace, 10, 1),
         ]);
