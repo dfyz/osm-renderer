@@ -453,6 +453,11 @@ mod tests {
         let rules_str = rules.iter().map(rule_to_string).collect::<Vec<_>>().join("\n\n");
         let mapnik_path_parsed = mapnik_path.with_extension("parsed");
         File::create(&mapnik_path_parsed).unwrap().write_all(rules_str.as_bytes()).unwrap();
+
+        let mut canonical_rules_str = String::new();
+        let mapnik_path_canonical = mapnik_path.with_extension("parsed.canonical");
+        File::open(&mapnik_path_canonical).unwrap().read_to_string(&mut canonical_rules_str).unwrap();
+        assert_eq!(rules_str, canonical_rules_str);
     }
 
     fn rule_to_string(rule: &Rule) -> String {
