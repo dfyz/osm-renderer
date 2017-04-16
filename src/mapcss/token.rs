@@ -206,7 +206,7 @@ impl<'a> Tokenizer<'a> {
                 let float_digit = digit as f64;
                 if had_dot {
                     digits_after_dot += 1;
-                    number += 10.0_f64.powi(-digits_after_dot) * float_digit;
+                    number += float_digit / 10.0_f64.powi(digits_after_dot);
                 } else {
                     number = 10.0_f64 * number + float_digit;
                 }
@@ -596,7 +596,7 @@ mod tests {
             (Token::SemiColon, 5, 12),
             (Token::Identifier("opacity"), 5, 13),
             (Token::Colon, 5, 20),
-            (Token::Number(0.6000000000000001), 5, 22),
+            (Token::Number(0.6), 5, 22),
             (Token::SemiColon, 5, 25),
             (Token::Identifier("dashes"), 5, 26),
             (Token::Colon, 5, 32),
