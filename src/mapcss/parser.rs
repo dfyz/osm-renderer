@@ -427,3 +427,130 @@ fn to_binary_numeric_test_type<'a>(token: Token<'a>) -> Option<BinaryNumericTest
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::fs::File;
+    use std::io::{Read, Write};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_mapnik_parse() {
+        let mut mapnik_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        for p in &["tests", "mapcss", "mapnik.mapcss"] {
+            mapnik_path.push(p)
+        }
+
+        let mut mapnik_content = String::new();
+        File::open(&mapnik_path).unwrap().read_to_string(&mut mapnik_content).unwrap();
+
+        let tokenizer = Tokenizer::new(&mapnik_content);
+        let mut parser = Parser::new(tokenizer);
+        let rules = parser.parse().unwrap();
+
+        let rules_str = rules.iter().map(rule_to_string).collect::<Vec<_>>().join("\n\n");
+        File::create(&mapnik_path).unwrap().write_all(rules_str.as_bytes()).unwrap();
+    }
+
+    fn rule_to_string(rule: &Rule) -> String {
+        format!(
+            "{} {{\n{}\n}}",
+            rule.selectors.iter().map(selector_to_string).collect::<Vec<_>>().join(",\n"),
+            rule.properties.iter().map(property_to_string).collect::<Vec<_>>().join("\n")
+        )
+    }
+
+    fn selector_to_string(selector: &Selector) -> String {
+        match selector {
+            &Selector::Single(ref s) => single_selector_to_string(s),
+            &Selector::Nested { parent: ref p, child: ref c } => format!("{} > {}", single_selector_to_string(p), single_selector_to_string(c)),
+        }
+    }
+
+    fn single_selector_to_string(selector: &SingleSelector) -> String {
+        format!(
+            "{}{}{}{}",
+            object_type_to_string(&selector.object_type),
+            zoom_range_to_string(selector.min_zoom, selector.max_zoom),
+            selector.tests.iter().map(test_to_string).collect::<Vec<_>>().join(""),
+            layer_id_to_string(&selector.layer_id)
+        )
+    }
+
+    fn object_type_to_string(object_type: &ObjectType) -> String {
+        match object_type {
+            &ObjectType::All => "*",
+            &ObjectType::Canvas => "canvas",
+            &ObjectType::Meta => "meta",
+            &ObjectType::Node => "node",
+            &ObjectType::Way { should_be_closed: None } => "way",
+            &ObjectType::Way { should_be_closed: Some(true) } => "area",
+            &ObjectType::Way { should_be_closed: Some(false) } => "line",
+        }.to_string()
+    }
+
+    fn zoom_range_to_string(min_zoom: Option<u8>, max_zoom: Option<u8>) -> String {
+        let result = match (min_zoom, max_zoom) {
+            (None, None) => return String::new(),
+            (Some(mn), None) => format!("{}-", mn),
+            (None, Some(mx)) => format!("-{}", mx),
+            (Some(mn), Some(mx)) => format!("{}-{}", mn, mx),
+        };
+        format!("|z{}", result)
+    }
+
+    fn test_to_string(test: &Test) -> String {
+        match test {
+            &Test::Unary { ref tag_name, test_type: UnaryTestType::Exists } => tag_name.clone(),
+            &Test::Unary { ref tag_name, test_type: UnaryTestType::NotExists } => {
+                format!("!{}", tag_name)
+            },
+            &Test::Unary { ref tag_name, test_type: UnaryTestType::True } => {
+                format!("{}?", tag_name)
+            },
+            &Test::Unary { ref tag_name, test_type: UnaryTestType::False } => {
+                format!("!{}?", tag_name)
+            },
+            &Test::BinaryStringCompare { ref tag_name, ref value, test_type: BinaryStringTestType::Equal } => {
+                format!("{}={}", tag_name, value)
+            },
+            &Test::BinaryStringCompare { ref tag_name, ref value, test_type: BinaryStringTestType::NotEqual } => {
+                format!("{}!={}", tag_name, value)
+            },
+            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::Less } => {
+                format!("{}<{}", tag_name, value)
+            },
+            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::LessOrEqual } => {
+                format!("{}<={}", tag_name, value)
+            },
+            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::Greater } => {
+                format!("{}>{}", tag_name, value)
+            },
+            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::GreaterOrEqual } => {
+                format!("{}>={}", tag_name, value)
+            },
+        }
+    }
+
+    fn layer_id_to_string(layer_id: &Option<String>) -> String {
+        match layer_id {
+            &Some(ref id) => id.clone(),
+            &None => String::new(),
+        }
+    }
+
+    fn property_to_string(prop: &Property) -> String {
+        format!("{}: {};", prop.name, property_value_to_string(&prop.value))
+    }
+
+    fn property_value_to_string(value: &PropertyValue) -> String {
+        match value {
+            &PropertyValue::Color(Color { r, g, b }) => format!("#{:x}{:x}{:x}", r, g, b),
+            &PropertyValue::Identifier(ref id) => id.clone(),
+            &PropertyValue::String(ref s) => s.clone(),
+            &PropertyValue::Numbers(ref nums) => nums.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(",")
+        }
+    }
+}

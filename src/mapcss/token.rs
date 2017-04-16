@@ -8,9 +8,9 @@ pub type ZoomLevel = Option<u8>;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Color {
-    r: u8,
-    g: u8,
-    b: u8,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
