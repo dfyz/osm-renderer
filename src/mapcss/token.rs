@@ -198,17 +198,19 @@ impl<'a> Tokenizer<'a> {
             None => return self.lexer_error(format!("Expected a digit instead of '{}'", first_ch)),
         };
 
+        let mut number_after_dot = 0.0f64;
         let mut had_dot = false;
         let mut digits_after_dot = 0;
 
+        let add_digit = |current: &mut f64, digit| *current = 10.0_f64 * (*current) + (digit as f64);
+
         while let Some(next_ch) = self.peek_char() {
             if let Some(digit) = next_ch.to_digit(10) {
-                let float_digit = digit as f64;
                 if had_dot {
                     digits_after_dot += 1;
-                    number += float_digit / 10.0_f64.powi(digits_after_dot);
+                    add_digit(&mut number_after_dot, digit);
                 } else {
-                    number = 10.0_f64 * number + float_digit;
+                    add_digit(&mut number, digit);
                 }
                 self.advance();
             } else if next_ch == '.' && !had_dot {
@@ -222,6 +224,9 @@ impl<'a> Tokenizer<'a> {
         if had_dot && (digits_after_dot == 0) {
             self.lexer_error("Expected a digit after '.'")
         } else {
+            if digits_after_dot > 0 {
+                number += number_after_dot / 10.0f64.powi(digits_after_dot)
+            }
             Ok(Token::Number(sign * number))
         }
     }
