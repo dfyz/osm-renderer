@@ -456,9 +456,9 @@ mod tests {
 
     fn rule_to_string(rule: &Rule) -> String {
         format!(
-            "{} {{\n{}\n}}",
+            "{} {{\n{}}}",
             rule.selectors.iter().map(selector_to_string).collect::<Vec<_>>().join(",\n"),
-            rule.properties.iter().map(property_to_string).collect::<Vec<_>>().join("\n")
+            rule.properties.iter().map(property_to_string).collect::<Vec<_>>().join("")
         )
     }
 
@@ -549,7 +549,7 @@ mod tests {
     }
 
     fn property_to_string(prop: &Property) -> String {
-        format!("    {}: {};", prop.name, property_value_to_string(&prop.value))
+        format!("    {}: {};\n", prop.name, property_value_to_string(&prop.value))
     }
 
     fn property_value_to_string(value: &PropertyValue) -> String {
