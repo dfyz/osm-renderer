@@ -517,7 +517,7 @@ mod tests {
             }
         };
         let result = match test {
-            &Test::Unary { ref tag_name, test_type: UnaryTestType::Exists } => tag_name.clone(),
+            &Test::Unary { ref tag_name, test_type: UnaryTestType::Exists } => quote(tag_name),
             &Test::Unary { ref tag_name, test_type: UnaryTestType::NotExists } => {
                 format!("!{}", quote(tag_name))
             },
