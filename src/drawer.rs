@@ -119,6 +119,34 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
         let get_delta = |c| -((TILE_SIZE as f64) * (c as f64));
         cs::cairo_translate(cr, get_delta(tile.x), get_delta(tile.y));
 
+        let mut canvas_color = None;
+
+        for r in rules.iter() {
+            for selector in r.selectors.iter() {
+                if let &Selector::Single(ref single) = selector {
+                    if let ObjectType::Canvas = single.object_type {
+                        for prop in r.properties.iter() {
+                            if prop.name == "fill-color" {
+                                if let PropertyValue::Color(color) = prop.value {
+                                    canvas_color = Some(color);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let to_double_color = |u8_color| (u8_color as f64) / 255.0_f64;
+        let set_color = |c: Color| {
+            cs::cairo_set_source_rgb(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b));
+        };
+
+        if let Some(color) = canvas_color {
+            set_color(color);
+            cs::cairo_paint(cr);
+        }
+
         for w in entities.ways.iter() {
             if w.node_count() == 0 {
                 continue;
@@ -138,7 +166,7 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
                 _ => 1.0f64,
             };
 
-            cs::cairo_set_source_rgb(cr, color.r as f64, color.g as f64, color.b as f64);
+            set_color(color);
             cs::cairo_set_line_width(cr, width);
 
             let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
