@@ -7,18 +7,31 @@ use hyper::method::Method;
 use hyper::server::{Handler, Listening, Response, Request, Server};
 use hyper::status::StatusCode;
 use hyper::uri::RequestUri;
-use std::io::Write;
+use mapcss::parser::{Parser, Rule};
+use mapcss::token::Tokenizer;
+use std::fs::File;
+use std::io::{Read, Write};
 use tile::Tile;
 
-pub fn run_server(address: &str, geodata_file: &str) -> Result<Listening> {
+pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> Result<Listening> {
+    let mut stylesheet_reader = File::open(stylesheet_file).chain_err(|| "Failed to open the stylesheet file")?;
+    let mut stylesheet = String::new();
+    stylesheet_reader.read_to_string(&mut stylesheet).chain_err(|| "Failed to read the stylesheet file")?;
+    let mut parser = Parser::new(Tokenizer::new(&stylesheet));
+
     let reader = GeodataReader::new(geodata_file).chain_err(|| "Failed to load the geodata file")?;
-    let handler = TileServer { reader: reader };
+    let rules = parser.parse().chain_err(|| "Failed to parse the stylesheet file")?;
+    let handler = TileServer {
+        reader: reader,
+        rules: rules,
+    };
     let server = Server::http(address).chain_err(|| "Failed to spawn the HTTP server")?;
     server.handle(handler).chain_err(|| "Failed to run the HTTP server")
 }
 
 struct TileServer<'a> {
     reader: GeodataReader<'a>,
+    rules: Vec<Rule>,
 }
 
 impl<'a> Handler for TileServer<'a> {
@@ -51,7 +64,7 @@ impl<'a> Handler for TileServer<'a> {
 impl<'a> TileServer<'a> {
     fn draw_tile_contents(&self, tile: &Tile) -> Result<Vec<u8>> {
         let entities = self.reader.get_entities_in_tile(&tile);
-        let tile_png_bytes = draw_tile(&entities, &tile)?;
+        let tile_png_bytes = draw_tile(&entities, &tile, &self.rules)?;
         Ok(tile_png_bytes)
     }
 }

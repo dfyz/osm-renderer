@@ -15,12 +15,14 @@ fn main() {
         App::new("OSM renderer server")
             .arg(Arg::with_name("SERVER_ADDRESS").required(true).index(1))
             .arg(Arg::with_name("GEODATA_FILE").required(true).index(2))
+            .arg(Arg::with_name("STYLESHEET_FILE").required(true).index(3))
             .get_matches();
 
     let server_address = matches.value_of("SERVER_ADDRESS").unwrap();
     let geodata_file = matches.value_of("GEODATA_FILE").unwrap();
+    let stylesheet_file = matches.value_of("STYLESHEET_FILE").unwrap();
 
-    match run_server(server_address, geodata_file) {
+    match run_server(server_address, geodata_file, stylesheet_file) {
         Ok(_) => {},
         Err(e) => {
             for (i, suberror) in e.iter().enumerate() {
