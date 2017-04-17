@@ -27,7 +27,7 @@ fn main() {
         Err(e) => {
             for (i, suberror) in e.iter().enumerate() {
                 let description = if i == 0 { "Reason" } else { "Caused by" };
-                error!("{}: {}", description, suberror);
+                error!("{}: {:?}", description, suberror);
             }
             std::process::exit(1);
         }

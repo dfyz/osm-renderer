@@ -36,7 +36,6 @@ pub enum Token<'a> {
 
     Bang,
     QuestionMark,
-    Dot,
     Colon,
     DoubleColon,
     SemiColon,
@@ -61,7 +60,6 @@ const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
     ('>', Token::Greater),
     ('!', Token::Bang),
     ('?', Token::QuestionMark),
-    ('.', Token::Dot),
     (':', Token::Colon),
     (';', Token::SemiColon),
     (',', Token::Comma),
