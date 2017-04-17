@@ -50,17 +50,17 @@ pub enum PropertyValue {
 
 #[derive(Debug)]
 pub struct Property {
-    name: String,
-    value: PropertyValue,
+    pub name: String,
+    pub value: PropertyValue,
 }
 
 #[derive(Debug)]
 pub struct SingleSelector {
-    object_type: ObjectType,
-    min_zoom: Option<u8>,
-    max_zoom: Option<u8>,
-    tests: Vec<Test>,
-    layer_id: Option<String>,
+    pub object_type: ObjectType,
+    pub min_zoom: Option<u8>,
+    pub max_zoom: Option<u8>,
+    pub tests: Vec<Test>,
+    pub layer_id: Option<String>,
 }
 
 #[derive(Debug)]
@@ -71,8 +71,8 @@ pub enum Selector {
 
 #[derive(Debug)]
 pub struct Rule {
-    selectors: Vec<Selector>,
-    properties: Vec<Property>,
+    pub selectors: Vec<Selector>,
+    pub properties: Vec<Property>,
 }
 
 pub struct Parser<'a> {
