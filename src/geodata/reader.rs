@@ -242,6 +242,10 @@ macro_rules! implement_node_methods {
 
 impl<'a> Way<'a> {
     implement_node_methods!();
+
+    pub fn is_closed(&self) -> bool {
+        self.node_count() > 2 && (self.get_node(0) == self.get_node(self.node_count() - 1))
+    }
 }
 
 pub struct Relation<'a> {
