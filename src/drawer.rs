@@ -139,6 +139,8 @@ fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> Styles<'b
         }
     }
 
+    info!("Styled way {}, name: {}", way.global_id(), way.tags().get_by_key("name").unwrap_or("N/A"));
+
     layer_to_style.into_iter().map(|(_, v)| v).collect::<Vec<_>>()
 }
 
