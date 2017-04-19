@@ -59,10 +59,6 @@ fn way_matches_test<'a>(way: &Way<'a>, test: &Test) -> bool {
 }
 
 fn way_matches_single<'a>(way: &Way<'a>, selector: &SingleSelector, zoom: u8) -> bool {
-    if selector.layer_id.is_some() {
-        return false;
-    }
-
     if let Some(min_zoom) = selector.min_zoom {
         if zoom < min_zoom {
             return false
@@ -78,8 +74,7 @@ fn way_matches_single<'a>(way: &Way<'a>, selector: &SingleSelector, zoom: u8) ->
     let good_object_type = match selector.object_type {
         ObjectType::Way { should_be_closed: None } => true,
         ObjectType::Way { should_be_closed: Some(expected) } => {
-            let is_closed = way.get_node(0) == way.get_node(way.node_count() - 1);
-            expected == is_closed
+            expected == way.is_closed()
         },
         _ => return false,
     };
@@ -94,18 +89,57 @@ fn way_matches<'a>(way: &Way<'a>, selector: &Selector, zoom: u8) -> bool {
     }
 }
 
-fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> HashMap<String, &'b PropertyValue> {
-    let mut result = HashMap::new();
+type Style<'a> = HashMap<String, &'a PropertyValue>;
+type Styles<'a> = Vec<Style<'a>>;
+
+fn get_layer_id<'a>(selector: &'a Selector) -> &'a str {
+    let single = match selector {
+        &Selector::Single(ref single) => single,
+        &Selector::Nested { ref child , .. } => child,
+    };
+    match single.layer_id {
+        Some(ref id) => id,
+        None => "default",
+    }
+}
+
+fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> Styles<'b> {
+    let mut layer_to_style: HashMap<&str, Style<'b>> = HashMap::new();
 
     for rule in rules {
-        if rule.selectors.iter().any(|x| way_matches(&way, x, zoom)) {
-            for prop in rule.properties.iter() {
-                result.insert(prop.name.clone(), &prop.value);
+        for sel in rule.selectors.iter().filter(|x| way_matches(&way, x, zoom)) {
+            let layer_id = get_layer_id(&sel);
+
+            let update_layer = |layer: &mut Style<'b>| {
+                for prop in rule.properties.iter() {
+                    layer.insert(prop.name.clone(), &prop.value);
+                }
+            };
+
+            {
+                if !layer_to_style.contains_key(layer_id) {
+                    let layer_pattern = match layer_to_style.get("*") {
+                        Some(all_layers_style) => all_layers_style.clone(),
+                        None => Default::default(),
+                    };
+
+                    layer_to_style.insert(layer_id, layer_pattern);
+                }
+
+                update_layer(layer_to_style.get_mut(layer_id).unwrap());
+            }
+
+            if layer_id == "*" {
+                for (k, v) in layer_to_style.iter_mut() {
+                    if k != &"*" {
+                        update_layer(v);
+                    }
+                }
             }
         }
     }
 
-    result
+    layer_to_style.into_iter().map(|(_, v)| v).collect::<Vec<_>>()
 }
 
 pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>) -> Result<Vec<u8>> {
@@ -147,24 +181,43 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
             cs::cairo_paint(cr);
         }
 
+        let mut all_way_styles = Vec::new();
+
         for w in entities.ways.iter() {
             if w.node_count() == 0 {
                 continue;
             }
 
-            let styles = style_way(w, rules, tile.zoom);
+            for style in style_way(w, rules, tile.zoom) {
+                all_way_styles.push((w, style))
+            }
+        }
 
-            let color = match styles.get("color") {
+        fn get_z_index<'a, 'b>(way: &Way<'a>, style: &Style<'b>) -> f64 {
+            match style.get("z-index") {
+                Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => {
+                    nums[0]
+                },
+                _ => if way.is_closed() { 1.0 } else { 3.0 },
+            }
+        }
+
+        all_way_styles.sort_by(|&(ref k1, ref v1), &(ref k2, ref v2)| get_z_index(k1, v1).partial_cmp(&get_z_index(k2, v2)).unwrap());
+
+        for &(ref w, ref style) in all_way_styles.iter() {
+            let color = match style.get("color") {
                 Some(&&PropertyValue::Color(color)) => color,
                 _ => continue,
             };
 
-            let width = match styles.get("width") {
+            let width = match style.get("width") {
                 Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => {
                     nums[0]
                 },
                 _ => 1.0f64,
             };
+
+            cs::cairo_new_path(cr);
 
             set_color(color);
             cs::cairo_set_line_width(cr, width);
