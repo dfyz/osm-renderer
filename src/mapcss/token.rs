@@ -78,9 +78,7 @@ impl<'a> fmt::Display for Token<'a> {
             }
         }
 
-        match self {
-            _ => write!(f, "{:?}", self),
-        }
+        write!(f, "{:?}", self)
     }
 }
 

@@ -2,6 +2,8 @@ use mapcss::errors::*;
 
 use mapcss::token::{Color, Token, TokenWithPosition, Tokenizer};
 
+use std::fmt;
+
 #[derive(Debug)]
 pub enum ObjectType {
     All,
@@ -9,6 +11,23 @@ pub enum ObjectType {
     Meta,
     Node,
     Way { should_be_closed: Option<bool> },
+}
+
+impl fmt::Display for ObjectType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let object_type = match self {
+            &ObjectType::All => "*",
+            &ObjectType::Canvas => "canvas",
+            &ObjectType::Meta => "meta",
+            &ObjectType::Node => "node",
+            &ObjectType::Way { should_be_closed } => match should_be_closed {
+                None => "way",
+                Some(true) => "area",
+                Some(false) => "line",
+            },
+        };
+        write!(f, "{}", object_type)
+    }
 }
 
 #[derive(Debug)]
@@ -40,6 +59,43 @@ pub enum Test {
     BinaryNumericCompare { tag_name: String, value: f64, test_type: BinaryNumericTestType }
 }
 
+impl fmt::Display for Test {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let quote = |tag_name: &String| {
+            if tag_name.contains(":") {
+                format!("\"{}\"", tag_name)
+            } else {
+                tag_name.clone()
+            }
+        };
+        let result = match self {
+            &Test::Unary { ref tag_name, ref test_type } => match test_type {
+                &UnaryTestType::Exists => format!("{}", quote(tag_name)),
+                &UnaryTestType::NotExists => format!("!{}", quote(tag_name)),
+                &UnaryTestType::True => format!("{}?", quote(tag_name)),
+                &UnaryTestType::False => format!("!{}?", quote(tag_name)),
+            },
+            &Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
+                let sign = match test_type {
+                    &BinaryStringTestType::Equal => "=",
+                    &BinaryStringTestType::NotEqual => "!=",
+                };
+                format!("{}{}{}", quote(tag_name), sign, value)
+            },
+            &Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
+                let sign = match test_type {
+                    &BinaryNumericTestType::Less => "<",
+                    &BinaryNumericTestType::LessOrEqual => "<=",
+                    &BinaryNumericTestType::Greater => ">",
+                    &BinaryNumericTestType::GreaterOrEqual => ">=",
+                };
+                format!("{}{}{}", quote(tag_name), sign, value)
+            },
+        };
+        write!(f, "[{}]", result)
+    }
+}
+
 #[derive(Debug)]
 pub enum PropertyValue {
     Identifier(String),
@@ -48,10 +104,31 @@ pub enum PropertyValue {
     Numbers(Vec<f64>),
 }
 
+impl fmt::Display for PropertyValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &PropertyValue::Color(Color { r, g, b }) => write!(f, "#{:02x}{:02x}{:02x}", r, g, b),
+            &PropertyValue::Identifier(ref id) => write!(f, "{}", id),
+            &PropertyValue::String(ref s) => write!(f, "\"{}\"", s),
+            &PropertyValue::Numbers(ref nums) => write!(
+                f,
+                "{}",
+                nums.iter().map(fmt_item::<f64>).collect::<Vec<_>>().join(",")
+            )
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Property {
     pub name: String,
     pub value: PropertyValue,
+}
+
+impl fmt::Display for Property {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {};", self.name, self.value)
+    }
 }
 
 #[derive(Debug)]
@@ -63,16 +140,70 @@ pub struct SingleSelector {
     pub layer_id: Option<String>,
 }
 
+impl fmt::Display for SingleSelector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let formatted_zoom_range = match (self.min_zoom, self.max_zoom) {
+            (None, None) => String::new(),
+            (Some(mn), None) => format!("{}-", mn),
+            (None, Some(mx)) => format!("-{}", mx),
+            (Some(mn), Some(mx)) => {
+                if mn != mx {
+                    format!("{}-{}", mn, mx)
+                } else {
+                    format!("{}", mn)
+                }
+            },
+        };
+        let formatted_layer_id = match self.layer_id {
+            Some(ref id) => format!("::{}", id),
+            None => String::new(),
+        };
+        write!(
+            f,
+            "{}{}{}{}{}",
+            self.object_type,
+            if formatted_zoom_range.is_empty() { "" } else { "|z" },
+            formatted_zoom_range,
+            self.tests.iter().map(fmt_item::<Test>).collect::<Vec<_>>().join(""),
+            formatted_layer_id
+        )
+    }
+}
+
 #[derive(Debug)]
 pub enum Selector {
     Single(SingleSelector),
     Nested { parent: SingleSelector, child: SingleSelector },
 }
 
+impl fmt::Display for Selector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Selector::Single(ref s) => write!(f, "{}", s),
+            &Selector::Nested { ref parent, ref child } => write!(f, "{} > {}", parent, child),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Rule {
     pub selectors: Vec<Selector>,
     pub properties: Vec<Property>,
+}
+
+impl fmt::Display for Rule {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {{\n{}\n}}",
+            self.selectors.iter().map(fmt_item::<Selector>).collect::<Vec<_>>().join(",\n"),
+            self.properties.iter().map(fmt_item::<Property>).collect::<Vec<_>>().join("\n")
+        )
+    }
+}
+
+fn fmt_item<T: fmt::Display>(item: &T) -> String {
+    format!("{}", item)
 }
 
 pub struct Parser<'a> {
@@ -450,7 +581,7 @@ mod tests {
         let mut parser = Parser::new(tokenizer);
         let rules = parser.parse().unwrap();
 
-        let rules_str = rules.iter().map(rule_to_string).collect::<Vec<_>>().join("\n\n");
+        let rules_str = rules.iter().map(fmt_item::<Rule>).collect::<Vec<_>>().join("\n\n");
         let mapnik_path_parsed = mapnik_path.with_extension("parsed");
         File::create(&mapnik_path_parsed).unwrap().write_all(rules_str.as_bytes()).unwrap();
 
@@ -471,121 +602,7 @@ mod tests {
         File::open(mapnik_path).unwrap().read_to_string(&mut canonical).unwrap();
         let mut parser = Parser::new(Tokenizer::new(&canonical));
 
-        let rules_str = parser.parse().unwrap().iter().map(rule_to_string).collect::<Vec<_>>().join("\n\n");
+        let rules_str = parser.parse().unwrap().iter().map(fmt_item::<Rule>).collect::<Vec<_>>().join("\n\n");
         assert_eq!(rules_str, canonical);
-    }
-
-    fn rule_to_string(rule: &Rule) -> String {
-        format!(
-            "{} {{\n{}}}",
-            rule.selectors.iter().map(selector_to_string).collect::<Vec<_>>().join(",\n"),
-            rule.properties.iter().map(property_to_string).collect::<Vec<_>>().join("")
-        )
-    }
-
-    fn selector_to_string(selector: &Selector) -> String {
-        match selector {
-            &Selector::Single(ref s) => single_selector_to_string(s),
-            &Selector::Nested { parent: ref p, child: ref c } => format!("{} > {}", single_selector_to_string(p), single_selector_to_string(c)),
-        }
-    }
-
-    fn single_selector_to_string(selector: &SingleSelector) -> String {
-        format!(
-            "{}{}{}{}",
-            object_type_to_string(&selector.object_type),
-            zoom_range_to_string(selector.min_zoom, selector.max_zoom),
-            selector.tests.iter().map(test_to_string).collect::<Vec<_>>().join(""),
-            layer_id_to_string(&selector.layer_id)
-        )
-    }
-
-    fn object_type_to_string(object_type: &ObjectType) -> String {
-        match object_type {
-            &ObjectType::All => "*",
-            &ObjectType::Canvas => "canvas",
-            &ObjectType::Meta => "meta",
-            &ObjectType::Node => "node",
-            &ObjectType::Way { should_be_closed: None } => "way",
-            &ObjectType::Way { should_be_closed: Some(true) } => "area",
-            &ObjectType::Way { should_be_closed: Some(false) } => "line",
-        }.to_string()
-    }
-
-    fn zoom_range_to_string(min_zoom: Option<u8>, max_zoom: Option<u8>) -> String {
-        let result = match (min_zoom, max_zoom) {
-            (None, None) => return String::new(),
-            (Some(mn), None) => format!("{}-", mn),
-            (None, Some(mx)) => format!("-{}", mx),
-            (Some(mn), Some(mx)) => {
-                if mn != mx {
-                    format!("{}-{}", mn, mx)
-                } else {
-                    format!("{}", mn)
-                }
-            },
-        };
-        format!("|z{}", result)
-    }
-
-    fn test_to_string(test: &Test) -> String {
-        let quote = |tag_name: &String| {
-            if tag_name.contains(":") {
-                format!("\"{}\"", tag_name)
-            } else {
-                tag_name.clone()
-            }
-        };
-        let result = match test {
-            &Test::Unary { ref tag_name, test_type: UnaryTestType::Exists } => quote(tag_name),
-            &Test::Unary { ref tag_name, test_type: UnaryTestType::NotExists } => {
-                format!("!{}", quote(tag_name))
-            },
-            &Test::Unary { ref tag_name, test_type: UnaryTestType::True } => {
-                format!("{}?", quote(tag_name))
-            },
-            &Test::Unary { ref tag_name, test_type: UnaryTestType::False } => {
-                format!("!{}?", quote(tag_name))
-            },
-            &Test::BinaryStringCompare { ref tag_name, ref value, test_type: BinaryStringTestType::Equal } => {
-                format!("{}={}", quote(tag_name), value)
-            },
-            &Test::BinaryStringCompare { ref tag_name, ref value, test_type: BinaryStringTestType::NotEqual } => {
-                format!("{}!={}", quote(tag_name), value)
-            },
-            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::Less } => {
-                format!("{}<{}", quote(tag_name), value)
-            },
-            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::LessOrEqual } => {
-                format!("{}<={}", quote(tag_name), value)
-            },
-            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::Greater } => {
-                format!("{}>{}", quote(tag_name), value)
-            },
-            &Test::BinaryNumericCompare { ref tag_name, ref value, test_type: BinaryNumericTestType::GreaterOrEqual } => {
-                format!("{}>={}", quote(tag_name), value)
-            },
-        };
-        format!("[{}]", result)
-    }
-
-    fn layer_id_to_string(layer_id: &Option<String>) -> String {
-        match layer_id {
-            &Some(ref id) => format!("::{}", id.clone()),
-            &None => String::new(),
-        }
-    }
-
-    fn property_to_string(prop: &Property) -> String {
-        format!("    {}: {};\n", prop.name, property_value_to_string(&prop.value))
-    }
-
-    fn property_value_to_string(value: &PropertyValue) -> String {
-        match value {
-            &PropertyValue::Color(Color { r, g, b }) => format!("#{:02x}{:02x}{:02x}", r, g, b),
-            &PropertyValue::Identifier(ref id) => id.clone(),
-            &PropertyValue::String(ref s) => format!("\"{}\"", s),
-            &PropertyValue::Numbers(ref nums) => nums.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(",")
-        }
     }
 }
