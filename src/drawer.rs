@@ -139,9 +139,42 @@ fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> Styles<'b
         }
     }
 
-    info!("Styled way {}, name: {}", way.global_id(), way.tags().get_by_key("name").unwrap_or("N/A"));
+    if let Some(name) = way.tags().get_by_key("name") {
+        if name == "улица Большая Молчановка" {
+            info!("Styled way {}, name: {}", way.global_id(), name);
 
-    layer_to_style.into_iter().map(|(_, v)| v).collect::<Vec<_>>()
+            for (k, v) in layer_to_style.iter() {
+                info!("  Layer: {}", k);
+                for (pn, pv) in v.iter() {
+                    info!("    {}: {}", pn, pv);
+                }
+            }
+        }
+    }
+
+    layer_to_style.into_iter().filter(|&(k, _)| k != "*").map(|(_, v)| v).collect::<Vec<_>>()
+}
+
+fn get_color<'a>(style: &Style<'a>, prop_name: &str) -> Option<Color> {
+    match style.get(prop_name) {
+        Some(&&PropertyValue::Color(color)) => Some(color),
+        Some(&&PropertyValue::Identifier(ref id)) => {
+            match id.as_str() {
+                "white" => Some(Color { r: 255, g: 255, b: 255 }),
+                "black" => Some(Color { r: 0, g: 0, b: 0 }),
+                "blue" => Some(Color { r: 0, g: 0, b: 255 }),
+                "brown" => Some(Color { r: 165, g: 42, b: 42 }),
+                "green" => Some(Color { r: 0 , g: 255, b: 0 }),
+                "grey" => Some(Color { r: 128, g: 128, b: 128 }),
+                "pink" => Some(Color { r: 255, g: 192, b: 203 }),
+                "purple" => Some(Color { r: 128, g: 0, b: 128 }),
+                "red" => Some(Color { r: 255, g: 0, b: 0 }),
+                "salmon" => Some(Color { r: 250, g: 128, b: 114 }),
+                _ => None,
+            }
+        },
+        _ => None,
+    }
 }
 
 pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>) -> Result<Vec<u8>> {
@@ -207,8 +240,8 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
         all_way_styles.sort_by(|&(ref k1, ref v1), &(ref k2, ref v2)| get_z_index(k1, v1).partial_cmp(&get_z_index(k2, v2)).unwrap());
 
         for &(ref w, ref style) in all_way_styles.iter() {
-            let color = match style.get("color") {
-                Some(&&PropertyValue::Color(color)) => color,
+            let color = match get_color(style, "color") {
+                Some(color) => color,
                 _ => continue,
             };
 
@@ -218,6 +251,10 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
                 },
                 _ => 1.0f64,
             };
+
+            if let Some(&&PropertyValue::Numbers(ref nums)) = style.get("dashes") {
+                cs::cairo_set_dash(cr, nums.as_ptr(), nums.len() as i32, 0.0);
+            }
 
             cs::cairo_new_path(cr);
 
@@ -230,7 +267,17 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
                 let (x, y) = coords_to_float_xy(&w.get_node(i), tile.zoom);
                 cs::cairo_line_to(cr, x, y);
             }
-            cs::cairo_stroke(cr);
+
+            if w.is_closed() {
+                if let Some(color) = get_color(style, "fill-color") {
+                    set_color(color);
+                    cs::cairo_fill(cr);
+                } else {
+                    cs::cairo_stroke(cr);
+                }
+            } else {
+                cs::cairo_stroke(cr);
+            }
         }
 
         cs::cairo_destroy(cr);
