@@ -234,13 +234,12 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
         all_way_styles.sort_by(|&(ref k1, ref v1), &(ref k2, ref v2)| get_z_index(k1, v1).partial_cmp(&get_z_index(k2, v2)).unwrap());
 
         for &(ref w, ref style) in all_way_styles.iter() {
-            let color = match get_color(style, "color") {
-                Some(color) => color,
-                _ => match get_color(style, "fill-color") {
-                    Some(fill_color) => fill_color,
-                    _ => continue,
-                },
-            };
+            let color = get_color(style, "color");
+            let fill_color = get_color(style, "fill-color");
+
+            if color.is_none() && fill_color.is_none() {
+                continue;
+            }
 
             let width = match style.get("width") {
                 Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => {
@@ -273,27 +272,31 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
                 _ => {},
             }
 
-            cs::cairo_new_path(cr);
+            let draw_path = || {
+                cs::cairo_new_path(cr);
 
-            set_color(color, get_opacity(style, "opacity"));
-            cs::cairo_set_line_width(cr, width);
+                cs::cairo_set_line_width(cr, width);
 
-            let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
-            cs::cairo_move_to(cr, x, y);
-            for i in 1..w.node_count() {
-                let (x, y) = coords_to_float_xy(&w.get_node(i), tile.zoom);
-                cs::cairo_line_to(cr, x, y);
+                let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
+                cs::cairo_move_to(cr, x, y);
+                for i in 1..w.node_count() {
+                    let (x, y) = coords_to_float_xy(&w.get_node(i), tile.zoom);
+                    cs::cairo_line_to(cr, x, y);
+                }
+            };
+
+            if let Some(c) = color {
+                draw_path();
+                set_color(c, get_opacity(style, "opacity"));
+                cs::cairo_stroke(cr);
             }
 
             if w.is_closed() {
-                if let Some(color) = get_color(style, "fill-color") {
-                    set_color(color, get_opacity(style, "fill-opacity"));
+                if let Some(c) = fill_color {
+                    draw_path();
+                    set_color(c, get_opacity(style, "fill-opacity"));
                     cs::cairo_fill(cr);
-                } else {
-                    cs::cairo_stroke(cr);
                 }
-            } else {
-                cs::cairo_stroke(cr);
             }
         }
 
