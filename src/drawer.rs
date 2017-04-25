@@ -139,19 +139,6 @@ fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> Styles<'b
         }
     }
 
-    if let Some(name) = way.tags().get_by_key("name") {
-        if name == "улица Большая Молчановка" {
-            info!("Styled way {}, name: {}", way.global_id(), name);
-
-            for (k, v) in layer_to_style.iter() {
-                info!("  Layer: {}", k);
-                for (pn, pv) in v.iter() {
-                    info!("    {}: {}", pn, pv);
-                }
-            }
-        }
-    }
-
     layer_to_style.into_iter().filter(|&(k, _)| k != "*").map(|(_, v)| v).collect::<Vec<_>>()
 }
 
@@ -174,6 +161,13 @@ fn get_color<'a>(style: &Style<'a>, prop_name: &str) -> Option<Color> {
             }
         },
         _ => None,
+    }
+}
+
+fn get_opacity<'a>(style: &Style<'a>, prop_name: &str) -> f64 {
+    match style.get(prop_name) {
+        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => nums[0],
+        _ => 1.0,
     }
 }
 
@@ -207,12 +201,12 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
         }
 
         let to_double_color = |u8_color| (u8_color as f64) / 255.0_f64;
-        let set_color = |c: Color| {
-            cs::cairo_set_source_rgb(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b));
+        let set_color = |c: Color, a: f64| {
+            cs::cairo_set_source_rgba(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b), a);
         };
 
         if let Some(color) = canvas_color {
-            set_color(color);
+            set_color(color, 1.0);
             cs::cairo_paint(cr);
         }
 
@@ -242,7 +236,10 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
         for &(ref w, ref style) in all_way_styles.iter() {
             let color = match get_color(style, "color") {
                 Some(color) => color,
-                _ => continue,
+                _ => match get_color(style, "fill-color") {
+                    Some(fill_color) => fill_color,
+                    _ => continue,
+                },
             };
 
             let width = match style.get("width") {
@@ -256,9 +253,29 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
                 cs::cairo_set_dash(cr, nums.as_ptr(), nums.len() as i32, 0.0);
             }
 
+            match style.get("linejoin") {
+                Some(&&PropertyValue::Identifier(ref s)) => match s.as_str() {
+                    "round" => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Round),
+                    "miter" => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Miter),
+                    "bevel" => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Bevel),
+                    _ => {},
+                },
+                _ => {},
+            }
+
+            match style.get("linecap") {
+                Some(&&PropertyValue::Identifier(ref s)) => match s.as_str() {
+                    "none" => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Butt),
+                    "round" => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Round),
+                    "square" => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Square),
+                    _ => {},
+                },
+                _ => {},
+            }
+
             cs::cairo_new_path(cr);
 
-            set_color(color);
+            set_color(color, get_opacity(style, "opacity"));
             cs::cairo_set_line_width(cr, width);
 
             let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
@@ -270,7 +287,7 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
 
             if w.is_closed() {
                 if let Some(color) = get_color(style, "fill-color") {
-                    set_color(color);
+                    set_color(color, get_opacity(style, "fill-opacity"));
                     cs::cairo_fill(cr);
                 } else {
                     cs::cairo_stroke(cr);
