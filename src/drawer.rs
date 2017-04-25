@@ -59,10 +59,6 @@ fn way_matches_test<'a>(way: &Way<'a>, test: &Test) -> bool {
 }
 
 fn way_matches_single<'a>(way: &Way<'a>, selector: &SingleSelector, zoom: u8) -> bool {
-    if selector.layer_id.is_some() {
-        return false;
-    }
-
     if let Some(min_zoom) = selector.min_zoom {
         if zoom < min_zoom {
             return false
@@ -78,8 +74,7 @@ fn way_matches_single<'a>(way: &Way<'a>, selector: &SingleSelector, zoom: u8) ->
     let good_object_type = match selector.object_type {
         ObjectType::Way { should_be_closed: None } => true,
         ObjectType::Way { should_be_closed: Some(expected) } => {
-            let is_closed = way.get_node(0) == way.get_node(way.node_count() - 1);
-            expected == is_closed
+            expected == way.is_closed()
         },
         _ => return false,
     };
@@ -94,18 +89,86 @@ fn way_matches<'a>(way: &Way<'a>, selector: &Selector, zoom: u8) -> bool {
     }
 }
 
-fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> HashMap<String, &'b PropertyValue> {
-    let mut result = HashMap::new();
+type Style<'a> = HashMap<String, &'a PropertyValue>;
+type Styles<'a> = Vec<Style<'a>>;
+
+fn get_layer_id<'a>(selector: &'a Selector) -> &'a str {
+    let single = match selector {
+        &Selector::Single(ref single) => single,
+        &Selector::Nested { ref child , .. } => child,
+    };
+    match single.layer_id {
+        Some(ref id) => id,
+        None => "default",
+    }
+}
+
+fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> Styles<'b> {
+    let mut layer_to_style: HashMap<&str, Style<'b>> = HashMap::new();
 
     for rule in rules {
-        if rule.selectors.iter().any(|x| way_matches(&way, x, zoom)) {
-            for prop in rule.properties.iter() {
-                result.insert(prop.name.clone(), &prop.value);
+        for sel in rule.selectors.iter().filter(|x| way_matches(&way, x, zoom)) {
+            let layer_id = get_layer_id(&sel);
+
+            let update_layer = |layer: &mut Style<'b>| {
+                for prop in rule.properties.iter() {
+                    layer.insert(prop.name.clone(), &prop.value);
+                }
+            };
+
+            {
+                if !layer_to_style.contains_key(layer_id) {
+                    let layer_pattern = match layer_to_style.get("*") {
+                        Some(all_layers_style) => all_layers_style.clone(),
+                        None => Default::default(),
+                    };
+
+                    layer_to_style.insert(layer_id, layer_pattern);
+                }
+
+                update_layer(layer_to_style.get_mut(layer_id).unwrap());
+            }
+
+            if layer_id == "*" {
+                for (k, v) in layer_to_style.iter_mut() {
+                    if k != &"*" {
+                        update_layer(v);
+                    }
+                }
             }
         }
     }
 
-    result
+    layer_to_style.into_iter().filter(|&(k, _)| k != "*").map(|(_, v)| v).collect::<Vec<_>>()
+}
+
+fn get_color<'a>(style: &Style<'a>, prop_name: &str) -> Option<Color> {
+    match style.get(prop_name) {
+        Some(&&PropertyValue::Color(color)) => Some(color),
+        Some(&&PropertyValue::Identifier(ref id)) => {
+            match id.as_str() {
+                "white" => Some(Color { r: 255, g: 255, b: 255 }),
+                "black" => Some(Color { r: 0, g: 0, b: 0 }),
+                "blue" => Some(Color { r: 0, g: 0, b: 255 }),
+                "brown" => Some(Color { r: 165, g: 42, b: 42 }),
+                "green" => Some(Color { r: 0 , g: 255, b: 0 }),
+                "grey" => Some(Color { r: 128, g: 128, b: 128 }),
+                "pink" => Some(Color { r: 255, g: 192, b: 203 }),
+                "purple" => Some(Color { r: 128, g: 0, b: 128 }),
+                "red" => Some(Color { r: 255, g: 0, b: 0 }),
+                "salmon" => Some(Color { r: 250, g: 128, b: 114 }),
+                _ => None,
+            }
+        },
+        _ => None,
+    }
+}
+
+fn get_opacity<'a>(style: &Style<'a>, prop_name: &str) -> f64 {
+    match style.get(prop_name) {
+        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => nums[0],
+        _ => 1.0,
+    }
 }
 
 pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>) -> Result<Vec<u8>> {
@@ -138,44 +201,103 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, rules: &Vec<Rule>)
         }
 
         let to_double_color = |u8_color| (u8_color as f64) / 255.0_f64;
-        let set_color = |c: Color| {
-            cs::cairo_set_source_rgb(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b));
+        let set_color = |c: Color, a: f64| {
+            cs::cairo_set_source_rgba(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b), a);
         };
 
         if let Some(color) = canvas_color {
-            set_color(color);
+            set_color(color, 1.0);
             cs::cairo_paint(cr);
         }
+
+        let mut all_way_styles = Vec::new();
 
         for w in entities.ways.iter() {
             if w.node_count() == 0 {
                 continue;
             }
 
-            let styles = style_way(w, rules, tile.zoom);
+            for style in style_way(w, rules, tile.zoom) {
+                all_way_styles.push((w, style))
+            }
+        }
 
-            let color = match styles.get("color") {
-                Some(&&PropertyValue::Color(color)) => color,
-                _ => continue,
-            };
+        fn get_z_index<'a, 'b>(way: &Way<'a>, style: &Style<'b>) -> f64 {
+            match style.get("z-index") {
+                Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => {
+                    nums[0]
+                },
+                _ => if way.is_closed() { 1.0 } else { 3.0 },
+            }
+        }
 
-            let width = match styles.get("width") {
+        all_way_styles.sort_by(|&(ref k1, ref v1), &(ref k2, ref v2)| get_z_index(k1, v1).partial_cmp(&get_z_index(k2, v2)).unwrap());
+
+        for &(ref w, ref style) in all_way_styles.iter() {
+            let color = get_color(style, "color");
+            let fill_color = get_color(style, "fill-color");
+
+            if color.is_none() && fill_color.is_none() {
+                continue;
+            }
+
+            let width = match style.get("width") {
                 Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => {
                     nums[0]
                 },
                 _ => 1.0f64,
             };
 
-            set_color(color);
-            cs::cairo_set_line_width(cr, width);
-
-            let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
-            cs::cairo_move_to(cr, x, y);
-            for i in 1..w.node_count() {
-                let (x, y) = coords_to_float_xy(&w.get_node(i), tile.zoom);
-                cs::cairo_line_to(cr, x, y);
+            if let Some(&&PropertyValue::Numbers(ref nums)) = style.get("dashes") {
+                cs::cairo_set_dash(cr, nums.as_ptr(), nums.len() as i32, 0.0);
             }
-            cs::cairo_stroke(cr);
+
+            match style.get("linejoin") {
+                Some(&&PropertyValue::Identifier(ref s)) => match s.as_str() {
+                    "round" => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Round),
+                    "miter" => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Miter),
+                    "bevel" => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Bevel),
+                    _ => {},
+                },
+                _ => {},
+            }
+
+            match style.get("linecap") {
+                Some(&&PropertyValue::Identifier(ref s)) => match s.as_str() {
+                    "none" => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Butt),
+                    "round" => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Round),
+                    "square" => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Square),
+                    _ => {},
+                },
+                _ => {},
+            }
+
+            let draw_path = || {
+                cs::cairo_new_path(cr);
+
+                cs::cairo_set_line_width(cr, width);
+
+                let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
+                cs::cairo_move_to(cr, x, y);
+                for i in 1..w.node_count() {
+                    let (x, y) = coords_to_float_xy(&w.get_node(i), tile.zoom);
+                    cs::cairo_line_to(cr, x, y);
+                }
+            };
+
+            if let Some(c) = color {
+                draw_path();
+                set_color(c, get_opacity(style, "opacity"));
+                cs::cairo_stroke(cr);
+            }
+
+            if w.is_closed() {
+                if let Some(c) = fill_color {
+                    draw_path();
+                    set_color(c, get_opacity(style, "fill-opacity"));
+                    cs::cairo_fill(cr);
+                }
+            }
         }
 
         cs::cairo_destroy(cr);

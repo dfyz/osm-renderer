@@ -44,7 +44,6 @@ impl<'a> Handler for TileServer<'a> {
         }
 
         let tile = tile.unwrap();
-        info!("Processing tile ({}, {}), z={}", tile.x, tile.y, tile.zoom);
 
         match self.draw_tile_contents(&tile) {
             Ok(content) => {
