@@ -3,8 +3,8 @@ use errors::*;
 use cs;
 use geodata::reader::{OsmEntities, OsmEntity, Way};
 use libc;
+use mapcss::color::{Color, from_color_name};
 use mapcss::parser::*;
-use mapcss::token::Color;
 use std::collections::HashMap;
 use std::slice;
 use tile::{coords_to_float_xy, Tile, TILE_SIZE};
@@ -145,21 +145,7 @@ fn style_way<'a, 'b>(way: &Way<'a>, rules: &'b Vec<Rule>, zoom: u8) -> Styles<'b
 fn get_color<'a>(style: &Style<'a>, prop_name: &str) -> Option<Color> {
     match style.get(prop_name) {
         Some(&&PropertyValue::Color(color)) => Some(color),
-        Some(&&PropertyValue::Identifier(ref id)) => {
-            match id.as_str() {
-                "white" => Some(Color { r: 255, g: 255, b: 255 }),
-                "black" => Some(Color { r: 0, g: 0, b: 0 }),
-                "blue" => Some(Color { r: 0, g: 0, b: 255 }),
-                "brown" => Some(Color { r: 165, g: 42, b: 42 }),
-                "green" => Some(Color { r: 0 , g: 255, b: 0 }),
-                "grey" => Some(Color { r: 128, g: 128, b: 128 }),
-                "pink" => Some(Color { r: 255, g: 192, b: 203 }),
-                "purple" => Some(Color { r: 128, g: 0, b: 128 }),
-                "red" => Some(Color { r: 255, g: 0, b: 0 }),
-                "salmon" => Some(Color { r: 250, g: 128, b: 114 }),
-                _ => None,
-            }
-        },
+        Some(&&PropertyValue::Identifier(ref id)) => from_color_name(id.as_str()),
         _ => None,
     }
 }

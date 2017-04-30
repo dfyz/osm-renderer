@@ -1,17 +1,11 @@
 use mapcss::errors::*;
+use mapcss::color::Color;
 
 use std::fmt;
 use std::iter::Peekable;
 use std::str::CharIndices;
 
 pub type ZoomLevel = Option<u8>;
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Token<'a> {

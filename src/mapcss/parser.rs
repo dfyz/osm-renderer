@@ -1,6 +1,7 @@
 use mapcss::errors::*;
 
-use mapcss::token::{Color, Token, TokenWithPosition, Tokenizer};
+use mapcss::color::Color;
+use mapcss::token::{Token, TokenWithPosition, Tokenizer};
 
 use std::fmt;
 
