@@ -78,13 +78,12 @@ impl Styler {
                 };
 
                 {
+                    // Can't use result.entry(...).or_insert_with(...) because we need to immutably borrow
+                    // the result to compute the default value in or_insert_with(), and the map is already borrowed
+                    // as mutable when we call entry().
                     if !result.contains_key(layer_id) {
-                        let layer_pattern = match result.get("*") {
-                            Some(all_layers_style) => all_layers_style.clone(),
-                            None => Default::default(),
-                        };
-
-                        result.insert(layer_id, layer_pattern);
+                        let parent_layer = result.get("*").cloned().unwrap_or(Default::default());
+                        result.insert(layer_id, parent_layer);
                     }
 
                     update_layer(result.get_mut(layer_id).unwrap());
