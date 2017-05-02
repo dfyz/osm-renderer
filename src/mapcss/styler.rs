@@ -4,18 +4,21 @@ use mapcss::parser::*;
 use geodata::reader::{OsmEntity, Way};
 use std::collections::HashMap;
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum LineJoin {
     Round,
     Miter,
     Bevel,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum LineCap {
     Butt,
     Round,
     Square,
 }
 
+#[derive(Debug)]
 pub struct Style {
     pub z_index: f64,
 
