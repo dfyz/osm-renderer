@@ -36,7 +36,7 @@ pub enum Token<'a> {
     Comma,
 }
 
-const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
+const TWO_LETTER_MATCH_TABLE: &[((char, char), Token<'static>)] = &[
     (('!', '='), Token::NotEqual),
     (('<', '='), Token::LessOrEqual),
     (('>', '='), Token::GreaterOrEqual),
@@ -44,7 +44,7 @@ const TWO_LETTER_MATCH_TABLE: &'static [((char, char), Token<'static>)] = &[
     ((':', ':'), Token::DoubleColon),
 ];
 
-const ONE_LETTER_MATCH_TABLE: &'static [(char, Token<'static>)] = &[
+const ONE_LETTER_MATCH_TABLE: &[(char, Token<'static>)] = &[
     ('[', Token::LeftBracket),
     (']', Token::RightBracket),
     ('{', Token::LeftBrace),
