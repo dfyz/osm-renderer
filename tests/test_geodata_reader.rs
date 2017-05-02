@@ -4,8 +4,11 @@ use rustc_serialize::json;
 extern crate capnp;
 extern crate renderer;
 
+mod common;
+
 use capnp::message::Builder;
 use capnp::serialize;
+use common::{get_test_path, import_nano_moscow};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::cmp::Eq;
 use std::fs::File;
@@ -13,14 +16,6 @@ use std::hash::Hash;
 use std::io::{BufWriter, Read};
 use renderer::geodata_capnp::geodata;
 use renderer::geodata::reader::OsmEntity;
-
-fn get_test_file(file_name: &str) -> String {
-    let mut test_osm_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    test_osm_path.push("tests");
-    test_osm_path.push(file_name);
-
-    test_osm_path.to_str().unwrap().to_string()
-}
 
 type Tags = HashMap<String, String>;
 type IdsWithTags = HashMap<u64, Tags>;
@@ -64,7 +59,7 @@ fn compare_ids<'a>(
 
 #[test]
 fn test_synthetic_data() {
-    let bin_file = get_test_file("synthetic.bin");
+    let bin_file = get_test_path(&["osm", "synthetic.bin"]);
 
     let mut good_node_ids = BTreeSet::new();
 
@@ -157,18 +152,13 @@ fn test_synthetic_data() {
 
 #[test]
 fn test_nano_moscow_import() {
-    let bin_file = get_test_file("nano_moscow.bin");
-    renderer::geodata::importer::import(
-        &get_test_file("nano_moscow.osm"),
-        &bin_file
-    ).unwrap();
-
-    let mut test_data_file = File::open(&get_test_file("test_data.json")).unwrap();
+    let mut test_data_file = File::open(&get_test_path(&["osm", "test_data.json"])).unwrap();
     let mut test_data_content = String::new();
     test_data_file.read_to_string(&mut test_data_content).unwrap();
     let tiles: Vec<Tile> = json::decode(&test_data_content).unwrap();
 
-    let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
+    let nano_moscow = import_nano_moscow();
+    let reader = renderer::geodata::reader::GeodataReader::new(&nano_moscow).unwrap();
 
     for t in tiles {
         let tile = renderer::tile::Tile {
