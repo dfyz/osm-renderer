@@ -71,12 +71,12 @@ impl Styler {
     fn style_way<'r, 'w>(&'r self, way: &Way<'w>, zoom: u8) -> LayerToPropertyMap<'r> {
         let mut result: LayerToPropertyMap<'r> = HashMap::new();
 
-        for rule in self.rules.iter() {
+        for rule in &self.rules {
             for sel in rule.selectors.iter().filter(|x| way_matches(way, x, zoom)) {
-                let layer_id = get_layer_id(&sel);
+                let layer_id = get_layer_id(sel);
 
                 let update_layer = |layer: &mut PropertyMap<'r>| {
-                    for prop in rule.properties.iter() {
+                    for prop in &rule.properties {
                         layer.insert(prop.name.clone(), &prop.value);
                     }
                 };
@@ -86,7 +86,7 @@ impl Styler {
                     // the result to compute the default value in or_insert_with(), and the map is already borrowed
                     // as mutable when we call entry().
                     if !result.contains_key(layer_id) {
-                        let parent_layer = result.get("*").cloned().unwrap_or(Default::default());
+                        let parent_layer = result.get("*").cloned().unwrap_or_default();
                         result.insert(layer_id, parent_layer);
                     }
 
@@ -193,10 +193,10 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
     }
 }
 
-fn extract_canvas_fill_color(rules: &Vec<Rule>) -> Option<Color> {
-    for r in rules.iter() {
-        for selector in r.selectors.iter() {
-            if let &Selector::Single(ref single) = selector {
+fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
+    for r in rules {
+        for selector in &r.selectors {
+            if let Selector::Single(ref single) = *selector {
                 if let ObjectType::Canvas = single.object_type {
                     for prop in r.properties.iter().filter(|x| x.name == "fill-color") {
                         if let PropertyValue::Color(color) = prop.value {
@@ -215,39 +215,39 @@ fn way_matches_test<'w>(way: &Way<'w>, test: &Test) -> bool {
 
     let is_true_value = |x| x == "yes" || x == "true" || x == "1";
 
-    match test {
-        &Test::Unary { ref tag_name, ref test_type } => {
+    match *test {
+        Test::Unary { ref tag_name, ref test_type } => {
             let tag_val = tags.get_by_key(tag_name);
-            match test_type {
-                &UnaryTestType::Exists => tag_val.is_some(),
-                &UnaryTestType::NotExists => tag_val.is_none(),
-                &UnaryTestType::True => match tag_val {
+            match *test_type {
+                UnaryTestType::Exists => tag_val.is_some(),
+                UnaryTestType::NotExists => tag_val.is_none(),
+                UnaryTestType::True => match tag_val {
                     Some(x) if is_true_value(x) => true,
                     _ => false,
                 },
-                &UnaryTestType::False => match tag_val {
+                UnaryTestType::False => match tag_val {
                     Some(x) if is_true_value(x) => false,
                     _ => true,
                 },
             }
         },
-        &Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
+        Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
             let tag_val = tags.get_by_key(tag_name);
-            match test_type {
-                &BinaryStringTestType::Equal => tag_val == Some(value),
-                &BinaryStringTestType::NotEqual => tag_val != Some(value),
+            match *test_type {
+                BinaryStringTestType::Equal => tag_val == Some(value),
+                BinaryStringTestType::NotEqual => tag_val != Some(value),
             }
         },
-        &Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
+        Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
             let tag_val = match tags.get_by_key(tag_name).map(|x| x.parse::<f64>()) {
                 Some(Ok(x)) => x,
                 _ => return false,
             };
-            match test_type {
-                &BinaryNumericTestType::Less => tag_val < *value,
-                &BinaryNumericTestType::LessOrEqual => tag_val <= *value,
-                &BinaryNumericTestType::Greater => tag_val > *value,
-                &BinaryNumericTestType::GreaterOrEqual => tag_val >= *value,
+            match *test_type {
+                BinaryNumericTestType::Less => tag_val < *value,
+                BinaryNumericTestType::LessOrEqual => tag_val <= *value,
+                BinaryNumericTestType::Greater => tag_val > *value,
+                BinaryNumericTestType::GreaterOrEqual => tag_val >= *value,
             }
         },
     }
@@ -278,16 +278,16 @@ fn way_matches_single<'w>(way: &Way<'w>, selector: &SingleSelector, zoom: u8) ->
 }
 
 fn way_matches<'w>(way: &Way<'w>, selector: &Selector, zoom: u8) -> bool {
-    match selector {
-        &Selector::Nested {..} => false,
-        &Selector::Single(ref sel) => way_matches_single(way, &sel, zoom),
+    match *selector {
+        Selector::Nested {..} => false,
+        Selector::Single(ref sel) => way_matches_single(way, sel, zoom),
     }
 }
 
-fn get_layer_id<'r>(selector: &'r Selector) -> &'r str {
-    let single = match selector {
-        &Selector::Single(ref single) => single,
-        &Selector::Nested { ref child , .. } => child,
+fn get_layer_id(selector: &Selector) -> &str {
+    let single = match *selector {
+        Selector::Single(ref single) => single,
+        Selector::Nested { ref child , .. } => child,
     };
     match single.layer_id {
         Some(ref id) => id,

@@ -71,7 +71,7 @@ impl<'a> GeodataReader<'a> {
 
     pub fn get_entities_in_tile(&'a self, t: &tile::Tile) -> OsmEntities<'a> {
         let tiles = self.get_reader().get_tiles().unwrap();
-        let mut bounds = tile::tile_to_max_zoom_tile_range(&t);
+        let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
 
         let mut result: OsmEntities<'a> = Default::default();
@@ -137,7 +137,7 @@ pub struct Tags<'a> {
 
 impl<'a> Tags<'a> {
     pub fn get_by_key(&self, key: &str) -> Option<&'a str> {
-        if self.reader.len() == 0 {
+        if self.is_empty() {
             return None;
         }
         let mut lo = 0;
@@ -165,6 +165,10 @@ impl<'a> Tags<'a> {
 
     pub fn len(&self) -> u32 {
         self.reader.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn new(reader: geodata_capnp::tag_list::Reader<'a>) -> Tags {

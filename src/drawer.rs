@@ -37,7 +37,7 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
 
         let all_way_styles = styler.style_ways(entities.ways.iter(), tile.zoom);
 
-        for &(ref w, ref style) in all_way_styles.iter() {
+        for &(w, ref style) in &all_way_styles {
             if w.node_count() == 0 {
                 continue;
             }
@@ -47,18 +47,18 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
             }
 
             if let Some(ref line_join) = style.line_join {
-                match line_join {
-                    &LineJoin::Round => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Round),
-                    &LineJoin::Miter => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Miter),
-                    &LineJoin::Bevel => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Bevel),
+                match *line_join {
+                    LineJoin::Round => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Round),
+                    LineJoin::Miter => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Miter),
+                    LineJoin::Bevel => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Bevel),
                 }
             }
 
             if let Some(ref line_cap) = style.line_cap {
-                match line_cap {
-                    &LineCap::Butt => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Butt),
-                    &LineCap::Round => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Round),
-                    &LineCap::Square => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Square),
+                match *line_cap {
+                    LineCap::Butt => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Butt),
+                    LineCap::Round => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Round),
+                    LineCap::Square => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Square),
                 }
             }
 

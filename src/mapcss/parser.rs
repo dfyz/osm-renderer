@@ -16,12 +16,12 @@ pub enum ObjectType {
 
 impl fmt::Display for ObjectType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let object_type = match self {
-            &ObjectType::All => "*",
-            &ObjectType::Canvas => "canvas",
-            &ObjectType::Meta => "meta",
-            &ObjectType::Node => "node",
-            &ObjectType::Way { should_be_closed } => match should_be_closed {
+        let object_type = match *self {
+            ObjectType::All => "*",
+            ObjectType::Canvas => "canvas",
+            ObjectType::Meta => "meta",
+            ObjectType::Node => "node",
+            ObjectType::Way { should_be_closed } => match should_be_closed {
                 None => "way",
                 Some(true) => "area",
                 Some(false) => "line",
@@ -63,32 +63,32 @@ pub enum Test {
 impl fmt::Display for Test {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let quote = |tag_name: &String| {
-            if tag_name.contains(":") {
+            if tag_name.contains(':') {
                 format!("\"{}\"", tag_name)
             } else {
                 tag_name.clone()
             }
         };
-        let result = match self {
-            &Test::Unary { ref tag_name, ref test_type } => match test_type {
-                &UnaryTestType::Exists => format!("{}", quote(tag_name)),
-                &UnaryTestType::NotExists => format!("!{}", quote(tag_name)),
-                &UnaryTestType::True => format!("{}?", quote(tag_name)),
-                &UnaryTestType::False => format!("!{}?", quote(tag_name)),
+        let result = match *self {
+            Test::Unary { ref tag_name, ref test_type } => match *test_type {
+                UnaryTestType::Exists => quote(tag_name),
+                UnaryTestType::NotExists => format!("!{}", quote(tag_name)),
+                UnaryTestType::True => format!("{}?", quote(tag_name)),
+                UnaryTestType::False => format!("!{}?", quote(tag_name)),
             },
-            &Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
-                let sign = match test_type {
-                    &BinaryStringTestType::Equal => "=",
-                    &BinaryStringTestType::NotEqual => "!=",
+            Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
+                let sign = match *test_type {
+                    BinaryStringTestType::Equal => "=",
+                    BinaryStringTestType::NotEqual => "!=",
                 };
                 format!("{}{}{}", quote(tag_name), sign, value)
             },
-            &Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
-                let sign = match test_type {
-                    &BinaryNumericTestType::Less => "<",
-                    &BinaryNumericTestType::LessOrEqual => "<=",
-                    &BinaryNumericTestType::Greater => ">",
-                    &BinaryNumericTestType::GreaterOrEqual => ">=",
+            Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
+                let sign = match *test_type {
+                    BinaryNumericTestType::Less => "<",
+                    BinaryNumericTestType::LessOrEqual => "<=",
+                    BinaryNumericTestType::Greater => ">",
+                    BinaryNumericTestType::GreaterOrEqual => ">=",
                 };
                 format!("{}{}{}", quote(tag_name), sign, value)
             },
@@ -107,11 +107,11 @@ pub enum PropertyValue {
 
 impl fmt::Display for PropertyValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &PropertyValue::Color(Color { r, g, b }) => write!(f, "#{:02x}{:02x}{:02x}", r, g, b),
-            &PropertyValue::Identifier(ref id) => write!(f, "{}", id),
-            &PropertyValue::String(ref s) => write!(f, "\"{}\"", s),
-            &PropertyValue::Numbers(ref nums) => write!(
+        match *self {
+            PropertyValue::Color(Color { r, g, b }) => write!(f, "#{:02x}{:02x}{:02x}", r, g, b),
+            PropertyValue::Identifier(ref id) => write!(f, "{}", id),
+            PropertyValue::String(ref s) => write!(f, "\"{}\"", s),
+            PropertyValue::Numbers(ref nums) => write!(
                 f,
                 "{}",
                 nums.iter().map(fmt_item::<f64>).collect::<Vec<_>>().join(",")
@@ -179,9 +179,9 @@ pub enum Selector {
 
 impl fmt::Display for Selector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Selector::Single(ref s) => write!(f, "{}", s),
-            &Selector::Nested { ref parent, ref child } => write!(f, "{} > {}", parent, child),
+        match *self {
+            Selector::Single(ref s) => write!(f, "{}", s),
+            Selector::Nested { ref parent, ref child } => write!(f, "{} > {}", parent, child),
         }
     }
 }
@@ -502,7 +502,7 @@ impl<'a> Parser<'a> {
 
     fn read_token(&mut self) -> Result<TokenWithPosition<'a>> {
         match self.tokenizer.next() {
-            Some(token) => token.map_err(|x| From::from(x)),
+            Some(token) => token.map_err(From::from),
             None => {
                 bail!(ErrorKind::ParseError(String::from("Unexpected end of file"), self.tokenizer.position()))
             },
@@ -542,7 +542,7 @@ fn id_to_object_type(id: &str) -> Option<ObjectType> {
     }
 }
 
-fn to_binary_string_test_type<'a>(token: Token<'a>) -> Option<BinaryStringTestType> {
+fn to_binary_string_test_type(token: Token) -> Option<BinaryStringTestType> {
     match token {
         Token::Equal => Some(BinaryStringTestType::Equal),
         Token::NotEqual => Some(BinaryStringTestType::NotEqual),
@@ -550,7 +550,7 @@ fn to_binary_string_test_type<'a>(token: Token<'a>) -> Option<BinaryStringTestTy
     }
 }
 
-fn to_binary_numeric_test_type<'a>(token: Token<'a>) -> Option<BinaryNumericTestType> {
+fn to_binary_numeric_test_type(token: Token) -> Option<BinaryNumericTestType> {
     match token {
         Token::Less => Some(BinaryNumericTestType::Less),
         Token::LessOrEqual => Some(BinaryNumericTestType::LessOrEqual),

@@ -45,7 +45,7 @@ fn compare_ids<'a>(
                     let actual_tags = actual_ids_with_tags.get(e).expect(&format!("Expected to have tags for {} {}", entity_type, e));
                     for (k, v) in expected_tags.iter() {
                         let actual_tag = actual_tags.get_by_key(k);
-                        assert!(Some(v.as_ref()) == actual_tag, "Expected {}={} for {} {}, found {:?}", k, v, entity_type, e, actual_tag);
+                        assert_eq!(Some(v.as_ref()), actual_tag, "Expected {}={} for {} {}, found {:?}", k, v, entity_type, e, actual_tag);
                     }
                 }
             },

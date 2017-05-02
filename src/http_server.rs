@@ -40,7 +40,7 @@ impl<'a> Handler for TileServer<'a> {
         let tile = extract_tile_from_request(&req);
         if tile.is_none() {
             *resp.status_mut() = StatusCode::BadRequest;
-            write_bytes_to_response(resp, "Invalid tile request".as_bytes());
+            write_bytes_to_response(resp, b"Invalid tile request");
             return;
         }
 
@@ -63,8 +63,8 @@ impl<'a> Handler for TileServer<'a> {
 
 impl<'a> TileServer<'a> {
     fn draw_tile_contents(&self, tile: &Tile) -> Result<Vec<u8>> {
-        let entities = self.reader.get_entities_in_tile(&tile);
-        let tile_png_bytes = draw_tile(&entities, &tile, &self.styler)?;
+        let entities = self.reader.get_entities_in_tile(tile);
+        let tile_png_bytes = draw_tile(&entities, tile, &self.styler)?;
         Ok(tile_png_bytes)
     }
 }
@@ -105,8 +105,7 @@ fn extract_tile_from_request(req: &Request) -> Option<Tile> {
 fn write_bytes_to_response(mut resp: Response, bytes: &[u8]) {
     resp.headers_mut().set(ContentLength(bytes.len() as u64));
     let res = resp.start().map(|mut x| x.write_all(bytes));
-    match res {
-        Err(e) => error!("Error while forming HTTP response: {}", e),
-        _ => {},
+    if let Err(e) = res {
+        error!("Error while forming HTTP response: {}", e);
     }
 }

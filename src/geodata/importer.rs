@@ -26,7 +26,7 @@ pub fn import(input: &str, output: &str) -> Result<()> {
 
     info!("Converting geodata to internal format");
     let mut message = Builder::new_default();
-    convert_to_message(&mut message, parsed_xml)?;
+    convert_to_message(&mut message, &parsed_xml)?;
 
     ::capnp::serialize::write_message(&mut writer, &message)
         .chain_err(|| "Failed to write the imported data to the output file")?;
@@ -119,7 +119,7 @@ impl OsmEntityStorage {
         if result.is_none() {
             warn!("Failed to find an entity with ID = {}", global_id);
         }
-        result.map(|x| *x)
+        result.cloned()
     }
 }
 
@@ -157,7 +157,7 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
                 }
             },
             XmlEvent::EndElement {name} => {
-                process_end_element(name, &mut parsing_state);
+                process_end_element(&name, &mut parsing_state);
             },
             _ => {}
         }
@@ -188,7 +188,7 @@ fn process_start_element(
     }
 }
 
-fn process_end_element(name: OwnedName, parsing_state: &mut ParsedOsmXml) {
+fn process_end_element(name: &OwnedName, parsing_state: &mut ParsedOsmXml) {
     let is_final_entity_element =
         if let Some((_, ref entity_type)) = parsing_state.current_entity_with_type {
             *entity_type == name.local_name
@@ -254,8 +254,8 @@ fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> 
 
     for (i, &(ref k, ref v)) in tags_in.iter().enumerate() {
         let mut tag_out = tags_out.borrow().get(i as u32);
-        tag_out.set_key(&k);
-        tag_out.set_value(&v);
+        tag_out.set_key(k);
+        tag_out.set_value(v);
     }
 
     Ok(())
@@ -318,15 +318,15 @@ type NodeReader<'a> = ::capnp::struct_list::Reader<'a, node::Owned<>>;
 impl TileIdToReferences {
     fn tile_ref_by_node<'a>(&mut self, nodes: NodeReader<'a>, local_node_id: u32) -> &mut TileReferences {
         let node_tile = tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_id));
-        self.refs.entry((node_tile.x, node_tile.y)).or_insert(Default::default())
+        self.refs.entry((node_tile.x, node_tile.y)).or_insert_with(Default::default)
     }
 
-    fn tile_ref_by_xy<'a>(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
-        self.refs.entry((tile_x, tile_y)).or_insert(Default::default())
+    fn tile_ref_by_xy(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
+        self.refs.entry((tile_x, tile_y)).or_insert_with(Default::default)
     }
 }
 
-fn get_coords_for_node<'a>(nodes: NodeReader<'a>, local_node_id: u32) -> ::geodata_capnp::coords::Reader<'a> {
+fn get_coords_for_node(nodes: NodeReader, local_node_id: u32) -> ::geodata_capnp::coords::Reader {
     nodes.get(local_node_id).get_coords().unwrap()
 }
 
@@ -340,7 +340,7 @@ impl<'a> coords::Coords for ::geodata_capnp::coords::Reader<'a> {
     }
 }
 
-fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: ParsedOsmXml) -> Result<()> {
+fn convert_to_message<A: Allocator>(message: &mut Builder<A>, osm_xml: &ParsedOsmXml) -> Result<()> {
     let mut geodata = message.init_root::<geodata::Builder>();
 
     fill_message_part!(node_in, node_out, geodata, init_nodes, osm_xml.node_storage, local_id, {

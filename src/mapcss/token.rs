@@ -233,7 +233,7 @@ impl<'a> Tokenizer<'a> {
         let mut read_hex_digit = || -> Result<u8> {
             match self.read_digit(16) {
                 Some(digit) => Ok(digit),
-                None => return self.lexer_error("Expected a hexadecimal digit"),
+                None => self.lexer_error("Expected a hexadecimal digit"),
             }
         };
         let digit1 = read_hex_digit()?;
@@ -374,12 +374,9 @@ impl<'a> Tokenizer<'a> {
 
     fn skip_block_comment(&mut self) -> Result<()> {
         while let Some(ch) = self.next_char() {
-            match (ch, self.peek_char()) {
-                ('*', Some('/')) => {
-                    self.advance();
-                    return Ok(());
-                }
-                _ => {},
+            if let ('*', Some('/')) = (ch, self.peek_char()) {
+                self.advance();
+                return Ok(());
             }
         }
         self.lexer_error("Unterminated block comment")
@@ -443,7 +440,7 @@ fn can_continue_identifier(ch: char) -> bool {
     }
 }
 
-fn with_pos<'a>(token: Token<'a>, position: InputPosition) -> TokenWithPosition<'a> {
+fn with_pos(token: Token, position: InputPosition) -> TokenWithPosition {
     TokenWithPosition {
         token: token,
         position: position,
