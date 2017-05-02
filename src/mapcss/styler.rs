@@ -53,11 +53,12 @@ impl Styler {
         where I: Iterator<Item=&'wp Way<'w>>
     {
         let mut styled_ways = ways.flat_map(|x| {
+            let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
             self
                 .style_way(x, zoom)
                 .into_iter()
                 .filter(|&(k, _)| k != "*")
-                .map(move |(_, v)| (x, property_map_to_style(&v, x)))
+                .map(move |(_, v)| (x, property_map_to_style(&v, default_z_index, x)))
         }).collect::<Vec<_>>();
 
         styled_ways.sort_by(|&(_, ref s1), &(_, ref s2)| {
@@ -107,43 +108,74 @@ impl Styler {
 type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
 type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
-fn property_map_to_style<'r, 'w>(property_map: &PropertyMap<'r>, way: &Way<'w>) -> Style {
+fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_index: f64, osm_entity: &E) -> Style
+    where E: OsmEntity<'w>
+{
+    let warn = |prop_name, msg| {
+        if let Some(val) = property_map.get(prop_name) {
+            warn!("Entity #{}, property \"{}\" (value {:?}): {}", osm_entity.global_id(), prop_name, val, msg);
+        }
+    };
+
     let get_color = |prop_name| match property_map.get(prop_name) {
         Some(&&PropertyValue::Color(color)) => Some(color),
-        Some(&&PropertyValue::Identifier(ref id)) => from_color_name(id.as_str()),
-        _ => None,
+        Some(&&PropertyValue::Identifier(ref id)) => {
+            let color = from_color_name(id.as_str());
+            if color.is_none() {
+                warn(prop_name, "unknown color");
+            }
+            color
+        },
+        _ => {
+            warn(prop_name, "expected a valid color");
+            None
+        },
     };
 
     let get_num = |prop_name| match property_map.get(prop_name) {
         Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
-        _ => None,
+        _ => {
+            warn(prop_name, "expected a number");
+            None
+        },
     };
 
     let get_id = |prop_name| match property_map.get(prop_name) {
         Some(&&PropertyValue::Identifier(ref id)) => Some(id.as_str()),
-        _ => None,
+        _ => {
+            warn(prop_name, "expected an identifier");
+            None
+        },
     };
 
     let line_join = match get_id("linejoin") {
         Some("round") => Some(LineJoin::Round),
         Some("miter") => Some(LineJoin::Miter),
         Some("bevel") => Some(LineJoin::Bevel),
-        _ => None,
+        _ => {
+            warn("linejoin", "unknown line join value");
+            None
+        },
     };
 
     let line_cap = match get_id("linecap") {
         Some("none") => Some(LineCap::Butt),
         Some("round") => Some(LineCap::Round),
         Some("square") => Some(LineCap::Square),
-        _ => None,
+        _ => {
+            warn("linecap", "unknown line cap value");
+            None
+        },
     };
 
     let dashes = match property_map.get("dashes") {
         Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
-        _ => None,
+        _ => {
+            warn("dashes", "expected a sequence of numbers");
+            None
+        },
     };
 
-    let default_z_index = if way.is_closed() { 1.0 } else { 3.0 };
     let z_index = get_num("z-index").unwrap_or(default_z_index);
 
     Style {
