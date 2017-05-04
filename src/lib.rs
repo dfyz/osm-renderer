@@ -6,6 +6,7 @@ extern crate libc;
 #[macro_use] extern crate log;
 extern crate memmap;
 extern crate owning_ref;
+extern crate png;
 extern crate xml;
 
 pub mod errors {
