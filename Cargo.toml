@@ -16,6 +16,7 @@ libc = "*"
 log = "*"
 memmap = "*"
 owning_ref = "*"
+png = "*"
 slog-stdlog = "*"
 xml-rs = "*"
 
