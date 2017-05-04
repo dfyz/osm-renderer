@@ -1,6 +1,6 @@
 use errors::*;
 
-use drawer::draw_tile;
+use drawer::{cairo_drawer, pure_rust_drawer};
 use geodata::reader::GeodataReader;
 use hyper::header::{ContentLength, ContentType};
 use hyper::method::Method;
@@ -45,8 +45,12 @@ impl<'a> Handler for TileServer<'a> {
         }
 
         let tile = tile.unwrap();
+        let use_cairo = match req.uri {
+            RequestUri::AbsolutePath(ref uri) if uri.starts_with("/cairo") => true,
+            _ => false,
+        };
 
-        match self.draw_tile_contents(&tile) {
+        match self.draw_tile_contents(&tile, use_cairo) {
             Ok(content) => {
                 *resp.status_mut() = StatusCode::Ok;
                 resp.headers_mut().set(ContentType::png());
@@ -62,9 +66,10 @@ impl<'a> Handler for TileServer<'a> {
 }
 
 impl<'a> TileServer<'a> {
-    fn draw_tile_contents(&self, tile: &Tile) -> Result<Vec<u8>> {
+    fn draw_tile_contents(&self, tile: &Tile, use_cairo: bool) -> Result<Vec<u8>> {
         let entities = self.reader.get_entities_in_tile(tile);
-        let tile_png_bytes = draw_tile(&entities, tile, &self.styler)?;
+        let draw_func = if use_cairo { cairo_drawer::draw_tile } else { pure_rust_drawer::draw_tile };
+        let tile_png_bytes = draw_func(&entities, tile, &self.styler)?;
         Ok(tile_png_bytes)
     }
 }
