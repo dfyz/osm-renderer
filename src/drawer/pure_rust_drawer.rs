@@ -35,12 +35,51 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
     for (way, ref style) in ways_to_draw {
         if let Some(ref c) = style.color {
             for i in 1..way.node_count() {
-                let p1 = Point::from_node(&way.get_node(i - 1), tile);
+                let mut p1 = Point::from_node(&way.get_node(i - 1), tile);
                 let p2 = Point::from_node(&way.get_node(i), tile);
+
+                if !p1.is_in_tile() {
+                    match clamp_by_tile(&p1, &p2) {
+                        Some(new_p1) => p1 = new_p1,
+                        _ => continue,
+                    }
+                }
+
                 draw_segment(image, &p1, &p2, c);
             }
         }
     }
+}
+
+fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
+    let get_coord_by_fixed_other_coord = |p1_coord, p1_fixed_coord, numer, denom, fixed_coord| {
+        if denom == 0 {
+            None
+        } else {
+            let result =
+                (p1_coord as f64) +
+                (numer as f64 / denom as f64) * (fixed_coord - p1_fixed_coord) as f64;
+            Some(result.round() as i32)
+        }
+    };
+
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+
+    let get_y_by_x = |x| get_coord_by_fixed_other_coord(p1.y, p1.x, dy, dx, x).map(|y| Point {x, y});
+    let get_x_by_y = |y| get_coord_by_fixed_other_coord(p1.x, p1.y, dx, dy, y).map(|x| Point {x, y});
+
+    let last_valid_coord = (TILE_SIZE - 1) as i32;
+    let intersections_with_tile = [
+        get_x_by_y(0),
+        get_x_by_y(last_valid_coord),
+        get_y_by_x(0),
+        get_y_by_x(last_valid_coord),
+    ];
+
+    intersections_with_tile.into_iter()
+        .filter_map(|x| x.clone())
+        .min_by_key(|x| x.dist_to(p1))
 }
 
 fn draw_segment(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color) {
@@ -57,9 +96,14 @@ fn draw_segment(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color) {
     let reached_end = |from, to, dir| dir * from >= dir * to;
 
     while !reached_end(cur_x, p2.x, dx) || !reached_end(cur_y, p2.y, dy) {
-        if cur_x >= 0 && cur_x < TILE_SIZE as i32 && cur_y >= 0 && cur_y < TILE_SIZE as i32 {
-            image.set_pixel(cur_x as usize, cur_y as usize, color);
+        let cur_point = Point {
+            x: cur_x,
+            y: cur_y
+        };
+        if !cur_point.is_in_tile() {
+            break;
         }
+        image.set_pixel(cur_x as usize, cur_y as usize, color);
         let err_xy = get_error(cur_x + dx, cur_y + dy);
         let should_move_x = err_xy <= get_error(cur_x, cur_y + dy);
         let should_move_y = err_xy <= get_error(cur_x + dx, cur_y);
@@ -76,6 +120,7 @@ fn draw_segment(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color) {
 const TILE_SIZE: usize = t::TILE_SIZE as usize;
 const TOTAL_PIXELS: usize = TILE_SIZE * TILE_SIZE;
 
+#[derive(Clone, Debug)]
 struct Point {
     x: i32,
     y: i32,
@@ -89,6 +134,15 @@ impl Point {
             x: translate(x, tile.x),
             y: translate(y, tile.y),
         }
+    }
+
+    fn is_in_tile(&self) -> bool {
+        let is_good_coord = |c| c >= 0 && c < TILE_SIZE as i32;
+        is_good_coord(self.x) && is_good_coord(self.y)
+    }
+
+    fn dist_to(&self, other: &Point) -> i32 {
+        (other.x - self.x).pow(2) + (other.y - self.y).pow(2)
     }
 }
 
