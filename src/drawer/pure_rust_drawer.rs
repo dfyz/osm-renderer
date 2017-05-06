@@ -79,6 +79,7 @@ fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
 
     intersections_with_tile.into_iter()
         .filter_map(|x| x.clone())
+        .filter(|x| x.is_in_tile())
         .min_by_key(|x| x.dist_to(p1))
 }
 
