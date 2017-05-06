@@ -374,7 +374,7 @@ impl<'a> Parser<'a> {
         current_token = self.read_token()?;
 
         if !starts_with_bang {
-            if let Some(binary_op) = to_binary_string_test_type(current_token.token) {
+            if let Some(binary_op) = to_binary_string_test_type(&current_token.token) {
                 current_token = self.read_token()?;
 
                 let rhs = match current_token.token {
@@ -392,7 +392,7 @@ impl<'a> Parser<'a> {
                 })
             }
 
-            if let Some(binary_op) = to_binary_numeric_test_type(current_token.token) {
+            if let Some(binary_op) = to_binary_numeric_test_type(&current_token.token) {
                 current_token = self.read_token()?;
 
                 let rhs = match current_token.token {
@@ -542,16 +542,16 @@ fn id_to_object_type(id: &str) -> Option<ObjectType> {
     }
 }
 
-fn to_binary_string_test_type(token: Token) -> Option<BinaryStringTestType> {
-    match token {
+fn to_binary_string_test_type(token: &Token) -> Option<BinaryStringTestType> {
+    match *token {
         Token::Equal => Some(BinaryStringTestType::Equal),
         Token::NotEqual => Some(BinaryStringTestType::NotEqual),
         _ => None,
     }
 }
 
-fn to_binary_numeric_test_type(token: Token) -> Option<BinaryNumericTestType> {
-    match token {
+fn to_binary_numeric_test_type(token: &Token) -> Option<BinaryNumericTestType> {
+    match *token {
         Token::Less => Some(BinaryNumericTestType::Less),
         Token::LessOrEqual => Some(BinaryNumericTestType::LessOrEqual),
         Token::Greater => Some(BinaryNumericTestType::Greater),

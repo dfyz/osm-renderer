@@ -17,10 +17,10 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler
 }
 
 fn fill_canvas(image: &mut PngImage, styler: &Styler) {
-    if let Some(c) = styler.canvas_fill_color {
+    if let Some(ref c) = styler.canvas_fill_color {
         for x in 0..TILE_SIZE {
             for y in 0..TILE_SIZE {
-                image.set_pixel(x, y, &c);
+                image.set_pixel(x, y, c);
             }
         }
     }
@@ -164,7 +164,7 @@ impl PngImage {
         self.pixels[(y * TILE_SIZE) + x] = color.clone();
     }
 
-    fn to_bytes(self) -> Result<Vec<u8>> {
+    fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
         {
             let mut png_encoder = Encoder::new(&mut buf, t::TILE_SIZE, t::TILE_SIZE);
@@ -172,7 +172,7 @@ impl PngImage {
             let mut png_writer = png_encoder.write_header().chain_err(|| "Failed to write PNG header")?;
 
             let mut image_bytes = Vec::new();
-            for p in self.pixels {
+            for p in &self.pixels {
                 image_bytes.extend([p.r, p.g, p.b].into_iter());
             }
             png_writer.write_image_data(image_bytes.as_slice()).chain_err(|| "Failed to write PNG data")?;

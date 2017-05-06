@@ -7,7 +7,7 @@ use std::str::CharIndices;
 
 pub type ZoomLevel = Option<u8>;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
@@ -61,13 +61,13 @@ const ONE_LETTER_MATCH_TABLE: &[(char, Token<'static>)] = &[
 
 impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for &((ch1, ch2), tok) in TWO_LETTER_MATCH_TABLE {
-            if tok == *self {
+        for &((ch1, ch2), ref tok) in TWO_LETTER_MATCH_TABLE {
+            if tok == self {
                 return write!(f, "{}{}", ch1, ch2);
             }
         }
-        for &(ch, tok) in ONE_LETTER_MATCH_TABLE {
-            if tok == *self {
+        for &(ch, ref tok) in ONE_LETTER_MATCH_TABLE {
+            if tok == self {
                 return write!(f, "{}", ch);
             }
         }
@@ -82,7 +82,7 @@ pub struct InputPosition {
     pub character: usize,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TokenWithPosition<'a> {
     pub token: Token<'a>,
     pub position: InputPosition,
@@ -404,9 +404,9 @@ impl<'a> Iterator for Tokenizer<'a> {
 fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
     TWO_LETTER_MATCH_TABLE
         .iter()
-        .filter_map(|&(x, token)|
+        .filter_map(|&(x, ref token)|
             if x == (fst, snd) {
-                Some(token)
+                Some(token.clone())
             } else {
                 None
             })
@@ -416,9 +416,9 @@ fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
 fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
     ONE_LETTER_MATCH_TABLE
         .iter()
-        .filter_map(|&(x, token)|
+        .filter_map(|&(x, ref token)|
             if x == ch {
-                Some(token)
+                Some(token.clone())
             } else {
                 None
             })

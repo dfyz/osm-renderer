@@ -118,7 +118,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
     };
 
     let get_color = |prop_name| match property_map.get(prop_name) {
-        Some(&&PropertyValue::Color(color)) => Some(color),
+        Some(&&PropertyValue::Color(ref color)) => Some(color.clone()),
         Some(&&PropertyValue::Identifier(ref id)) => {
             let color = from_color_name(id.as_str());
             if color.is_none() {
@@ -199,8 +199,8 @@ fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
             if let Selector::Single(ref single) = *selector {
                 if let ObjectType::Canvas = single.object_type {
                     for prop in r.properties.iter().filter(|x| x.name == "fill-color") {
-                        if let PropertyValue::Color(color) = prop.value {
-                            return Some(color);
+                        if let PropertyValue::Color(ref color) = prop.value {
+                            return Some(color.clone());
                         }
                     }
                 }
