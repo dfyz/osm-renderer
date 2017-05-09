@@ -40,7 +40,9 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
 
                 if !p1.is_in_tile() {
                     match clamp_by_tile(&p1, &p2) {
-                        Some(new_p1) => p1 = new_p1,
+                        Some(ref new_p1) if p1.dist_to(new_p1) < p1.dist_to(&p2) => {
+                            p1 = new_p1.clone();
+                        },
                         _ => continue,
                     }
                 }
