@@ -1,9 +1,11 @@
 use errors::*;
 
 use geodata::reader::{Node, OsmEntities, Way};
+use geodata::reader::OsmEntity;
 use mapcss::color::Color;
 use mapcss::styler::{Style, Styler};
 use png::{ColorType, Encoder, HasParameters};
+use std::cmp::{min, max};
 use tile as t;
 
 pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
@@ -40,7 +42,7 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
 
                 if !p1.is_in_tile() {
                     match clamp_by_tile(&p1, &p2) {
-                        Some(ref new_p1) if p1.dist_to(new_p1) < p1.dist_to(&p2) => {
+                        Some(ref new_p1) if new_p1.is_between(&p1, &p2) => {
                             p1 = new_p1.clone();
                         },
                         _ => continue,
@@ -146,6 +148,11 @@ impl Point {
 
     fn dist_to(&self, other: &Point) -> i32 {
         (other.x - self.x).pow(2) + (other.y - self.y).pow(2)
+    }
+
+    fn is_between(&self, p1: &Point, p2: &Point) -> bool {
+        let coord_is_between = |c, c1, c2| c >= min(c1, c2) && c <= max(c1, c2);
+        coord_is_between(self.x, p1.x, p2.x) && coord_is_between(self.y, p1.y, p2.y)
     }
 }
 
