@@ -1,7 +1,6 @@
 use errors::*;
 
 use geodata::reader::{Node, OsmEntities, Way};
-use geodata::reader::OsmEntity;
 use mapcss::color::Color;
 use mapcss::styler::{Style, Styler};
 use png::{ColorType, Encoder, HasParameters};
