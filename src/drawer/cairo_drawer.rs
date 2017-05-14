@@ -4,7 +4,7 @@ use cs;
 use geodata::reader::OsmEntities;
 use libc;
 use mapcss::color::Color;
-use mapcss::styler::{LineCap, LineJoin, Styler};
+use mapcss::styler::Styler;
 use std::slice;
 use tile::{coords_to_float_xy, Tile, TILE_SIZE};
 
@@ -26,12 +26,12 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
         cs::cairo_translate(cr, get_delta(tile.x), get_delta(tile.y));
 
         let to_double_color = |u8_color| (u8_color as f64) / 255.0_f64;
-        let set_color = |c: &Color, a: f64| {
-            cs::cairo_set_source_rgba(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b), a);
+        let set_color = |c: &Color| {
+            cs::cairo_set_source_rgb(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b));
         };
 
         if let Some(ref color) = styler.canvas_fill_color {
-            set_color(color, 1.0);
+            set_color(color);
             cs::cairo_paint(cr);
         }
 
@@ -45,26 +45,6 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
             if style.color.is_none() && style.fill_color.is_none() {
                 continue;
             }
-
-            if let Some(ref line_join) = style.line_join {
-                match *line_join {
-                    LineJoin::Round => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Round),
-                    LineJoin::Miter => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Miter),
-                    LineJoin::Bevel => cs::cairo_set_line_join(cr, cs::enums::LineJoin::Bevel),
-                }
-            }
-
-            if let Some(ref line_cap) = style.line_cap {
-                match *line_cap {
-                    LineCap::Butt => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Butt),
-                    LineCap::Round => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Round),
-                    LineCap::Square => cs::cairo_set_line_cap(cr, cs::enums::LineCap::Square),
-                }
-            }
-
-             if let Some(ref dashes) = style.dashes {
-                cs::cairo_set_dash(cr, dashes.as_ptr(), dashes.len() as i32, 0.0);
-             }
 
             let draw_path = || {
                 cs::cairo_new_path(cr);
@@ -81,16 +61,8 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
 
             if let Some(ref c) = style.color {
                 draw_path();
-                set_color(c, style.opacity.unwrap_or(1.0f64));
+                set_color(c);
                 cs::cairo_stroke(cr);
-            }
-
-            if w.is_closed() {
-                if let Some(ref c) = style.fill_color {
-                    draw_path();
-                    set_color(c, style.fill_opacity.unwrap_or(1.0f64));
-                    cs::cairo_fill(cr);
-                }
             }
         }
 
