@@ -48,7 +48,7 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
                     }
                 }
 
-                draw_segment(image, &p1, &p2, c);
+                draw_thick_line(image, &p1, &p2, c, style.width.unwrap_or(1.0));
             }
         }
     }
@@ -86,10 +86,15 @@ fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
         .min_by_key(|x| x.dist_to(p1))
 }
 
-fn draw_segment(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color) {
-    let mut cur_x = p1.x;
-    let mut cur_y = p1.y;
+fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64) {
+    let reached_end = |from, to, dir| dir * from >= dir * to;
+    let should_stop = |point: &Point, dx, dy| reached_end(point.x, p2.x, dx) && reached_end(point.y, p2.y, dy);
 
+    draw_line(image, p1, p2, color, width, &should_stop);
+}
+
+fn draw_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64, should_stop: &Fn(&Point, i32, i32) -> bool)
+{
     let get_error = |x: i32, y: i32| {
         ((y - p1.y) * (p2.x - p1.x) - (x - p1.x) * (p2.y - p1.y)).abs()
     };
@@ -97,26 +102,37 @@ fn draw_segment(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color) {
     let dx = if p1.x <= p2.x { 1 } else { -1 };
     let dy = if p1.y <= p2.y { 1 } else { -1 };
 
-    let reached_end = |from, to, dir| dir * from >= dir * to;
+    let mut cur_point = Point {
+        x: p1.x,
+        y: p1.y,
+    };
 
-    while !reached_end(cur_x, p2.x, dx) || !reached_end(cur_y, p2.y, dy) {
-        let cur_point = Point {
-            x: cur_x,
-            y: cur_y
-        };
-        if !cur_point.is_in_tile() {
-            break;
+    let get_perpendicular = |point_from: &Point, sign| Point {
+        x: point_from.x + sign * (p2.y - p1.y),
+        y: point_from.y - sign * (p2.x - p1.x),
+    };
+
+    while !should_stop(&cur_point, dx, dy) && cur_point.is_in_tile() {
+        image.set_pixel(cur_point.x as usize, cur_point.y as usize, color);
+
+        if width > 1.0 {
+            let should_stop_perpendicular = |p: &Point, _, _| {
+                ((4 * p.dist_to(&cur_point)) as f64) > width.powi(2)
+            };
+
+            draw_line(image, &cur_point, &get_perpendicular(&cur_point, -1), color, 1.0, &should_stop_perpendicular);
+            draw_line(image, &cur_point, &get_perpendicular(&cur_point, 1), color, 1.0, &should_stop_perpendicular);
         }
-        image.set_pixel(cur_x as usize, cur_y as usize, color);
-        let err_xy = get_error(cur_x + dx, cur_y + dy);
-        let should_move_x = err_xy <= get_error(cur_x, cur_y + dy);
-        let should_move_y = err_xy <= get_error(cur_x + dx, cur_y);
+
+        let err_xy = get_error(cur_point.x + dx, cur_point.y + dy);
+        let should_move_x = err_xy <= get_error(cur_point.x, cur_point.y + dy);
+        let should_move_y = err_xy <= get_error(cur_point.x + dx, cur_point.y);
 
         if should_move_x {
-            cur_x += dx;
+            cur_point.x += dx;
         }
         if should_move_y {
-            cur_y += dy;
+            cur_point.y += dy;
         }
     }
 }
