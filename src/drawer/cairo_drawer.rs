@@ -26,12 +26,12 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
         cs::cairo_translate(cr, get_delta(tile.x), get_delta(tile.y));
 
         let to_double_color = |u8_color| (u8_color as f64) / 255.0_f64;
-        let set_color = |c: &Color| {
-            cs::cairo_set_source_rgb(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b));
+        let set_color = |c: &Color, opacity| {
+            cs::cairo_set_source_rgba(cr, to_double_color(c.r), to_double_color(c.g), to_double_color(c.b), opacity);
         };
 
         if let Some(ref color) = styler.canvas_fill_color {
-            set_color(color);
+            set_color(color, 1.0);
             cs::cairo_paint(cr);
         }
 
@@ -61,7 +61,7 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
 
             if let Some(ref c) = style.color {
                 draw_path();
-                set_color(c);
+                set_color(c, style.opacity.unwrap_or(1.0));
                 cs::cairo_stroke(cr);
             }
         }
