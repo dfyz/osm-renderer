@@ -36,25 +36,25 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
     for (way, ref style) in ways_to_draw {
         if let Some(ref c) = style.color {
             for i in 1..way.node_count() {
-                let mut p1 = Point::from_node(&way.get_node(i - 1), tile);
+                let p1 = Point::from_node(&way.get_node(i - 1), tile);
                 let p2 = Point::from_node(&way.get_node(i), tile);
 
-                if !p1.is_in_tile() {
-                    match clamp_by_tile(&p1, &p2) {
-                        Some(ref new_p1) if new_p1.is_between(&p1, &p2) => {
-                            p1 = new_p1.clone();
-                        },
-                        _ => continue,
-                    }
+                match (clamp_by_tile(&p1, &p2), clamp_by_tile(&p2, &p1)) {
+                    (Some(clamped_p1), Some(clamped_p2)) => {
+                        draw_thick_line(image, &clamped_p1, &clamped_p2, c, style.width.unwrap_or(1.0));
+                    },
+                    _ => {},
                 }
-
-                draw_thick_line(image, &p1, &p2, c, style.width.unwrap_or(1.0));
             }
         }
     }
 }
 
 fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
+    if p1.is_in_tile() {
+        return Some(p1.clone());
+    }
+
     let get_coord_by_fixed_other_coord = |p1_coord, p1_fixed_coord, numer, denom, fixed_coord| {
         if denom == 0 {
             None
@@ -82,7 +82,7 @@ fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
 
     intersections_with_tile.into_iter()
         .filter_map(|x| x.clone())
-        .filter(|x| x.is_in_tile())
+        .filter(|x| x.is_in_tile() && x.is_between(p1, p2))
         .min_by_key(|x| x.dist_to(p1))
 }
 
@@ -93,8 +93,7 @@ fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, 
     draw_line(image, p1, p2, color, width, &should_stop);
 }
 
-fn draw_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64, should_stop: &Fn(&Point, i32, i32) -> bool)
-{
+fn draw_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64, should_stop: &Fn(&Point, i32, i32) -> bool) {
     let get_error = |x: i32, y: i32| {
         ((y - p1.y) * (p2.x - p1.x) - (x - p1.x) * (p2.y - p1.y)).abs()
     };

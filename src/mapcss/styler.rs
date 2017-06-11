@@ -61,8 +61,10 @@ impl Styler {
                 .map(move |(_, v)| (x, property_map_to_style(&v, default_z_index, x)))
         }).collect::<Vec<_>>();
 
-        styled_ways.sort_by(|&(_, ref s1), &(_, ref s2)| {
-            s1.z_index.partial_cmp(&s2.z_index).unwrap()
+        styled_ways.sort_by(|&(w1, ref s1), &(w2, ref s2)| {
+            let cmp1 = (s1.z_index, w1.global_id());
+            let cmp2 = (s2.z_index, w2.global_id());
+            cmp1.partial_cmp(&cmp2).unwrap()
         });
 
         styled_ways
