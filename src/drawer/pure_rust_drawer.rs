@@ -54,7 +54,7 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
 }
 
 fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
-    if p1.is_in_tile() {
+    if p1.is_in_logical_tile() {
         return Some(p1.clone());
     }
 
@@ -85,7 +85,7 @@ fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
 
     intersections_with_tile.into_iter()
         .filter_map(|x| x.clone())
-        .filter(|x| x.is_in_tile() && x.is_between(p1, p2))
+        .filter(|x| x.is_in_logical_tile() && x.is_between(p1, p2))
         .min_by_key(|x| x.dist_to(p1))
 }
 
@@ -149,11 +149,13 @@ fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, 
                 };
 
                 let cur_point = Point { x: perp_x, y: perp_y };
-                if !cur_point.is_in_tile() {
+                if !cur_point.is_in_logical_tile() {
                     break;
                 }
 
-                image.set_pixel(perp_x as usize, perp_y as usize, &RgbaColor::from_color(color, opacity));
+                if cur_point.is_in_visible_tile() {
+                    image.set_pixel(perp_x as usize, perp_y as usize, &RgbaColor::from_color(color, opacity));
+                }
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;
@@ -202,8 +204,13 @@ impl Point {
         }
     }
 
-    fn is_in_tile(&self) -> bool {
+    fn is_in_visible_tile(&self) -> bool {
         let is_good_coord = |c| c >= 0 && c < TILE_SIZE as i32;
+        is_good_coord(self.x) && is_good_coord(self.y)
+    }
+
+    fn is_in_logical_tile(&self) -> bool {
+        let is_good_coord = |c| c >= -(TILE_SIZE as i32) && c < 2*(TILE_SIZE as i32);
         is_good_coord(self.x) && is_good_coord(self.y)
     }
 
