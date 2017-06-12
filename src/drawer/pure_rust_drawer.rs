@@ -42,7 +42,9 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
 
                 match (clamp_by_tile(&p1, &p2), clamp_by_tile(&p2, &p1)) {
                     (Some(clamped_p1), Some(clamped_p2)) => {
-                        draw_thick_line(image, &clamped_p1, &clamped_p2, c, style.width.unwrap_or(1.0));
+                        let width = style.width.unwrap_or(1.0);
+                        let opacity = style.opacity.unwrap_or(1.0);
+                        draw_thick_line(image, &clamped_p1, &clamped_p2, c, width, opacity);
                     },
                     _ => {},
                 }
@@ -95,7 +97,7 @@ fn swap_x_y_if_needed<T>(a: T, b: T, should_swap: bool) -> (T, T) {
     }
 }
 
-fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64) {
+fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64, opacity: f64) {
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
     let (dx, dy) = ((p2.x - p1.x).abs(), (p2.y - p1.y).abs());
@@ -125,7 +127,7 @@ fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, 
     let half_width = width / 2.0;
     let feather_from = half_width - 0.5;
     let feather_to = half_width + 0.5;
-    let opacity_mul = width.min(1.0);
+    let opacity_mul = opacity * width.min(1.0);
 
     let is_in_tile = |x, y| Point{x, y}.is_in_tile();
 
