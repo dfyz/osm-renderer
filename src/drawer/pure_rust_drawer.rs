@@ -129,8 +129,6 @@ fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, 
     let feather_to = half_width + 0.5;
     let opacity_mul = opacity * width.min(1.0);
 
-    let is_in_tile = |x, y| Point{x, y}.is_in_tile();
-
     let draw_perpendiculars = |image: &mut PngImage, mn, mx, p_error| {
         let mut draw_one_perpendicular = |mul| {
             let mut p_mn = mx;
@@ -150,11 +148,12 @@ fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, 
                     break;
                 };
 
-                if !is_in_tile(perp_x, perp_y) {
+                let cur_point = Point { x: perp_x, y: perp_y };
+                if !cur_point.is_in_tile() {
                     break;
                 }
 
-                image.set_pixel_with_opacity(perp_x as usize, perp_y as usize, &RgbaColor::from_color(color, opacity));
+                image.set_pixel(perp_x as usize, perp_y as usize, &RgbaColor::from_color(color, opacity));
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;
@@ -254,10 +253,6 @@ impl PngImage {
     }
 
     fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
-        self.pixels[to_idx(x, y)] = color.clone();
-    }
-
-    fn set_pixel_with_opacity(&mut self, x: usize, y: usize, color: &RgbaColor) {
         let idx = to_idx(x, y);
         let new_pixel = {
             let ref old_pixel = self.pixels[idx];
