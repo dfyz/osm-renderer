@@ -75,11 +75,12 @@ fn clamp_by_tile(p1: &Point, p2: &Point) -> Option<Point> {
     let get_y_by_x = |x| get_coord_by_fixed_other_coord(p1.y, p1.x, dy, dx, x).map(|y| Point {x, y});
     let get_x_by_y = |y| get_coord_by_fixed_other_coord(p1.x, p1.y, dx, dy, y).map(|x| Point {x, y});
 
-    let last_valid_coord = (TILE_SIZE - 1) as i32;
+    let first_valid_coord = -(TILE_SIZE as i32);
+    let last_valid_coord = (2 * TILE_SIZE - 1) as i32;
     let intersections_with_tile = [
-        get_x_by_y(0),
+        get_x_by_y(first_valid_coord),
         get_x_by_y(last_valid_coord),
-        get_y_by_x(0),
+        get_y_by_x(first_valid_coord),
         get_y_by_x(last_valid_coord),
     ];
 
