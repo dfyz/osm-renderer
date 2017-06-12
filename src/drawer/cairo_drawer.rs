@@ -52,10 +52,10 @@ pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -
                 cs::cairo_set_line_width(cr, style.width.unwrap_or(1.0f64));
 
                 let (x, y) = coords_to_float_xy(&w.get_node(0), tile.zoom);
-                cs::cairo_move_to(cr, x, y);
+                cs::cairo_move_to(cr, x + 0.5, y + 0.5);
                 for i in 1..w.node_count() {
                     let (x, y) = coords_to_float_xy(&w.get_node(i), tile.zoom);
-                    cs::cairo_line_to(cr, x, y);
+                    cs::cairo_line_to(cr, x + 0.5, y + 0.5);
                 }
             };
 
