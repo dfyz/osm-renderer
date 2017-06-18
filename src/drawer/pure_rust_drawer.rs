@@ -9,6 +9,9 @@ use drawer::line::draw_thick_line;
 use drawer::png_image::{PngImage, RgbaColor};
 use drawer::point::Point;
 
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+
 pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
     let mut image = PngImage::new();
     fill_canvas(&mut image, styler);
@@ -37,19 +40,37 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
         });
 
     for (way, ref style) in ways_to_draw {
-        if let Some(ref c) = style.color {
+        if let Some(ref color) = style.color {
+            let mut pixels: HashMap<(usize, usize), f64> = HashMap::new();
+
             for i in 1..way.node_count() {
+                let set_pixel = |x, y, opacity| {
+                    match pixels.entry((x, y)) {
+                        Entry::Occupied(o) => {
+                            *o.into_mut() = o.get().max(opacity);
+                        },
+                        Entry::Vacant(v) => {
+                            v.insert(opacity);
+                        },
+                    }
+                };
+
                 let p1 = Point::from_node(&way.get_node(i - 1), tile);
                 let p2 = Point::from_node(&way.get_node(i), tile);
+
 
                 match (p1.clamp_by_tile(&p2), p2.clamp_by_tile(&p1)) {
                     (Some(clamped_p1), Some(clamped_p2)) => {
                         let width = style.width.unwrap_or(1.0);
                         let opacity = style.opacity.unwrap_or(1.0);
-                        draw_thick_line(image, &clamped_p1, &clamped_p2, c, width, opacity);
+                        draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, set_pixel);
                     },
                     _ => {},
                 }
+            }
+
+            for (k, v) in pixels.iter() {
+                image.set_pixel(k.0, k.1, &RgbaColor::from_color(color, *v));
             }
         }
     }

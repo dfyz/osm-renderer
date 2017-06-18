@@ -1,9 +1,8 @@
-use mapcss::color::Color;
-
-use drawer::png_image::{PngImage, RgbaColor};
 use drawer::point::Point;
 
-pub fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Color, width: f64, opacity: f64) {
+pub fn draw_thick_line<F>(p1: &Point, p2: &Point, width: f64, opacity: f64, mut set_pixel: F)
+    where F: FnMut(usize, usize, f64)
+{
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
     let (dx, dy) = ((p2.x - p1.x).abs(), (p2.y - p1.y).abs());
@@ -31,11 +30,12 @@ pub fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Col
     let line_dist_numer_const = ((p2.x * p1.y) - (p2.y * p1.x)) as f64;
     let line_dist_denom = ((dy*dy + dx*dx) as f64).sqrt();
     let half_width = width / 2.0;
-    let feather_from = half_width - 0.5;
-    let feather_to = half_width + 0.5;
+    let feather_from = (half_width - 0.5).max(0.0);
+    let feather_to = (half_width + 0.5).max(1.0);
+    let feather_dist = feather_to - feather_from;
     let opacity_mul = opacity * width.min(1.0);
 
-    let draw_perpendiculars = |image: &mut PngImage, mn, mx, p_error| {
+    let mut draw_perpendiculars = |mn, mx, p_error| {
         let mut draw_one_perpendicular = |mul| {
             let mut p_mn = mx;
             let mut p_mx = mn;
@@ -49,7 +49,7 @@ pub fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Col
                 let opacity = if line_dist < feather_from {
                     opacity_mul
                 } else if line_dist < feather_to {
-                    (feather_to - line_dist) * opacity_mul
+                    (feather_to - line_dist) / feather_dist * opacity_mul
                 } else {
                     break;
                 };
@@ -60,7 +60,7 @@ pub fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Col
                 }
 
                 if cur_point.is_in_visible_tile() {
-                    image.set_pixel(perp_x as usize, perp_y as usize, &RgbaColor::from_color(color, opacity));
+                    set_pixel(perp_x as usize, perp_y as usize, opacity);
                 }
 
                 if update_error(&mut error) {
@@ -75,7 +75,7 @@ pub fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Col
     };
 
     loop {
-        draw_perpendiculars(image, *mn, *mx, p_error);
+        draw_perpendiculars(*mn, *mx, p_error);
 
         if *mn == mn_last && *mx == mx_last {
             break;
@@ -84,7 +84,7 @@ pub fn draw_thick_line(image: &mut PngImage, p1: &Point, p2: &Point, color: &Col
         if update_error(&mut error) {
             *mn += mn_inc;
             if update_error(&mut p_error) {
-                draw_perpendiculars(image, *mn, *mx, p_error);
+                draw_perpendiculars(*mn, *mx, p_error);
             }
         }
         *mx += mx_inc;
