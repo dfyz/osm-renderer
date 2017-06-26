@@ -23,18 +23,16 @@ unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) 
     cs::cairo_set_line_width(cr, style.width.unwrap_or(1.0f64));
 
     let cairo_line_cap = match style.line_cap {
-        Some(LineCap::Butt) => cs::enums::LineCap::Butt,
         Some(LineCap::Round) => cs::enums::LineCap::Round,
         Some(LineCap::Square) => cs::enums::LineCap::Square,
-        None => cs::enums::LineCap::Butt,
+        _ => cs::enums::LineCap::Butt,
     };
     cs::cairo_set_line_cap(cr, cairo_line_cap);
 
     let cairo_line_join = match style.line_join {
         Some(LineJoin::Bevel) => cs::enums::LineJoin::Bevel,
-        Some(LineJoin::Round) => cs::enums::LineJoin::Round,
         Some(LineJoin::Miter) => cs::enums::LineJoin::Miter,
-        None => cs::enums::LineJoin::Round,
+        _ => cs::enums::LineJoin::Round,
     };
     cs::cairo_set_line_join(cr, cairo_line_join);
 

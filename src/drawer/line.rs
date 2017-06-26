@@ -18,11 +18,12 @@ pub fn draw_thick_line<F>(p1: &Point, p2: &Point, width: f64, opacity: f64, mut 
     let mut p_error = 0;
 
     let update_error = |error: &mut i32| {
-        let mut was_corrected = false;
-        if *error + 2 * mn_delta > mx_delta {
+        let was_corrected = if *error + 2 * mn_delta > mx_delta {
             *error -= 2 * mx_delta;
-            was_corrected = true;
-        }
+            true
+        } else {
+            false
+        };
         *error += 2 * mn_delta;
         was_corrected
     };

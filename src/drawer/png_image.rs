@@ -27,6 +27,7 @@ impl RgbaColor {
     }
 }
 
+#[derive(Default)]
 pub struct PngImage {
     pixels: Vec<RgbaColor>,
 }
@@ -44,7 +45,7 @@ impl PngImage {
     pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
         let idx = to_idx(x, y);
         let new_pixel = {
-            let ref old_pixel = self.pixels[idx];
+            let old_pixel = &self.pixels[idx];
             let blend = |new_value, old_value| new_value + (1.0 - color.a) * old_value;
             RgbaColor {
                 r: blend(color.r, old_pixel.r),

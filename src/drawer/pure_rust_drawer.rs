@@ -59,13 +59,10 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
                 let p2 = Point::from_node(&way.get_node(i), tile);
 
 
-                match (p1.clamp_by_tile(&p2), p2.clamp_by_tile(&p1)) {
-                    (Some(clamped_p1), Some(clamped_p2)) => {
-                        let width = style.width.unwrap_or(1.0);
-                        let opacity = style.opacity.unwrap_or(1.0);
-                        draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, set_pixel);
-                    },
-                    _ => {},
+                if let (Some(clamped_p1), Some(clamped_p2)) = (p1.clamp_by_tile(&p2), p2.clamp_by_tile(&p1)) {
+                    let width = style.width.unwrap_or(1.0);
+                    let opacity = style.opacity.unwrap_or(1.0);
+                    draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, set_pixel);
                 }
             }
 
