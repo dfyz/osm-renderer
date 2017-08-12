@@ -464,9 +464,9 @@ mod tests {
     }
 
     fn tok(s: &str, expected: Vec<(Token, usize, usize)>) {
-        assert_eq!(tokenize(&unindent(s)), expected.iter().map(|&(token, line, ch)| {
+        assert_eq!(tokenize(&unindent(s)), expected.iter().map(|&(ref token, line, ch)| {
             TokenWithPosition {
-                token: token,
+                token: token.clone(),
                 position: InputPosition {
                     line: line,
                     character: ch,
