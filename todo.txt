@@ -1,0 +1,9 @@
+* fill
+* dashes
+* linecap/linejoin
+* draw text
+* draw nodes
+
+* rendering multipolygons (role=outer and stuff)
+* select drawer with features
+* indexes for selectors
