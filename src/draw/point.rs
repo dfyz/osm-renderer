@@ -2,7 +2,7 @@ use std::cmp::{min, max};
 use geodata::reader::Node;
 use tile as t;
 
-use drawer::TILE_SIZE;
+use draw::TILE_SIZE;
 
 #[derive(Clone, Debug)]
 pub struct Point {

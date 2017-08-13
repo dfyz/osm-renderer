@@ -1,6 +1,7 @@
 use errors::*;
 
 use cs;
+use draw::drawer::Drawer;
 use geodata::reader::{OsmEntities, Way};
 use libc;
 use mapcss::color::Color;
@@ -65,37 +66,42 @@ unsafe fn fill_way<'a>(cr: *mut cs::cairo_t, w: &Way<'a>, style: &Style, zoom: u
     }
 }
 
-pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> Result<Vec<u8>> {
-    let mut data = Vec::new();
+#[derive(Default)]
+pub struct CairoDrawer;
 
-    unsafe {
-        let s = cs::cairo_image_surface_create(cs::enums::Format::Rgb24, TILE_SIZE as i32, TILE_SIZE as i32);
+impl Drawer for CairoDrawer {
+    fn draw_tile(&self, entities: &OsmEntities, tile: &Tile, styler: &Styler) -> Result<Vec<u8>> {
+        let mut data = Vec::new();
 
-        let cr = cs::cairo_create(s);
+        unsafe {
+            let s = cs::cairo_image_surface_create(cs::enums::Format::Rgb24, TILE_SIZE as i32, TILE_SIZE as i32);
 
-        let get_delta = |c| -((TILE_SIZE as f64) * (c as f64));
-        cs::cairo_translate(cr, get_delta(tile.x), get_delta(tile.y));
+            let cr = cs::cairo_create(s);
 
-        if let Some(ref color) = styler.canvas_fill_color {
-            set_color(cr, color, 1.0);
-            cs::cairo_paint(cr);
+            let get_delta = |c| -((TILE_SIZE as f64) * (c as f64));
+            cs::cairo_translate(cr, get_delta(tile.x), get_delta(tile.y));
+
+            if let Some(ref color) = styler.canvas_fill_color {
+                set_color(cr, color, 1.0);
+                cs::cairo_paint(cr);
+            }
+
+            let all_way_styles = styler.style_ways(entities.ways.iter(), tile.zoom);
+
+            for &(w, ref style) in &all_way_styles {
+                fill_way(cr, w, style, tile.zoom);
+            }
+
+            for &(w, ref style) in &all_way_styles {
+                draw_way(cr, w, style, tile.zoom);
+            }
+
+            cs::cairo_destroy(cr);
+
+            cs::cairo_surface_write_to_png_stream(s, Some(write_func), &mut data as *mut Vec<u8> as *mut libc::c_void);
+            cs::cairo_surface_destroy(s);
         }
 
-        let all_way_styles = styler.style_ways(entities.ways.iter(), tile.zoom);
-
-        for &(w, ref style) in &all_way_styles {
-            fill_way(cr, w, style, tile.zoom);
-        }
-
-        for &(w, ref style) in &all_way_styles {
-            draw_way(cr, w, style, tile.zoom);
-        }
-
-        cs::cairo_destroy(cr);
-
-        cs::cairo_surface_write_to_png_stream(s, Some(write_func), &mut data as *mut Vec<u8> as *mut libc::c_void);
-        cs::cairo_surface_destroy(s);
+        Ok(data)
     }
-
-    Ok(data)
 }

@@ -1,6 +1,8 @@
 use errors::*;
 
-use drawer::{cairo_drawer, pure_rust_drawer};
+use draw::cairo_drawer::CairoDrawer;
+use draw::drawer::Drawer;
+use draw::pure_rust_drawer::PureRustDrawer;
 use geodata::reader::GeodataReader;
 use hyper::header::{ContentLength, ContentType};
 use hyper::method::Method;
@@ -25,6 +27,8 @@ pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> R
     let handler = TileServer {
         reader,
         styler: Styler::new(rules),
+        pure_drawer: PureRustDrawer::new(),
+        cairo_drawer: Default::default(),
     };
     let server = Server::http(address).chain_err(|| "Failed to spawn the HTTP server")?;
     server.handle(handler).chain_err(|| "Failed to run the HTTP server")
@@ -33,6 +37,8 @@ pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> R
 struct TileServer<'a> {
     reader: GeodataReader<'a>,
     styler: Styler,
+    pure_drawer: PureRustDrawer,
+    cairo_drawer: CairoDrawer,
 }
 
 impl<'a> Handler for TileServer<'a> {
@@ -68,8 +74,8 @@ impl<'a> Handler for TileServer<'a> {
 impl<'a> TileServer<'a> {
     fn draw_tile_contents(&self, tile: &Tile, use_cairo: bool) -> Result<Vec<u8>> {
         let entities = self.reader.get_entities_in_tile(tile);
-        let draw_func = if use_cairo { cairo_drawer::draw_tile } else { pure_rust_drawer::draw_tile };
-        let tile_png_bytes = draw_func(&entities, tile, &self.styler)?;
+        let drawer: &Drawer = if use_cairo { &self.cairo_drawer } else { &self.pure_drawer };
+        let tile_png_bytes = drawer.draw_tile(&entities, tile, &self.styler)?;
         Ok(tile_png_bytes)
     }
 }

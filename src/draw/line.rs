@@ -1,5 +1,5 @@
-use drawer::figure::Figure;
-use drawer::point::Point;
+use draw::figure::Figure;
+use draw::point::Point;
 
 pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, opacity: f64, figure: &mut Figure)
 {

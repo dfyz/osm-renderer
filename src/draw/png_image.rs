@@ -4,7 +4,7 @@ use mapcss::color::Color;
 use png::{ColorType, Encoder, HasParameters};
 use tile as t;
 
-use drawer::TILE_SIZE;
+use draw::TILE_SIZE;
 
 #[derive(Clone)]
 pub struct RgbaColor {

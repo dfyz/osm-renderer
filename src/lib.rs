@@ -25,6 +25,6 @@ pub mod geodata {
 pub mod mapcss;
 
 pub mod coords;
-pub mod drawer;
+pub mod draw;
 pub mod http_server;
 pub mod tile;
