@@ -5,7 +5,7 @@ use mapcss::styler::{Style, Styler};
 use tile as t;
 
 use drawer::TILE_SIZE;
-use drawer::drawn_pixels::DrawnPixels;
+use drawer::figure::Figure;
 use drawer::line::draw_thick_line;
 use drawer::png_image::{PngImage, RgbaColor};
 use drawer::point::Point;
@@ -39,7 +39,7 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
 
     for (way, ref style) in ways_to_draw {
         if let Some(ref color) = style.color {
-            let mut pixels: DrawnPixels = Default::default();
+            let mut figure: Figure = Default::default();
 
             for i in 1..way.node_count() {
                 let p1 = Point::from_node(&way.get_node(i - 1), tile);
@@ -49,11 +49,11 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
                 if let (Some(clamped_p1), Some(clamped_p2)) = (p1.clamp_by_tile(&p2), p2.clamp_by_tile(&p1)) {
                     let width = style.width.unwrap_or(1.0);
                     let opacity = style.opacity.unwrap_or(1.0);
-                    draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, &mut pixels);
+                    draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, &mut figure);
                 }
             }
 
-            for (x, y_to_opacities) in pixels.x_to_y_opacities.iter() {
+            for (x, y_to_opacities) in figure.pixels.iter() {
                 for (y, opacity) in y_to_opacities.iter() {
                     image.set_pixel(*x, *y, &RgbaColor::from_color(color, *opacity));
                 }
