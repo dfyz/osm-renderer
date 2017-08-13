@@ -5,12 +5,10 @@ use mapcss::styler::{Style, Styler};
 use tile as t;
 
 use drawer::TILE_SIZE;
+use drawer::drawn_pixels::DrawnPixels;
 use drawer::line::draw_thick_line;
 use drawer::png_image::{PngImage, RgbaColor};
 use drawer::point::Point;
-
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 
 pub fn draw_tile<'a>(entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
     let mut image = PngImage::new();
@@ -41,20 +39,9 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
 
     for (way, ref style) in ways_to_draw {
         if let Some(ref color) = style.color {
-            let mut pixels: HashMap<(usize, usize), f64> = HashMap::new();
+            let mut pixels: DrawnPixels = Default::default();
 
             for i in 1..way.node_count() {
-                let set_pixel = |x, y, opacity| {
-                    match pixels.entry((x, y)) {
-                        Entry::Occupied(o) => {
-                            *o.into_mut() = o.get().max(opacity);
-                        },
-                        Entry::Vacant(v) => {
-                            v.insert(opacity);
-                        },
-                    }
-                };
-
                 let p1 = Point::from_node(&way.get_node(i - 1), tile);
                 let p2 = Point::from_node(&way.get_node(i), tile);
 
@@ -62,12 +49,14 @@ fn draw_ways(image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Ti
                 if let (Some(clamped_p1), Some(clamped_p2)) = (p1.clamp_by_tile(&p2), p2.clamp_by_tile(&p1)) {
                     let width = style.width.unwrap_or(1.0);
                     let opacity = style.opacity.unwrap_or(1.0);
-                    draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, set_pixel);
+                    draw_thick_line(&clamped_p1, &clamped_p2, width, opacity, &mut pixels);
                 }
             }
 
-            for (k, v) in pixels.iter() {
-                image.set_pixel(k.0, k.1, &RgbaColor::from_color(color, *v));
+            for (x, y_to_opacities) in pixels.x_to_y_opacities.iter() {
+                for (y, opacity) in y_to_opacities.iter() {
+                    image.set_pixel(*x, *y, &RgbaColor::from_color(color, *opacity));
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
+use drawer::drawn_pixels::DrawnPixels;
 use drawer::point::Point;
 
-pub fn draw_thick_line<F>(p1: &Point, p2: &Point, width: f64, opacity: f64, mut set_pixel: F)
-    where F: FnMut(usize, usize, f64)
+pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, opacity: f64, pixels: &mut DrawnPixels)
 {
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
@@ -61,7 +61,7 @@ pub fn draw_thick_line<F>(p1: &Point, p2: &Point, width: f64, opacity: f64, mut 
                 }
 
                 if cur_point.is_in_visible_tile() {
-                    set_pixel(perp_x as usize, perp_y as usize, opacity);
+                    pixels.add(perp_x as usize, perp_y as usize, opacity);
                 }
 
                 if update_error(&mut error) {
