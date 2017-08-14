@@ -1,34 +1,37 @@
 use mapcss::color::{Color, from_color_name};
 use mapcss::parser::*;
 
+use ordered_float::OrderedFloat;
 use geodata::reader::{OsmEntity, Way};
 use std::collections::HashMap;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineJoin {
     Round,
     Miter,
     Bevel,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineCap {
     Butt,
     Round,
     Square,
 }
 
-#[derive(Debug)]
+type Number = OrderedFloat<f64>;
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Style {
-    pub z_index: f64,
+    pub z_index: Number,
 
     pub color: Option<Color>,
     pub fill_color: Option<Color>,
-    pub opacity: Option<f64>,
-    pub fill_opacity: Option<f64>,
+    pub opacity: Option<Number>,
+    pub fill_opacity: Option<Number>,
 
-    pub width: Option<f64>,
-    pub dashes: Option<Vec<f64>>,
+    pub width: Option<Number>,
+    pub dashes: Option<Vec<Number>>,
     pub line_join: Option<LineJoin>,
     pub line_cap: Option<LineCap>,
 }
@@ -53,7 +56,7 @@ impl Styler {
         where I: Iterator<Item=&'wp Way<'w>>
     {
         let mut styled_ways = ways.flat_map(|x| {
-            let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
+            let default_z_index = OrderedFloat(if x.is_closed() { 1.0 } else { 3.0 });
             self
                 .style_way(x, zoom)
                 .into_iter()
@@ -110,7 +113,7 @@ impl Styler {
 type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
 type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
-fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_index: f64, osm_entity: &E) -> Style
+fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_index: Number, osm_entity: &E) -> Style
     where E: OsmEntity<'w>
 {
     let warn = |prop_name, msg| {
@@ -135,7 +138,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
     };
 
     let get_num = |prop_name| match property_map.get(prop_name) {
-        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
+        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(OrderedFloat(nums[0])),
         _ => {
             warn(prop_name, "expected a number");
             None
@@ -171,7 +174,9 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
     };
 
     let dashes = match property_map.get("dashes") {
-        Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
+        Some(&&PropertyValue::Numbers(ref nums)) => {
+            Some(nums.iter().cloned().map(OrderedFloat).collect::<Vec<_>>())
+        },
         _ => {
             warn("dashes", "expected a sequence of numbers");
             None

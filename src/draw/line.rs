@@ -1,8 +1,9 @@
 use draw::figure::Figure;
+use draw::png_image::RgbaColor;
 use draw::point::Point;
+use mapcss::color::Color;
 
-pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, opacity: f64, figure: &mut Figure)
-{
+pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64, figure: &mut Figure) {
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
     let (dx, dy) = ((p2.x - p1.x).abs(), (p2.y - p1.y).abs());
@@ -47,7 +48,7 @@ pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, opacity: f64, figure:
                 let line_dist_numer_non_const = ((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y) as f64;
                 let line_dist = (line_dist_numer_const + line_dist_numer_non_const).abs() / line_dist_denom;
 
-                let opacity = if line_dist < feather_from {
+                let pixel_opacity = if line_dist < feather_from {
                     opacity_mul
                 } else if line_dist < feather_to {
                     (feather_to - line_dist) / feather_dist * opacity_mul
@@ -55,14 +56,7 @@ pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, opacity: f64, figure:
                     break;
                 };
 
-                let cur_point = Point { x: perp_x, y: perp_y };
-                if !cur_point.is_in_logical_tile() {
-                    break;
-                }
-
-                if cur_point.is_in_visible_tile() {
-                    figure.add(perp_x as usize, perp_y as usize, opacity);
-                }
+                figure.add(perp_x as usize, perp_y as usize, RgbaColor::from_color(color, pixel_opacity));
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;
