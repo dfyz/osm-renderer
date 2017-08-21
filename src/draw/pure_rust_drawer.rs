@@ -2,7 +2,6 @@ use errors::*;
 
 use geodata::reader::{OsmEntities, OsmEntity, Way};
 use mapcss::styler::{Style, Styler};
-use ordered_float::OrderedFloat;
 use tile as t;
 
 use draw::TILE_SIZE;
@@ -92,8 +91,8 @@ fn way_to_figure(way: &Way, style: &Style, zoom: u8) -> Figure {
             let p1 = Point::from_node(&way.get_node(i - 1), zoom);
             let p2 = Point::from_node(&way.get_node(i), zoom);
 
-            let width = style.width.unwrap_or(OrderedFloat(1.0)).into();
-            let opacity = style.opacity.unwrap_or(OrderedFloat(1.0)).into();
+            let width = style.width.unwrap_or(1.0).into();
+            let opacity = style.opacity.unwrap_or(1.0).into();
             draw_thick_line(&p1, &p2, width, color, opacity, &mut figure);
         }
     }

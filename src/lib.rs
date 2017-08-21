@@ -5,7 +5,6 @@ extern crate hyper;
 extern crate libc;
 #[macro_use] extern crate log;
 extern crate memmap;
-extern crate ordered_float;
 extern crate owning_ref;
 extern crate png;
 extern crate xml;

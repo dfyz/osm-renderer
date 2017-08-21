@@ -1,9 +1,9 @@
 use mapcss::color::{Color, from_color_name};
 use mapcss::parser::*;
 
-use ordered_float::OrderedFloat;
 use geodata::reader::{OsmEntity, Way};
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineJoin {
@@ -19,21 +19,43 @@ pub enum LineCap {
     Square,
 }
 
-type Number = OrderedFloat<f64>;
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Style {
-    pub z_index: Number,
+    pub z_index: f64,
 
     pub color: Option<Color>,
     pub fill_color: Option<Color>,
-    pub opacity: Option<Number>,
-    pub fill_opacity: Option<Number>,
+    pub opacity: Option<f64>,
+    pub fill_opacity: Option<f64>,
 
-    pub width: Option<Number>,
-    pub dashes: Option<Vec<Number>>,
+    pub width: Option<f64>,
+    pub dashes: Option<Vec<f64>>,
     pub line_join: Option<LineJoin>,
     pub line_cap: Option<LineCap>,
+}
+
+impl Eq for Style {
+}
+
+impl Hash for Style {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // In one of the brightest moves in the history of PL design, Rust doesn't allow you
+        // to compare or hash floats. The abomination below should be good enough for cache keys.
+        // It asssumes the floats in our styles are small enough and doesn't work with NaNs (which
+        // incidentally was the whole point of forbidding float hashing in the first place), but hey,
+        // at least it's 10 lines instead of 100.
+        let float_to_int = |x| (x * 1000.0) as u64;
+
+        float_to_int(self.z_index).hash(state);
+        self.color.hash(state);
+        self.fill_color.hash(state);
+        self.opacity.map(&float_to_int).hash(state);
+        self.fill_opacity.map(&float_to_int).hash(state);
+        self.width.map(&float_to_int).hash(state);
+        self.dashes.as_ref().map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()).hash(state);
+        self.line_join.hash(state);
+        self.line_cap.hash(state);
+    }
 }
 
 pub struct Styler {
@@ -56,7 +78,7 @@ impl Styler {
         where I: Iterator<Item=&'wp Way<'w>>
     {
         let mut styled_ways = ways.flat_map(|x| {
-            let default_z_index = OrderedFloat(if x.is_closed() { 1.0 } else { 3.0 });
+            let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
             self
                 .style_way(x, zoom)
                 .into_iter()
@@ -113,7 +135,7 @@ impl Styler {
 type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
 type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
-fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_index: Number, osm_entity: &E) -> Style
+fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_index: f64, osm_entity: &E) -> Style
     where E: OsmEntity<'w>
 {
     let warn = |prop_name, msg| {
@@ -138,7 +160,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
     };
 
     let get_num = |prop_name| match property_map.get(prop_name) {
-        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(OrderedFloat(nums[0])),
+        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
         _ => {
             warn(prop_name, "expected a number");
             None
@@ -175,7 +197,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
 
     let dashes = match property_map.get("dashes") {
         Some(&&PropertyValue::Numbers(ref nums)) => {
-            Some(nums.iter().cloned().map(OrderedFloat).collect::<Vec<_>>())
+            Some(nums.clone())
         },
         _ => {
             warn("dashes", "expected a sequence of numbers");

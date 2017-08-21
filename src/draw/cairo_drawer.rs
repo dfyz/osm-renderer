@@ -6,7 +6,6 @@ use geodata::reader::{OsmEntities, Way};
 use libc;
 use mapcss::color::Color;
 use mapcss::styler::{LineCap, LineJoin, Style, Styler};
-use ordered_float::OrderedFloat;
 use std::slice;
 use tile::{coords_to_float_xy, Tile, TILE_SIZE};
 
@@ -22,7 +21,7 @@ unsafe fn set_color(cr: *mut cs::cairo_t, color: &Color, opacity: f64) {
 }
 
 unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
-    cs::cairo_set_line_width(cr, style.width.unwrap_or(OrderedFloat(1.0)).into());
+    cs::cairo_set_line_width(cr, style.width.unwrap_or(1.0).into());
 
     let cairo_line_cap = match style.line_cap {
         Some(LineCap::Round) => cs::enums::LineCap::Round,
@@ -55,7 +54,7 @@ unsafe fn draw_way(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
 
     if let Some(ref c) = style.color {
         draw_way_path(cr, w, style, zoom);
-        set_color(cr, c, style.opacity.unwrap_or(OrderedFloat(1.0)).into());
+        set_color(cr, c, style.opacity.unwrap_or(1.0).into());
         cs::cairo_stroke(cr);
     }
 }
@@ -63,7 +62,7 @@ unsafe fn draw_way(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
 unsafe fn fill_way<'a>(cr: *mut cs::cairo_t, w: &Way<'a>, style: &Style, zoom: u8) {
     if let Some(ref c) = style.fill_color {
         draw_way_path(cr, w, style, zoom);
-        set_color(cr, c, style.fill_opacity.unwrap_or(OrderedFloat(1.0)).into());
+        set_color(cr, c, style.fill_opacity.unwrap_or(1.0).into());
         cs::cairo_fill(cr);
     }
 }
