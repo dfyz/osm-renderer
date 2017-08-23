@@ -1,6 +1,7 @@
 extern crate capnp;
 extern crate cairo_sys as cs;
 #[macro_use] extern crate error_chain;
+extern crate futures;
 extern crate hyper;
 extern crate libc;
 #[macro_use] extern crate log;

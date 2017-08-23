@@ -3,20 +3,21 @@ use errors::*;
 use draw::cairo_drawer::CairoDrawer;
 use draw::drawer::Drawer;
 use draw::pure_rust_drawer::PureRustDrawer;
+use futures;
+use futures::future::FutureResult;
 use geodata::reader::GeodataReader;
-use hyper::header::{ContentLength, ContentType};
-use hyper::method::Method;
-use hyper::server::{Handler, Listening, Response, Request, Server};
-use hyper::status::StatusCode;
-use hyper::uri::RequestUri;
+use hyper;
+use hyper::{Get, StatusCode};
+use hyper::header::ContentType;
+use hyper::server::{Http, Response, Request, Service};
 use mapcss::parser::Parser;
 use mapcss::styler::Styler;
 use mapcss::token::Tokenizer;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use tile::Tile;
 
-pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> Result<Listening> {
+pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> Result<()> {
     let mut stylesheet_reader = File::open(stylesheet_file).chain_err(|| "Failed to open the stylesheet file")?;
     let mut stylesheet = String::new();
     stylesheet_reader.read_to_string(&mut stylesheet).chain_err(|| "Failed to read the stylesheet file")?;
@@ -24,14 +25,18 @@ pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> R
 
     let reader = GeodataReader::new(geodata_file).chain_err(|| "Failed to load the geodata file")?;
     let rules = parser.parse().chain_err(|| "Failed to parse the stylesheet file")?;
-    let handler = TileServer {
+
+    let tile_server = TileServer {
         reader,
         styler: Styler::new(rules),
         pure_drawer: PureRustDrawer::new(),
         cairo_drawer: Default::default(),
     };
-    let server = Server::http(address).chain_err(|| "Failed to spawn the HTTP server")?;
-    server.handle(handler).chain_err(|| "Failed to run the HTTP server")
+
+    let addr = address.parse().chain_err(|| format!("Failed to parse {} as server endpoint", address))?;
+    let create_handler = move || Ok(TileHandler { tile_server: &tile_server });
+    let server = Http::new().bind(&addr, create_handler).chain_err(|| "Failed to spawn the HTTP server")?;
+    server.run().chain_err(|| "Failed to run the HTTP server")
 }
 
 struct TileServer<'a> {
@@ -41,51 +46,64 @@ struct TileServer<'a> {
     cairo_drawer: CairoDrawer,
 }
 
-impl<'a> Handler for TileServer<'a> {
-    fn handle(&self, req: Request, mut resp: Response) {
-        let tile = extract_tile_from_request(&req);
-        if tile.is_none() {
-            *resp.status_mut() = StatusCode::BadRequest;
-            write_bytes_to_response(resp, b"Invalid tile request");
-            return;
-        }
+struct TileHandler<'a> {
+    tile_server: &'a TileServer<'a>,
+}
 
-        let tile = tile.unwrap();
-        let use_cairo = match req.uri {
-            RequestUri::AbsolutePath(ref uri) if uri.starts_with("/cairo") => true,
-            _ => false,
+impl<'a> Service for TileHandler<'a> {
+    type Request = Request;
+    type Response = Response;
+    type Error = hyper::Error;
+    type Future = FutureResult<Self::Response, hyper::Error>;
+
+    fn call(&self, req: Self::Request) -> Self::Future {
+        let tile = match extract_tile_from_request(&req) {
+            None => {
+                return futures::future::ok(
+                    Response::new()
+                        .with_status(StatusCode::BadRequest)
+                        .with_body("Invalid tile request")
+                );
+            },
+            Some(tile) => {
+                tile
+            },
         };
 
-        match self.draw_tile_contents(&tile, use_cairo) {
+        let use_cairo = req.uri().path().starts_with("/cairo");
+
+        let response = match self.draw_tile_contents(&tile, use_cairo) {
             Ok(content) => {
-                *resp.status_mut() = StatusCode::Ok;
-                resp.headers_mut().set(ContentType::png());
-                write_bytes_to_response(resp, &content);
+                Response::new()
+                    .with_header(ContentType::png())
+                    .with_body(content)
             },
             Err(e) => {
-                *resp.status_mut() = StatusCode::InternalServerError;
-                let err_msg = format!("{}", e);
-                write_bytes_to_response(resp, err_msg.as_bytes());
+                Response::new()
+                    .with_status(StatusCode::InternalServerError)
+                    .with_body(format!("{}", e))
             }
-        }
+        };
+
+        futures::future::ok(response)
     }
 }
 
-impl<'a> TileServer<'a> {
+impl<'a> TileHandler<'a> {
     fn draw_tile_contents(&self, tile: &Tile, use_cairo: bool) -> Result<Vec<u8>> {
-        let entities = self.reader.get_entities_in_tile(tile);
-        let drawer: &Drawer = if use_cairo { &self.cairo_drawer } else { &self.pure_drawer };
-        let tile_png_bytes = drawer.draw_tile(&entities, tile, &self.styler)?;
+        let entities = self.tile_server.reader.get_entities_in_tile(tile);
+        let drawer: &Drawer = if use_cairo { &self.tile_server.cairo_drawer } else { &self.tile_server.pure_drawer };
+        let tile_png_bytes = drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
         Ok(tile_png_bytes)
     }
 }
 
 fn extract_tile_from_request(req: &Request) -> Option<Tile> {
-    match (&req.method, &req.uri) {
-        (&Method::Get, &RequestUri::AbsolutePath(ref uri)) => {
+    match req.method() {
+        &Get => {
             let expected_token_count = 3;
 
-            let mut tokens = uri
+            let mut tokens = req.uri().path()
                 .trim_right_matches(".png")
                 .rsplit('/')
                 .take(expected_token_count)
@@ -110,13 +128,5 @@ fn extract_tile_from_request(req: &Request) -> Option<Tile> {
             }
         },
         _ => None,
-    }
-}
-
-fn write_bytes_to_response(mut resp: Response, bytes: &[u8]) {
-    resp.headers_mut().set(ContentLength(bytes.len() as u64));
-    let res = resp.start().map(|mut x| x.write_all(bytes));
-    if let Err(e) = res {
-        error!("Error while forming HTTP response: {}", e);
     }
 }
