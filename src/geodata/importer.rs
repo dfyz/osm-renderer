@@ -147,7 +147,7 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
             XmlEvent::StartElement {name, attributes, ..} => {
                 process_start_element(name, attributes, parser.position(), &mut parsing_state);
                 elem_count += 1;
-                if elem_count % 100000 == 0 {
+                if elem_count % 100_000 == 0 {
                     info!(
                         "Got {} nodes, {} ways and {} relations",
                         parsing_state.node_storage.entities.len(),

@@ -15,6 +15,7 @@ use draw::point::Point;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+#[derive(Default)]
 pub struct PureRustDrawer {
     cache: RwLock<HashMap<CacheKey, Figure>>,
 }
@@ -37,7 +38,7 @@ impl PureRustDrawer {
     fn draw_ways(&self, image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Tile) {
         let ways_to_draw = || {
             styled_ways.iter()
-                .filter(|&&(ref w, _)| {
+                .filter(|&&(w, _)| {
                     w.node_count() > 0
                 })
         };
@@ -76,7 +77,7 @@ impl PureRustDrawer {
 
         {
             let read_cache = self.cache.read().unwrap();
-            if let Some(ref figure) = read_cache.get(&cache_key) {
+            if let Some(figure) = read_cache.get(&cache_key) {
                 draw_figure(figure, image, tile);
                 return;
             }

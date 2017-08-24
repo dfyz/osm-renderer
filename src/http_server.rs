@@ -99,8 +99,8 @@ impl<'a> TileHandler<'a> {
 }
 
 fn extract_tile_from_request(req: &Request) -> Option<Tile> {
-    match req.method() {
-        &Get => {
+    match *req.method() {
+        Get => {
             let expected_token_count = 3;
 
             let mut tokens = req.uri().path()
