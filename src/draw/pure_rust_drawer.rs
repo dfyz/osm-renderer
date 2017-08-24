@@ -1,6 +1,7 @@
 use errors::*;
 
 use geodata::reader::{OsmEntities, OsmEntity, Way};
+use mapcss::color::Color;
 use mapcss::styler::{Style, Styler};
 use tile as t;
 
@@ -23,6 +24,7 @@ struct CacheKey {
     entity_id: u64,
     style: Style,
     zoom_level: u8,
+    is_fill: bool,
 }
 
 impl PureRustDrawer {
@@ -33,31 +35,57 @@ impl PureRustDrawer {
     }
 
     fn draw_ways(&self, image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Tile) {
-        let ways_to_draw = styled_ways.into_iter()
-            .filter(|&(w, _)| {
-                w.node_count() > 0
-            });
+        let ways_to_draw = || {
+            styled_ways.iter()
+                .filter(|&&(ref w, _)| {
+                    w.node_count() > 0
+                })
+        };
 
-        for (way, ref style) in ways_to_draw {
-            let cache_key = CacheKey {
-                entity_id: way.global_id(),
-                style: (*style).clone(),
-                zoom_level: tile.zoom,
-            };
+        let or_one = |x: &Option<f64>| x.unwrap_or(1.0);
 
-            {
-                let read_cache = self.cache.read().unwrap();
-                if let Some(ref figure) = read_cache.get(&cache_key) {
-                    draw_figure(figure, image, tile);
-                    continue;
-                }
-            }
-
-            let figure = way_to_figure(way, style, tile.zoom);
-            draw_figure(&figure, image, tile);
-            let mut write_cache = self.cache.write().unwrap();
-            write_cache.insert(cache_key, figure);
+        for &(way, ref style) in ways_to_draw() {
+            let opacity = or_one(&style.fill_opacity);
+            self.draw_one_way(image, way, style, &style.fill_color, opacity, 1.0, true, tile);
         }
+
+        for &(way, ref style) in ways_to_draw() {
+            let opacity = or_one(&style.opacity);
+            let width = or_one(&style.width);
+            self.draw_one_way(image, way, style, &style.color, opacity, width, false, tile);
+        }
+    }
+
+    fn draw_one_way(
+        &self,
+        image: &mut PngImage,
+        way: &Way,
+        style: &Style,
+        color: &Option<Color>,
+        opacity: f64,
+        width: f64,
+        is_fill: bool,
+        tile: &t::Tile
+    ) {
+        let cache_key = CacheKey {
+            entity_id: way.global_id(),
+            style: (*style).clone(),
+            zoom_level: tile.zoom,
+            is_fill,
+        };
+
+        {
+            let read_cache = self.cache.read().unwrap();
+            if let Some(ref figure) = read_cache.get(&cache_key) {
+                draw_figure(figure, image, tile);
+                return;
+            }
+        }
+
+        let figure = way_to_figure(way, tile.zoom, color, opacity, width, is_fill);
+        draw_figure(&figure, image, tile);
+        let mut write_cache = self.cache.write().unwrap();
+        write_cache.insert(cache_key, figure);
     }
 }
 
@@ -84,18 +112,43 @@ fn fill_canvas(image: &mut PngImage, styler: &Styler) {
     }
 }
 
-fn way_to_figure(way: &Way, style: &Style, zoom: u8) -> Figure {
+fn way_to_figure(way: &Way, zoom: u8, color: &Option<Color>, opacity: f64, width: f64, is_fill: bool) -> Figure {
     let mut figure: Figure = Default::default();
-    if let Some(ref color) = style.color {
+
+    if let Some(ref color) = *color {
         for i in 1..way.node_count() {
             let p1 = Point::from_node(&way.get_node(i - 1), zoom);
             let p2 = Point::from_node(&way.get_node(i), zoom);
-
-            let width = style.width.unwrap_or(1.0).into();
-            let opacity = style.opacity.unwrap_or(1.0).into();
             draw_thick_line(&p1, &p2, width, color, opacity, &mut figure);
         }
+
+        if is_fill {
+            let fill_color = RgbaColor::from_color(color, opacity);
+            for x_to_color in figure.pixels.values_mut() {
+                let mut prev_x = None;
+                let mut inside = false;
+
+                let mut filled_xs = Vec::new();
+
+                for x in x_to_color.keys() {
+                    if let Some(prev_x) = prev_x {
+                        if *x > prev_x + 1 {
+                            inside = !inside;
+                            if inside {
+                                filled_xs.extend((prev_x + 1)..*x);
+                            }
+                        }
+                    }
+                    prev_x = Some(*x);
+                }
+
+                for fill_x in filled_xs {
+                    x_to_color.insert(fill_x, fill_color.clone());
+                }
+            }
+        }
     }
+
     figure
 }
 
