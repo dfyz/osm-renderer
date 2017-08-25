@@ -1,5 +1,6 @@
 use errors::*;
 
+use std::collections::HashSet;
 use draw::cairo_drawer::CairoDrawer;
 use draw::drawer::Drawer;
 use draw::pure_rust_drawer::PureRustDrawer;
@@ -17,7 +18,7 @@ use std::fs::File;
 use std::io::Read;
 use tile::Tile;
 
-pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> Result<()> {
+pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str, osm_ids: Option<HashSet<u64>>) -> Result<()> {
     let mut stylesheet_reader = File::open(stylesheet_file).chain_err(|| "Failed to open the stylesheet file")?;
     let mut stylesheet = String::new();
     stylesheet_reader.read_to_string(&mut stylesheet).chain_err(|| "Failed to read the stylesheet file")?;
@@ -31,6 +32,7 @@ pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str) -> R
         styler: Styler::new(rules),
         pure_drawer: PureRustDrawer::new(),
         cairo_drawer: Default::default(),
+        osm_ids: osm_ids,
     };
 
     let addr = address.parse().chain_err(|| format!("Failed to parse {} as server endpoint", address))?;
@@ -44,6 +46,7 @@ struct TileServer<'a> {
     styler: Styler,
     pure_drawer: PureRustDrawer,
     cairo_drawer: CairoDrawer,
+    osm_ids: Option<HashSet<u64>>,
 }
 
 struct TileHandler<'a> {
@@ -91,7 +94,7 @@ impl<'a> Service for TileHandler<'a> {
 
 impl<'a> TileHandler<'a> {
     fn draw_tile_contents(&self, tile: &Tile, use_cairo: bool) -> Result<Vec<u8>> {
-        let entities = self.tile_server.reader.get_entities_in_tile(tile);
+        let entities = self.tile_server.reader.get_entities_in_tile(tile, &self.tile_server.osm_ids);
         let drawer: &Drawer = if use_cairo { &self.tile_server.cairo_drawer } else { &self.tile_server.pure_drawer };
         let tile_png_bytes = drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
         Ok(tile_png_bytes)

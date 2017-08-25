@@ -69,7 +69,7 @@ impl<'a> GeodataReader<'a> {
         })
     }
 
-    pub fn get_entities_in_tile(&'a self, t: &tile::Tile) -> OsmEntities<'a> {
+    pub fn get_entities_in_tile(&'a self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities<'a> {
         let tiles = self.get_reader().get_tiles().unwrap();
         let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
@@ -93,23 +93,26 @@ impl<'a> GeodataReader<'a> {
 
             while (current_tile.get_tile_x() == current_x) && (current_tile.get_tile_y() <= bounds.max_y) {
                 for node_id in current_tile.get_local_node_ids().unwrap().iter() {
-                    result.nodes.insert(Node {
+                    let node = Node {
                         reader: nodes.get(node_id),
-                    });
+                    };
+                    insert_entity_if_needed(node, osm_ids, &mut result.nodes);
                 }
 
                 for way_id in current_tile.get_local_way_ids().unwrap().iter() {
-                    result.ways.insert(Way {
+                    let way = Way {
                         geodata: self.get_reader(),
                         reader: ways.get(way_id),
-                    });
+                    };
+                    insert_entity_if_needed(way, osm_ids, &mut result.ways);
                 }
 
                 for relation_id in current_tile.get_local_relation_ids().unwrap().iter() {
-                    result.relations.insert(Relation {
+                    let relation = Relation {
                         geodata: self.get_reader(),
                         reader: relations.get(relation_id),
-                    });
+                    };
+                    insert_entity_if_needed(relation, osm_ids, &mut result.relations);
                 }
 
                 current_index += 1;
@@ -128,6 +131,18 @@ impl<'a> GeodataReader<'a> {
 
     fn get_reader(&self) -> &geodata_capnp::geodata::Reader {
         &self.handle
+    }
+}
+
+fn insert_entity_if_needed<'a, E>(entity: E, osm_ids: &Option<HashSet<u64>>, result: &mut HashSet<E>)
+    where E: OsmEntity<'a> + Hash + Eq
+{
+    let should_insert = match *osm_ids {
+        Some(ref ids) => ids.contains(&entity.global_id()),
+        None => true,
+    };
+    if should_insert {
+        result.insert(entity);
     }
 }
 
