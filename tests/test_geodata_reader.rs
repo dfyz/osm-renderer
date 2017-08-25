@@ -146,7 +146,7 @@ fn test_synthetic_data() {
         x: 0,
         y: 1,
     };
-    let node_ids = reader.get_entities_in_tile(&tile).nodes.iter().map(|x| x.global_id()).collect::<BTreeSet<_>>();
+    let node_ids = reader.get_entities_in_tile(&tile, &None).nodes.iter().map(|x| x.global_id()).collect::<BTreeSet<_>>();
     assert_eq!(good_node_ids, node_ids);
 }
 
@@ -167,7 +167,7 @@ fn test_nano_moscow_import() {
             y: t.y,
         };
 
-        let tile_content = reader.get_entities_in_tile(&tile);
+        let tile_content = reader.get_entities_in_tile(&tile, &None);
 
         fn collect_ids_with_tags<'a, E>(entity: &HashSet<E>) -> HashMap<u64, renderer::geodata::reader::Tags<'a>>
             where E : Eq + Hash + OsmEntity<'a>

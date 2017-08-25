@@ -24,7 +24,7 @@ fn test_styling() {
     let mut parser = Parser::new(tokenizer);
     let styler = Styler::new(parser.parse().unwrap());
 
-    let entities = reader.get_entities_in_tile(&Tile { x: 158458, y: 81948, zoom: 18 });
+    let entities = reader.get_entities_in_tile(&Tile { x: 158458, y: 81948, zoom: 18 }, &None);
 
     let named_ways = entities.ways.iter().filter(|x| x.tags().get_by_key("name").is_some());
     let styles = styler.style_ways(named_ways, 18);
