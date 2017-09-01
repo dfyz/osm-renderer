@@ -39,12 +39,7 @@ impl Eq for Style {
 
 impl Hash for Style {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // In one of the brightest moves in the history of PL design, Rust doesn't allow you
-        // to compare or hash floats. The abomination below should be good enough for cache keys.
-        // It asssumes the floats in our styles are small enough and doesn't work with NaNs (which
-        // incidentally was the whole point of forbidding float hashing in the first place), but hey,
-        // at least it's 10 lines instead of 100.
-        let float_to_int = |x| (x * 1000.0) as u64;
+        let float_to_int = |x: f64| x.to_bits();
 
         float_to_int(self.z_index).hash(state);
         self.color.hash(state);
