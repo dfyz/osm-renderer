@@ -3,7 +3,21 @@ use draw::png_image::RgbaColor;
 use draw::point::Point;
 use mapcss::color::Color;
 
-pub fn draw_thick_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64, figure: &mut Figure) {
+pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64) -> Figure
+    where I: Iterator<Item=(Point, Point)>
+{
+    let mut figure = Default::default();
+
+    for (p1, p2) in points {
+        draw_line(&p1, &p2, width, color, opacity, &mut figure);
+    }
+
+    figure
+}
+
+// Full-blown Bresenham with anti-aliasing and thick line support.
+// Mostly inspired by http://kt8216.unixcab.org/murphy/index.html
+pub fn draw_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64, figure: &mut Figure) {
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
     let (dx, dy) = ((p2.x - p1.x).abs(), (p2.y - p1.y).abs());

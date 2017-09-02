@@ -1,14 +1,14 @@
 use errors::*;
 
 use geodata::reader::{OsmEntities, OsmEntity, Way};
-use mapcss::color::Color;
 use mapcss::styler::{Style, Styler};
 use tile as t;
 
 use draw::TILE_SIZE;
 use draw::drawer::Drawer;
 use draw::figure::Figure;
-use draw::line::draw_thick_line;
+use draw::fill::fill_contour;
+use draw::line::draw_lines;
 use draw::png_image::{PngImage, RgbaColor};
 use draw::point::Point;
 
@@ -43,31 +43,16 @@ impl PureRustDrawer {
                 })
         };
 
-        let or_one = |x: &Option<f64>| x.unwrap_or(1.0);
-
         for &(way, ref style) in ways_to_draw() {
-            let opacity = or_one(&style.fill_opacity);
-            self.draw_one_way(image, way, style, &style.fill_color, opacity, 1.0, true, tile);
+            self.draw_one_way(image, way, style, true, tile);
         }
 
         for &(way, ref style) in ways_to_draw() {
-            let opacity = or_one(&style.opacity);
-            let width = or_one(&style.width);
-            self.draw_one_way(image, way, style, &style.color, opacity, width, false, tile);
+            self.draw_one_way(image, way, style, false, tile);
         }
     }
 
-    fn draw_one_way(
-        &self,
-        image: &mut PngImage,
-        way: &Way,
-        style: &Style,
-        color: &Option<Color>,
-        opacity: f64,
-        width: f64,
-        is_fill: bool,
-        tile: &t::Tile
-    ) {
+    fn draw_one_way(&self, image: &mut PngImage, way: &Way, style: &Style, is_fill: bool, tile: &t::Tile) {
         let cache_key = CacheKey {
             entity_id: way.global_id(),
             style: (*style).clone(),
@@ -83,10 +68,27 @@ impl PureRustDrawer {
             }
         }
 
-        let figure = way_to_figure(way, tile.zoom, color, opacity, width, is_fill);
-        draw_figure(&figure, image, tile);
+        let points = (1..way.node_count()).map(|idx| {
+            let p1 = Point::from_node(&way.get_node(idx - 1), tile.zoom);
+            let p2 = Point::from_node(&way.get_node(idx), tile.zoom);
+            (p1, p2)
+        });
+
+        let figure = if is_fill {
+            style.fill_color.as_ref().map(|color| {
+                fill_contour(points, color, float_or_one(&style.fill_opacity))
+            })
+        } else {
+            style.color.as_ref().map(|color| {
+                draw_lines(points, float_or_one(&style.width), color, float_or_one(&style.opacity))
+            })
+        };
+
+        if let Some(ref figure) = figure {
+            draw_figure(figure, image, tile);
+        }
         let mut write_cache = self.cache.write().unwrap();
-        write_cache.insert(cache_key, figure);
+        write_cache.insert(cache_key, figure.unwrap_or(Default::default()));
     }
 }
 
@@ -113,46 +115,6 @@ fn fill_canvas(image: &mut PngImage, styler: &Styler) {
     }
 }
 
-fn way_to_figure(way: &Way, zoom: u8, color: &Option<Color>, opacity: f64, width: f64, is_fill: bool) -> Figure {
-    let mut figure: Figure = Default::default();
-
-    if let Some(ref color) = *color {
-        for i in 1..way.node_count() {
-            let p1 = Point::from_node(&way.get_node(i - 1), zoom);
-            let p2 = Point::from_node(&way.get_node(i), zoom);
-            draw_thick_line(&p1, &p2, width, color, opacity, &mut figure);
-        }
-
-        if is_fill {
-            let fill_color = RgbaColor::from_color(color, opacity);
-            for x_to_color in figure.pixels.values_mut() {
-                let mut prev_x = None;
-                let mut inside = false;
-
-                let mut filled_xs = Vec::new();
-
-                for x in x_to_color.keys() {
-                    if let Some(prev_x) = prev_x {
-                        if *x > prev_x + 1 {
-                            inside = !inside;
-                            if inside {
-                                filled_xs.extend((prev_x + 1)..*x);
-                            }
-                        }
-                    }
-                    prev_x = Some(*x);
-                }
-
-                for fill_x in filled_xs {
-                    x_to_color.insert(fill_x, fill_color.clone());
-                }
-            }
-        }
-    }
-
-    figure
-}
-
 fn draw_figure(figure: &Figure, image: &mut PngImage, tile: &t::Tile) {
     let to_tile_start = |c| (c as usize) * TILE_SIZE;
     let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
@@ -164,4 +126,8 @@ fn draw_figure(figure: &Figure, image: &mut PngImage, tile: &t::Tile) {
             image.set_pixel(real_x, real_y, color);
         }
     }
+}
+
+fn float_or_one(num: &Option<f64>) -> f64 {
+    num.unwrap_or(1.0)
 }
