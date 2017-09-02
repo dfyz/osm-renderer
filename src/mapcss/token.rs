@@ -184,7 +184,7 @@ impl<'a> Tokenizer<'a> {
         };
 
         let mut number = match first_ch.to_digit(10) {
-            Some(digit) => digit as f64,
+            Some(digit) => f64::from(digit),
             None => return self.lexer_error(format!("Expected a digit instead of '{}'", first_ch)),
         };
 
@@ -192,7 +192,7 @@ impl<'a> Tokenizer<'a> {
         let mut had_dot = false;
         let mut digits_after_dot = 0;
 
-        let add_digit = |current: &mut f64, digit| *current = 10.0_f64 * (*current) + (digit as f64);
+        let add_digit = |current: &mut f64, digit| *current = 10.0_f64 * (*current) + f64::from(digit);
 
         while let Some(next_ch) = self.peek_char() {
             if let Some(digit) = next_ch.to_digit(10) {

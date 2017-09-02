@@ -43,8 +43,8 @@ pub fn draw_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64
         was_corrected
     };
 
-    let line_dist_numer_const = ((p2.x * p1.y) - (p2.y * p1.x)) as f64;
-    let line_dist_denom = ((dy*dy + dx*dx) as f64).sqrt();
+    let line_dist_numer_const = f64::from((p2.x * p1.y) - (p2.y * p1.x));
+    let line_dist_denom = (f64::from(dy*dy + dx*dx)).sqrt();
     let half_width = width / 2.0;
     let feather_from = (half_width - 0.5).max(0.0);
     let feather_to = (half_width + 0.5).max(1.0);
@@ -59,7 +59,7 @@ pub fn draw_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64
             loop {
                 let (perp_x, perp_y) = swap_x_y_if_needed(p_mx, p_mn, should_swap_x_y);
 
-                let line_dist_numer_non_const = ((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y) as f64;
+                let line_dist_numer_non_const = f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
                 let line_dist = (line_dist_numer_const + line_dist_numer_non_const).abs() / line_dist_denom;
 
                 let pixel_opacity = if line_dist < feather_from {

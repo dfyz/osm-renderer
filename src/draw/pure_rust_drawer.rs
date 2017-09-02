@@ -88,7 +88,7 @@ impl PureRustDrawer {
             draw_figure(figure, image, tile);
         }
         let mut write_cache = self.cache.write().unwrap();
-        write_cache.insert(cache_key, figure.unwrap_or(Default::default()));
+        write_cache.insert(cache_key, figure.unwrap_or_default());
     }
 }
 

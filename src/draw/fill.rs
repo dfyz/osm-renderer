@@ -17,7 +17,7 @@ pub fn fill_contour<I>(points: I, color: &Color, opacity: f64) -> Figure
         draw_line(idx, &p1, &p2, &mut y_to_edges);
     }
 
-    for (y, edges) in y_to_edges.iter() {
+    for (y, edges) in &y_to_edges {
         let mut good_edges = edges.values().filter(|e| !e.is_poisoned).collect::<Vec<_>>();
         good_edges.sort_by_key(|e| e.x_min);
 
@@ -60,7 +60,7 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY)
             false
         };
 
-        let mut edge = y_to_edges
+        let edge = y_to_edges
             .entry(cur_point.y)
             .or_insert_with(Default::default)
             .entry(edge_idx)

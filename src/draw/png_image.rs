@@ -16,7 +16,7 @@ pub struct RgbaColor {
 
 impl RgbaColor {
     pub fn from_color(color: &Color, opacity: f64) -> RgbaColor {
-        let premultiply = |c| opacity * ((c as f64) / (u8::max_value() as f64));
+        let premultiply = |c| opacity * (f64::from(c) / f64::from(u8::max_value()));
 
         RgbaColor {
             r: premultiply(color.r),
@@ -68,7 +68,7 @@ impl PngImage {
             for p in &self.pixels {
                 let postdivide = |val| {
                     let mul = if p.a == 0.0 { 0.0 } else { val / p.a };
-                    ((u8::max_value() as f64) * mul) as u8
+                    (f64::from(u8::max_value()) * mul) as u8
                 };
                 image_bytes.extend([
                     postdivide(p.r),

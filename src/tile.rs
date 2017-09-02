@@ -112,7 +112,7 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
 
     let rescale = |x: f64| {
         let factor = x / (2f64 * PI);
-        let dimension_in_pixels = (TILE_SIZE * (1 << zoom)) as f64;
+        let dimension_in_pixels = f64::from(TILE_SIZE * (1 << zoom));
         (factor * dimension_in_pixels) as u32
     };
 
@@ -121,5 +121,5 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
 
 pub fn coords_to_float_xy<C: Coords>(coords: &C, zoom: u8) -> (f64, f64) {
     let (x, y) = coords_to_xy(coords, zoom);
-    (x as f64, y as f64)
+    (f64::from(x), f64::from(y))
 }

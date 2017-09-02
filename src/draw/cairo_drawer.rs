@@ -16,7 +16,7 @@ unsafe extern "C" fn write_func(closure: *mut libc::c_void, data: *mut u8, len: 
 }
 
 unsafe fn set_color(cr: *mut cs::cairo_t, color: &Color, opacity: f64) {
-    let to_double_color = |u8_color| (u8_color as f64) / 255.0_f64;
+    let to_double_color = |u8_color| f64::from(u8_color) / 255.0_f64;
     cs::cairo_set_source_rgba(cr, to_double_color(color.r), to_double_color(color.g), to_double_color(color.b), opacity);
 }
 
@@ -79,7 +79,7 @@ impl Drawer for CairoDrawer {
 
             let cr = cs::cairo_create(s);
 
-            let get_delta = |c| -((TILE_SIZE as f64) * (c as f64));
+            let get_delta = |c| -(f64::from(TILE_SIZE) * f64::from(c));
             cs::cairo_translate(cr, get_delta(tile.x), get_delta(tile.y));
 
             if let Some(ref color) = styler.canvas_fill_color {
