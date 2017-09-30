@@ -43,13 +43,9 @@ pub fn draw_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64
         was_corrected
     };
 
-    let line_dist_numer_const = f64::from((p2.x * p1.y) - (p2.y * p1.x));
-    let line_dist_denom = (f64::from(dy*dy + dx*dx)).sqrt();
-    let half_width = width / 2.0;
-    let feather_from = (half_width - 0.5).max(0.0);
-    let feather_to = (half_width + 0.5).max(1.0);
-    let feather_dist = feather_to - feather_from;
-    let opacity_mul = opacity * width.min(1.0);
+    let center_dist_numer_const = f64::from((p2.x * p1.y) - (p2.y * p1.x));
+    let center_dist_denom = (f64::from(dy*dy + dx*dx)).sqrt();
+    let cd_tracker = CenterDistanceOpacityTracker::new(width);
 
     let mut draw_perpendiculars = |mn, mx, p_error| {
         let mut draw_one_perpendicular = |mul| {
@@ -59,18 +55,16 @@ pub fn draw_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64
             loop {
                 let (perp_x, perp_y) = swap_x_y_if_needed(p_mx, p_mn, should_swap_x_y);
 
-                let line_dist_numer_non_const = f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
-                let line_dist = (line_dist_numer_const + line_dist_numer_non_const).abs() / line_dist_denom;
+                let center_dist_numer_non_const = f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
+                let center_dist = (center_dist_numer_const + center_dist_numer_non_const).abs() / center_dist_denom;
 
-                let pixel_opacity = if line_dist < feather_from {
-                    opacity_mul
-                } else if line_dist < feather_to {
-                    (feather_to - line_dist) / feather_dist * opacity_mul
-                } else {
+                let cd_opacity = cd_tracker.get_opacity(center_dist);
+
+                if cd_opacity <= 0.0 {
                     break;
-                };
+                }
 
-                figure.add(perp_x as usize, perp_y as usize, RgbaColor::from_color(color, pixel_opacity));
+                figure.add(perp_x as usize, perp_y as usize, RgbaColor::from_color(color, opacity * cd_opacity));
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;
@@ -97,6 +91,38 @@ pub fn draw_line(p1: &Point, p2: &Point, width: f64, color: &Color, opacity: f64
             }
         }
         *mx += mx_inc;
+    }
+}
+
+struct CenterDistanceOpacityTracker {
+    feather_from: f64,
+    feather_to: f64,
+    feather_dist: f64,
+    opacity_mul: f64,
+}
+
+impl CenterDistanceOpacityTracker {
+    fn new(line_width: f64) -> Self {
+        let line_half_width = line_width / 2.0;
+        let feather_from = (line_half_width - 0.5).max(0.0);
+        let feather_to = (line_half_width + 0.5).max(1.0);
+        let feather_dist = feather_to - feather_from;
+        CenterDistanceOpacityTracker {
+            feather_from,
+            feather_to,
+            feather_dist,
+            opacity_mul: line_width.min(1.0),
+        }
+    }
+
+    fn get_opacity(&self, center_distance: f64) -> f64 {
+        if center_distance < self.feather_from {
+            self.opacity_mul
+        } else if center_distance < self.feather_to {
+            (self.feather_to - center_distance) / self.feather_dist * self.opacity_mul
+        } else {
+            0.0
+        }
     }
 }
 
