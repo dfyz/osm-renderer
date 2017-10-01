@@ -23,7 +23,7 @@ unsafe fn set_color(cr: *mut cs::cairo_t, color: &Color, opacity: f64) {
 unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
     cs::cairo_set_line_width(cr, style.width.unwrap_or(1.0).into());
 
-    /*let cairo_line_cap = match style.line_cap {
+    let cairo_line_cap = match style.line_cap {
         Some(LineCap::Round) => cs::enums::LineCap::Round,
         Some(LineCap::Square) => cs::enums::LineCap::Square,
         _ => cs::enums::LineCap::Butt,
@@ -35,7 +35,7 @@ unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) 
         Some(LineJoin::Miter) => cs::enums::LineJoin::Miter,
         _ => cs::enums::LineJoin::Round,
     };
-    cs::cairo_set_line_join(cr, cairo_line_join);*/
+    cs::cairo_set_line_join(cr, cairo_line_join);
 
     cs::cairo_new_path(cr);
     let (x, y) = coords_to_float_xy(&w.get_node(0), zoom);
