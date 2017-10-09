@@ -60,16 +60,15 @@ def main():
 
         def is_good_way(refs):
             node_list = [node_to_coords[r] for r in refs if r in node_to_coords]
+            lat, lon = node_list[0]
+            south, north, west, east = lat, lat, lon, lon
             for i in range(1, len(node_list)):
-                (lat1, lon1) = node_list[i - 1]
-                (lat2, lon2) = node_list[i]
-                south = min(lat1, lat2)
-                north = max(lat1, lat2)
-                west = min(lon1, lon2)
-                east = max(lon1, lon2)
-                if tile in mercantile.tiles(west, south, east, north, [tile.z]):
-                    return True
-            return False
+                lat, lon = node_list[i]
+                south = min(south, lat)
+                north = max(north, lat)
+                west = min(west, lon)
+                east = max(east, lon)
+            return tile in mercantile.tiles(west, south, east, north, [tile.z])
 
         good_nodes = set([node_id for node_id, coords in node_to_coords.items() if is_good_node(*coords)])
         good_ways = set([way_id for way_id, refs in way_to_nodes.items() if (set(refs) & good_nodes) or is_good_way(refs)])

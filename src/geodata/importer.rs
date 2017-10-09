@@ -3,6 +3,7 @@ use errors::*;
 use coords;
 use tile;
 
+use std::cmp::{min, max};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read};
@@ -405,14 +406,24 @@ fn get_tile_references(geodata: geodata::Reader<>) -> TileIdToReferences {
             }
             return;
         }
+
+        let first_tile = tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids.get(0)));
+        let mut tile_range = tile::TileRange {
+            min_x: first_tile.x,
+            max_x: first_tile.x,
+            min_y: first_tile.y,
+            max_y: first_tile.y,
+        };
         for i in 1..local_node_ids.len() {
-            let coords1 = get_coords_for_node(nodes, local_node_ids.get(i - 1));
-            let coords2 = get_coords_for_node(nodes, local_node_ids.get(i));
-            let tile_range = tile::coords_pair_to_max_zoom_tile_range(&coords1, &coords2);
-            for x in tile_range.min_x .. tile_range.max_x + 1 {
-                for y in tile_range.min_y .. tile_range.max_y + 1 {
-                    get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
-                }
+            let next_tile = tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids.get(i)));
+            tile_range.min_x = min(tile_range.min_x, next_tile.x);
+            tile_range.max_x = max(tile_range.max_x, next_tile.x);
+            tile_range.min_y = min(tile_range.min_y, next_tile.y);
+            tile_range.max_y = max(tile_range.max_y, next_tile.y);
+        }
+        for x in tile_range.min_x .. tile_range.max_x + 1 {
+            for y in tile_range.min_y .. tile_range.max_y + 1 {
+                get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
             }
         }
     }
