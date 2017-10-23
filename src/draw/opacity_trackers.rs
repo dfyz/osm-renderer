@@ -81,7 +81,7 @@ impl StartDistanceOpacityTracker {
             return 1.0;
         }
         let dist_rem = (self.traveled_distance + start_distance) % self.total_dash_len;
-        for dash in self.dashes.iter() {
+        for dash in &self.dashes {
             let mul = dash.opacity_mul;
             if dist_rem < dash.start_from {
                 return 0.0;

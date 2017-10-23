@@ -21,7 +21,7 @@ unsafe fn set_color(cr: *mut cs::cairo_t, color: &Color, opacity: f64) {
 }
 
 unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
-    cs::cairo_set_line_width(cr, style.width.unwrap_or(1.0).into());
+    cs::cairo_set_line_width(cr, style.width.unwrap_or(1.0));
 
     let cairo_line_cap = match style.line_cap {
         Some(LineCap::Round) => cs::enums::LineCap::Round,
@@ -49,12 +49,12 @@ unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) 
 unsafe fn draw_way(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
     let default_dashes = Vec::new();
     let dashes = style.dashes.as_ref().unwrap_or(&default_dashes);
-    let unwrapped_dashes = dashes.iter().map(|x| (*x).into()).collect::<Vec<_>>();
+    let unwrapped_dashes = dashes.to_vec();
     cs::cairo_set_dash(cr, unwrapped_dashes.as_ptr(), unwrapped_dashes.len() as i32, 0.0);
 
     if let Some(ref c) = style.color {
         draw_way_path(cr, w, style, zoom);
-        set_color(cr, c, style.opacity.unwrap_or(1.0).into());
+        set_color(cr, c, style.opacity.unwrap_or(1.0));
         cs::cairo_stroke(cr);
     }
 }
@@ -62,7 +62,7 @@ unsafe fn draw_way(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
 unsafe fn fill_way<'a>(cr: *mut cs::cairo_t, w: &Way<'a>, style: &Style, zoom: u8) {
     if let Some(ref c) = style.fill_color {
         draw_way_path(cr, w, style, zoom);
-        set_color(cr, c, style.fill_opacity.unwrap_or(1.0).into());
+        set_color(cr, c, style.fill_opacity.unwrap_or(1.0));
         cs::cairo_fill(cr);
     }
 }
