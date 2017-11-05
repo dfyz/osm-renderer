@@ -8,4 +8,4 @@ pub mod line;
 pub mod png_image;
 pub mod point;
 pub mod pure_rust_drawer;
-pub mod opacity_trackers;
+pub mod opacity_calculator;

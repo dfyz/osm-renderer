@@ -1,17 +1,17 @@
 use draw::figure::Figure;
 use draw::png_image::RgbaColor;
 use draw::point::Point;
-use draw::opacity_trackers;
+use draw::opacity_calculator::OpacityCalculator;
 use mapcss::color::Color;
 
 pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes: &Option<Vec<f64>>) -> Figure
     where I: Iterator<Item=(Point, Point)>
 {
     let mut figure = Default::default();
-    let mut sd_tracker = opacity_trackers::StartDistanceOpacityTracker::new(dashes);
+    let mut opacity_calculator = OpacityCalculator::new(width, dashes);
     for (p1, p2) in points {
-        draw_line(&p1, &p2, width, color, opacity, &sd_tracker, &mut figure);
-        sd_tracker.add_traveled_distance(p1.dist(&p2));
+        draw_line(&p1, &p2, color, opacity, &opacity_calculator, &mut figure);
+        opacity_calculator.add_traveled_distance(p1.dist(&p2));
     }
 
     figure
@@ -22,10 +22,9 @@ pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes:
 fn draw_line(
     p1: &Point,
     p2: &Point,
-    width: f64,
     color: &Color,
-    opacity: f64,
-    sd_tracker: &opacity_trackers::StartDistanceOpacityTracker,
+    initial_opacity: f64,
+    opacity_calculator: &OpacityCalculator,
     figure: &mut Figure
 ) {
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
@@ -56,8 +55,6 @@ fn draw_line(
     let center_dist_numer_const = f64::from((p2.x * p1.y) - (p2.y * p1.x));
     let center_dist_denom = (f64::from(dy*dy + dx*dx)).sqrt();
 
-    let cd_tracker = opacity_trackers::CenterDistanceOpacityTracker::new(width);
-
     let mut draw_perpendiculars = |mn, mx, p_error| {
         let mut draw_one_perpendicular = |mul| {
             let mut p_mn = mx;
@@ -73,22 +70,17 @@ fn draw_line(
                 let center_dist_numer_non_const = f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
                 let center_dist = (center_dist_numer_const + center_dist_numer_non_const).abs() / center_dist_denom;
 
-                let cd_opacity = cd_tracker.get_opacity(center_dist);
-
-                if cd_opacity <= 0.0 {
-                    break;
-                }
-
                 let long_start_dist = current_point.dist(p1);
                 let short_start_dist = (long_start_dist.powi(2) - center_dist.powi(2)).sqrt();
 
-                let sd_opacity = sd_tracker.get_opacity(short_start_dist);
-                let final_opacity_mul = cd_opacity.min(sd_opacity);
+                let opacity_params = opacity_calculator.calculate(center_dist, short_start_dist);
 
-                if final_opacity_mul > 0.0 {
-                    let current_color = RgbaColor::from_color(color, opacity * final_opacity_mul);
-                    figure.add(current_point.x as usize, current_point.y as usize, current_color);
+                if !opacity_params.is_in_line {
+                    break;
                 }
+
+                let current_color = RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
+                figure.add(current_point.x as usize, current_point.y as usize, current_color);
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;

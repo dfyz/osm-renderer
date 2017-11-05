@@ -1,51 +1,17 @@
-pub struct CenterDistanceOpacityTracker {
-    feather_from: f64,
-    feather_to: f64,
-    feather_dist: f64,
-    opacity_mul: f64,
-}
-
-pub struct StartDistanceOpacityTracker {
+pub struct OpacityCalculator {
+    line_width: f64,
     dashes: Vec<DashSegment>,
     total_dash_len: f64,
     traveled_distance: f64,
 }
 
-impl CenterDistanceOpacityTracker {
-    pub fn new(line_width: f64) -> Self {
-        let line_half_width = line_width / 2.0;
-        let feather_from = (line_half_width - 0.5).max(0.0);
-        let feather_to = (line_half_width + 0.5).max(1.0);
-        let feather_dist = feather_to - feather_from;
-        CenterDistanceOpacityTracker {
-            feather_from,
-            feather_to,
-            feather_dist,
-            opacity_mul: line_width.min(1.0),
-        }
-    }
-
-    pub fn get_opacity(&self, center_distance: f64) -> f64 {
-        self.opacity_mul * (if center_distance < self.feather_from {
-            1.0
-        } else if center_distance < self.feather_to {
-            (self.feather_to - center_distance) / self.feather_dist
-        } else {
-            0.0
-        })
-    }
+pub struct OpacityParams {
+    pub opacity: f64,
+    pub is_in_line: bool,
 }
 
-struct DashSegment {
-    start_from: f64,
-    start_to: f64,
-    end_from: f64,
-    end_to: f64,
-    opacity_mul: f64,
-}
-
-impl StartDistanceOpacityTracker {
-    pub fn new(dashes: &Option<Vec<f64>>) -> Self {
+impl OpacityCalculator {
+    pub fn new(line_width: f64, dashes: &Option<Vec<f64>>) -> Self {
         let mut dash_segments = Vec::new();
         let mut len_before = 0.0;
 
@@ -70,13 +36,27 @@ impl StartDistanceOpacityTracker {
         }
 
         Self {
+            line_width,
             dashes: dash_segments,
             total_dash_len: len_before,
             traveled_distance: 0.0,
         }
     }
 
-    pub fn get_opacity(&self, start_distance: f64) -> f64 {
+    pub fn calculate(&self, center_distance: f64, start_distance: f64) -> OpacityParams {
+        let cd = get_opacity_by_center_distance(self.line_width, center_distance);
+        let sd = self.get_opacity_by_start_distance(start_distance);
+        OpacityParams {
+            opacity: cd.min(sd),
+            is_in_line: cd > 0.0,
+        }
+    }
+
+    pub fn add_traveled_distance(&mut self, distance: f64) {
+        self.traveled_distance += distance;
+    }
+
+    fn get_opacity_by_start_distance(&self, start_distance: f64) -> f64 {
         if self.dashes.is_empty() {
             return 1.0;
         }
@@ -96,8 +76,28 @@ impl StartDistanceOpacityTracker {
 
         0.0
     }
+}
 
-    pub fn add_traveled_distance(&mut self, distance: f64) {
-        self.traveled_distance += distance;
-    }
+struct DashSegment {
+    start_from: f64,
+    start_to: f64,
+    end_from: f64,
+    end_to: f64,
+    opacity_mul: f64,
+}
+
+fn get_opacity_by_center_distance(line_width: f64, center_distance: f64) -> f64 {
+    let line_half_width = line_width / 2.0;
+    let feather_from = (line_half_width - 0.5).max(0.0);
+    let feather_to = (line_half_width + 0.5).max(1.0);
+    let feather_dist = feather_to - feather_from;
+    let opacity_mul = line_width.min(1.0);
+
+    opacity_mul * (if center_distance < feather_from {
+        1.0
+    } else if center_distance < feather_to {
+        (feather_to - center_distance) / feather_dist
+    } else {
+        0.0
+    })
 }
