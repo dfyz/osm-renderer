@@ -3,12 +3,13 @@ use draw::png_image::RgbaColor;
 use draw::point::Point;
 use draw::opacity_calculator::OpacityCalculator;
 use mapcss::color::Color;
+use mapcss::styler::LineCap;
 
-pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes: &Option<Vec<f64>>) -> Figure
+pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Figure
     where I: Iterator<Item=(Point, Point)>
 {
     let mut figure = Default::default();
-    let mut opacity_calculator = OpacityCalculator::new(width, dashes);
+    let mut opacity_calculator = OpacityCalculator::new(width, dashes, line_cap);
     for (p1, p2) in points {
         draw_line(&p1, &p2, color, opacity, &opacity_calculator, &mut figure);
         opacity_calculator.add_traveled_distance(p1.dist(&p2));

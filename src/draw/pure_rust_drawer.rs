@@ -80,7 +80,14 @@ impl PureRustDrawer {
             })
         } else {
             style.color.as_ref().map(|color| {
-                draw_lines(points, float_or_one(&style.width), color, float_or_one(&style.opacity), &style.dashes)
+                draw_lines(
+                    points,
+                    float_or_one(&style.width),
+                    color,
+                    float_or_one(&style.opacity),
+                    &style.dashes,
+                    &style.line_cap
+                )
             })
         };
 
