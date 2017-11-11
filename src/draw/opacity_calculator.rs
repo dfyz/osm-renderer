@@ -34,9 +34,8 @@ impl OpacityCalculator {
     pub fn calculate(&self, center_distance: f64, start_distance: f64) -> OpacityData {
         let sd = self.get_opacity_by_start_distance(start_distance);
 
-        let half_line_width = sd.distance_in_cap.map(|cap_dist| {
-            (self.half_line_width.powi(2) - cap_dist.powi(2)).sqrt()
-        }).unwrap_or(self.half_line_width);
+        let cap_dist = sd.distance_in_cap.unwrap_or_default();
+        let half_line_width = (self.half_line_width.powi(2) - cap_dist.powi(2)).sqrt();
 
         let cd = get_opacity_by_center_distance(center_distance, half_line_width);
         OpacityData {
@@ -58,18 +57,21 @@ impl OpacityCalculator {
         }
 
         let dist_rem = (self.traveled_distance + start_distance) % self.total_dash_len;
-
-        let best_dash_with_opacity = self.dashes.iter()
+        let safe_cmp_floats = |x: &f64, y: &f64| x.partial_cmp(y).unwrap_or(Ordering::Equal);
+        let opacities_with_cap_distances = self.dashes.iter()
             .filter_map(|d| {
-                get_opacity_by_segment(dist_rem, d).map(|op| (d, op))
+                get_opacity_by_segment(dist_rem, d).map(|op| (op, get_distance_in_cap(dist_rem, d)))
             })
-            .max_by(|x, y| x.1.partial_cmp(&y.1).unwrap_or(Ordering::Equal));
+            .collect::<Vec<_>>();
 
         StartDistanceOpacityData {
-            opacity: best_dash_with_opacity.map(|x| x.1).unwrap_or(0.0),
-            distance_in_cap: best_dash_with_opacity.map(|x| x.0).and_then(|d| {
-                get_distance_in_cap(dist_rem, d)
-            }),
+            opacity: opacities_with_cap_distances.iter()
+                .map(|x| x.0)
+                .max_by(&safe_cmp_floats)
+                .unwrap_or_default(),
+            distance_in_cap: opacities_with_cap_distances.iter()
+                .filter_map(|x| x.1)
+                .min_by(&safe_cmp_floats),
         }
     }
 }
@@ -79,6 +81,7 @@ struct StartDistanceOpacityData {
     distance_in_cap: Option<f64>,
 }
 
+#[derive(Debug)]
 struct DashSegment {
     start_from: f64,
     start_to: f64,
@@ -155,13 +158,13 @@ fn get_opacity_by_segment(dist: f64, segment: &DashSegment) -> Option<f64> {
 }
 
 fn get_distance_in_cap(dist: f64, segment: &DashSegment) -> Option<f64> {
-    segment.original_endpoints.and_then(|(a, b)| {
+    segment.original_endpoints.map(|(a, b)| {
         if dist < a {
-            Some(a - dist)
+            a - dist
         } else if dist <= b {
-            None
+            0.0
         } else {
-            Some(dist - b)
+            dist - b
         }
     })
 }
