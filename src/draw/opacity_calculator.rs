@@ -14,8 +14,7 @@ pub struct OpacityData {
 }
 
 impl OpacityCalculator {
-    pub fn new(line_width: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Self {
-        let half_line_width = line_width / 2.0;
+    pub fn new(half_line_width: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Self {
         let mut dash_segments = Vec::new();
         let mut len_before = 0.0;
 

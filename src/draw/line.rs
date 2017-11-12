@@ -8,8 +8,9 @@ use mapcss::styler::LineCap;
 pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Figure
     where I: Iterator<Item=(Point, Point)>
 {
+    let half_width = width / 2.0;
     let mut figure = Default::default();
-    let mut opacity_calculator = OpacityCalculator::new(width, dashes, line_cap);
+    let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap);
     for (p1, p2) in points {
         draw_line(&p1, &p2, color, opacity, &opacity_calculator, &mut figure);
         opacity_calculator.add_traveled_distance(p1.dist(&p2));
