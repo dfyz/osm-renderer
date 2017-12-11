@@ -1,4 +1,4 @@
-use mapcss::styler::LineCap;
+use mapcss::styler::{is_non_trivial_cap, LineCap};
 use std::cmp::Ordering;
 
 pub struct OpacityCalculator {
@@ -55,7 +55,10 @@ impl OpacityCalculator {
             };
         }
 
-        let dist_rem = (self.traveled_distance + start_distance) % self.total_dash_len;
+        let mut dist_rem = self.traveled_distance + start_distance;
+        if self.total_dash_len > 0.0 {
+            dist_rem %= self.total_dash_len;
+        }
         let safe_cmp_floats = |x: &f64, y: &f64| x.partial_cmp(y).unwrap_or(Ordering::Equal);
         let opacities_with_cap_distances = self.dashes.iter()
             .filter_map(|d| {
@@ -119,12 +122,9 @@ fn compute_segments(
             _ => None,
         };
 
-        match *line_cap {
-            Some(LineCap::Square) | Some(LineCap::Round) => {
-                start -= half_line_width;
-                end += half_line_width;
-            },
-            _ => {},
+        if is_non_trivial_cap(line_cap) {
+            start -= half_line_width;
+            end += half_line_width;
         }
 
         let midpoint = (start + end) / 2.0;

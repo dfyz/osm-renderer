@@ -19,6 +19,13 @@ pub enum LineCap {
     Square,
 }
 
+pub fn is_non_trivial_cap(line_cap: &Option<LineCap>) -> bool {
+    match *line_cap {
+        Some(LineCap::Square) | Some(LineCap::Round) => true,
+        _ => false,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Style {
     pub z_index: f64,

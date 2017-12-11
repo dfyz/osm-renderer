@@ -3,7 +3,7 @@ use draw::png_image::RgbaColor;
 use draw::point::Point;
 use draw::opacity_calculator::OpacityCalculator;
 use mapcss::color::Color;
-use mapcss::styler::LineCap;
+use mapcss::styler::{is_non_trivial_cap, LineCap};
 
 pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Figure
     where I: Iterator<Item=(Point, Point)>
@@ -11,9 +11,30 @@ pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes:
     let half_width = width / 2.0;
     let mut figure = Default::default();
     let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap);
-    for (p1, p2) in points {
+    let opacity_calculator_for_caps = OpacityCalculator::new(half_width, &Some(vec![0.0]), line_cap);
+
+    let has_caps = is_non_trivial_cap(line_cap);
+
+    let mut peekable_points = points.peekable();
+    let mut first = true;
+
+    while let Some((p1, p2)) = peekable_points.next() {
         draw_line(&p1, &p2, color, opacity, &opacity_calculator, &mut figure);
         opacity_calculator.add_traveled_distance(p1.dist(&p2));
+
+        if p1 != p2 && has_caps {
+            if first {
+                let cap_end = p1.push_away_from(&p2, half_width);
+                draw_line(&p1, &cap_end, color, opacity, &opacity_calculator_for_caps, &mut figure);
+            }
+
+            if !peekable_points.peek().is_some() {
+                let cap_end = p2.push_away_from(&p1, half_width);
+                draw_line(&p2, &cap_end, color, opacity, &opacity_calculator_for_caps, &mut figure);
+            }
+        }
+
+        first = false;
     }
 
     figure
