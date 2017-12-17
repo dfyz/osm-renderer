@@ -1,14 +1,14 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
-extern crate slog_stdlog;
+extern crate env_logger;
 
 extern crate renderer;
 
 use clap::{App, Arg};
 
 fn main() {
-    slog_stdlog::init().unwrap();
+    env_logger::init().unwrap();
 
     let matches =
         App::new("OSM importer")

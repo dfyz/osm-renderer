@@ -3,6 +3,7 @@ use errors::*;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+use std::fs::File;
 
 use capnp::Word;
 use capnp::serialize::SliceSegments;
@@ -10,12 +11,12 @@ use capnp::{serialize, struct_list};
 use capnp::message::{Reader, ReaderOptions};
 use coords::Coords;
 use geodata_capnp;
-use memmap::{Mmap, Protection};
+use memmap::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
 use tile;
 
 type GeodataHandle<'a> = OwningHandle<
-    Box<Mmap>,
+    Box<(File, Mmap)>,
     OwningHandle<
         Box<Reader<SliceSegments<'a>>>,
         Box<geodata_capnp::geodata::Reader<'a>>
@@ -43,14 +44,18 @@ unsafe impl<'a> Sync for GeodataReader<'a> {}
 
 impl<'a> GeodataReader<'a> {
     pub fn new(file_name: &str) -> Result<GeodataReader<'a>> {
-        let input_file = Mmap::open_path(file_name, Protection::Read)
-            .chain_err(|| format!("Failed to map {} to memory", file_name))?;
+        let input_file = File::open(file_name)
+            .chain_err(|| format!("Failed to open {} for memory mapping", file_name))?;
+        let mmap = unsafe {
+            MmapOptions::new().map(&input_file)
+                .chain_err(|| format!("Failed to map {} to memory", file_name))?
+        };
 
         let handle = OwningHandle::try_new(
-            Box::new(input_file),
+            Box::new((input_file, mmap)),
             |x| {
                 let message = serialize::read_message_from_words(
-                    Word::bytes_to_words(unsafe{(&*x).as_slice()}),
+                    Word::bytes_to_words(unsafe{&(*x).1}),
                     ReaderOptions {
                         traversal_limit_in_words: u64::max_value(),
                         nesting_limit: i32::max_value(),

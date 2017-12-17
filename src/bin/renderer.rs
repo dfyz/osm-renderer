@@ -1,6 +1,6 @@
 extern crate clap;
 #[macro_use] extern crate log;
-extern crate slog_stdlog;
+extern crate env_logger;
 
 extern crate renderer;
 
@@ -8,7 +8,7 @@ use clap::{App, Arg};
 use renderer::http_server::run_server;
 
 fn main() {
-    slog_stdlog::init().unwrap();
+    env_logger::init().unwrap();
 
     let matches =
         App::new("OSM renderer server")

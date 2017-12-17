@@ -10,6 +10,7 @@ capnpc = "*"
 [dependencies]
 capnp = "*"
 clap = "*"
+env_logger = "*"
 error-chain = "*"
 futures = "*"
 hyper = "*"
@@ -18,7 +19,6 @@ log = "*"
 memmap = "*"
 owning_ref = "*"
 png = "*"
-slog-stdlog = "*"
 xml-rs = "*"
 
 [dependencies.cairo-sys-rs]
