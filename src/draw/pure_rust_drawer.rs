@@ -1,7 +1,7 @@
 use errors::*;
 
 use geodata::reader::{OsmEntities, OsmEntity, Way};
-use mapcss::styler::{Style, Styler};
+use mapcss::styler::{Style, StyleHashKey, Styler};
 use tile as t;
 
 use draw::TILE_SIZE;
@@ -23,7 +23,7 @@ pub struct PureRustDrawer {
 #[derive(Eq, PartialEq, Hash)]
 struct CacheKey {
     entity_id: u64,
-    style: Style,
+    style: StyleHashKey,
     zoom_level: u8,
     is_fill: bool,
 }
@@ -55,7 +55,7 @@ impl PureRustDrawer {
     fn draw_one_way(&self, image: &mut PngImage, way: &Way, style: &Style, is_fill: bool, tile: &t::Tile) {
         let cache_key = CacheKey {
             entity_id: way.global_id(),
-            style: (*style).clone(),
+            style: style.to_hash_key(),
             zoom_level: tile.zoom,
             is_fill,
         };

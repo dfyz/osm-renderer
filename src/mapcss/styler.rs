@@ -3,7 +3,6 @@ use mapcss::parser::*;
 
 use geodata::reader::{OsmEntity, Way};
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineJoin {
@@ -26,7 +25,7 @@ pub fn is_non_trivial_cap(line_cap: &Option<LineCap>) -> bool {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Style {
     pub z_index: f64,
 
@@ -41,22 +40,32 @@ pub struct Style {
     pub line_cap: Option<LineCap>,
 }
 
-impl Eq for Style {
-}
+pub type StyleHashKey = (
+    u64,
+    Option<Color>,
+    Option<Color>,
+    Option<u64>,
+    Option<u64>,
+    Option<u64>,
+    Option<Vec<u64>>,
+    Option<LineJoin>,
+    Option<LineCap>,
+);
 
-impl Hash for Style {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl Style {
+    pub fn to_hash_key(&self) -> StyleHashKey {
         let float_to_int = |x: f64| x.to_bits();
-
-        float_to_int(self.z_index).hash(state);
-        self.color.hash(state);
-        self.fill_color.hash(state);
-        self.opacity.map(&float_to_int).hash(state);
-        self.fill_opacity.map(&float_to_int).hash(state);
-        self.width.map(&float_to_int).hash(state);
-        self.dashes.as_ref().map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()).hash(state);
-        self.line_join.hash(state);
-        self.line_cap.hash(state);
+        (
+            float_to_int(self.z_index),
+            self.color.clone(),
+            self.fill_color.clone(),
+            self.opacity.map(&float_to_int),
+            self.fill_opacity.map(&float_to_int),
+            self.width.map(&float_to_int),
+            self.dashes.as_ref().map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()),
+            self.line_join.clone(),
+            self.line_cap.clone(),
+        )
     }
 }
 
