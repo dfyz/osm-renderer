@@ -18,6 +18,7 @@ use std::fs::File;
 use std::io::Read;
 use tile::Tile;
 
+#[cfg_attr(feature = "cargo-clippy", allow(implicit_hasher))]
 pub fn run_server(address: &str, geodata_file: &str, stylesheet_file: &str, osm_ids: Option<HashSet<u64>>) -> Result<()> {
     let mut stylesheet_reader = File::open(stylesheet_file).chain_err(|| "Failed to open the stylesheet file")?;
     let mut stylesheet = String::new();
