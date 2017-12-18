@@ -95,7 +95,7 @@ struct DashSegment {
 
 fn compute_segments(
     half_line_width: f64,
-    dashes: &Vec<f64>,
+    dashes: &[f64],
     line_cap: &Option<LineCap>,
     segments: &mut Vec<DashSegment>,
     len_before: &mut f64
@@ -141,9 +141,7 @@ fn compute_segments(
 }
 
 fn get_opacity_by_segment(dist: f64, segment: &DashSegment) -> Option<f64> {
-    let base_opacity = if dist < segment.start_from {
-        None
-    } else if dist <= segment.start_to {
+    let base_opacity = if dist <= segment.start_to {
         Some((dist - segment.start_from) / (segment.start_to - segment.start_from))
     } else if dist < segment.end_from {
         Some(1.0)

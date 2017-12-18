@@ -249,7 +249,7 @@ impl<'a> Parser<'a> {
         };
 
         loop {
-            let consumed_selector = self.read_selector(selector_start)?;
+            let consumed_selector = self.read_selector(&selector_start)?;
 
             let mut expect_more_selectors = match consumed_selector.selector_type {
                 ConsumedSelectorType::Last => false,
@@ -262,7 +262,7 @@ impl<'a> Parser<'a> {
                 },
                 ConsumedSelectorType::Parent => {
                     let next_token = self.read_token()?;
-                    let child_selector = self.read_selector(next_token)?;
+                    let child_selector = self.read_selector(&next_token)?;
 
                     match child_selector.selector_type {
                         ConsumedSelectorType::Parent => {
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
         Ok(Some(rule))
     }
 
-    fn read_selector(&mut self, selector_first_token: TokenWithPosition<'a>) -> Result<ConsumedSelector> {
+    fn read_selector(&mut self, selector_first_token: &TokenWithPosition<'a>) -> Result<ConsumedSelector> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id)
@@ -344,7 +344,7 @@ impl<'a> Parser<'a> {
                 Token::DoubleColon => {
                     selector.layer_id = Some(self.read_identifier()?);
                 }
-                _ => return self.unexpected_token(current_token),
+                _ => return self.unexpected_token(&current_token),
             }
 
             if let Some(selector_type) = consumed_selector_type {
@@ -368,7 +368,7 @@ impl<'a> Parser<'a> {
                 starts_with_bang = true;
                 self.read_identifier()?
             },
-            _ => return self.unexpected_token(current_token),
+            _ => return self.unexpected_token(&current_token),
         };
 
         current_token = self.read_token()?;
@@ -380,10 +380,10 @@ impl<'a> Parser<'a> {
                 let rhs = match current_token.token {
                     Token::Identifier(id) => String::from(id),
                     Token::Number(num) => num.to_string(),
-                    _ => return self.unexpected_token(current_token),
+                    _ => return self.unexpected_token(&current_token),
                 };
 
-                self.expect_simple_token(Token::RightBracket)?;
+                self.expect_simple_token(&Token::RightBracket)?;
 
                 return Ok(Test::BinaryStringCompare {
                     tag_name: lhs,
@@ -397,10 +397,10 @@ impl<'a> Parser<'a> {
 
                 let rhs = match current_token.token {
                     Token::Number(num) => num,
-                    _ => return self.unexpected_token(current_token),
+                    _ => return self.unexpected_token(&current_token),
                 };
 
-                self.expect_simple_token(Token::RightBracket)?;
+                self.expect_simple_token(&Token::RightBracket)?;
 
                 return Ok(Test::BinaryNumericCompare {
                     tag_name: lhs,
@@ -419,13 +419,13 @@ impl<'a> Parser<'a> {
                 match current_token.token {
                     Token::RightBracket => if starts_with_bang { UnaryTestType::False } else { UnaryTestType::True },
                     Token::Bang if !starts_with_bang => {
-                        self.expect_simple_token(Token::RightBracket)?;
+                        self.expect_simple_token(&Token::RightBracket)?;
                         UnaryTestType::False
                     },
-                    _ => return self.unexpected_token(current_token),
+                    _ => return self.unexpected_token(&current_token),
                 }
             },
-            _ => return self.unexpected_token(current_token),
+            _ => return self.unexpected_token(&current_token),
         };
 
         Ok(Test::Unary {
@@ -440,14 +440,14 @@ impl<'a> Parser<'a> {
             let token = self.read_token()?;
             match token.token {
                 Token::Identifier(id) => {
-                    self.expect_simple_token(Token::Colon)?;
+                    self.expect_simple_token(&Token::Colon)?;
                     result.push(Property {
                         name: String::from(id),
                         value: self.read_property_value()?,
                     })
                 },
                 Token::RightBrace => break,
-                _ => return self.unexpected_token(token),
+                _ => return self.unexpected_token(&token),
             }
         }
         Ok(result)
@@ -464,10 +464,10 @@ impl<'a> Parser<'a> {
                 expect_semicolon = false;
                 PropertyValue::Numbers(self.read_number_list(num)?)
             },
-            _ => return self.unexpected_token(token)?,
+            _ => return self.unexpected_token(&token)?,
         };
         if expect_semicolon {
-            self.expect_simple_token(Token::SemiColon)?;
+            self.expect_simple_token(&Token::SemiColon)?;
         }
         Ok(result)
     }
@@ -486,7 +486,7 @@ impl<'a> Parser<'a> {
                     consumed_number = true;
                     numbers.push(next_num);
                 },
-                _ => return self.unexpected_token(next_token),
+                _ => return self.unexpected_token(&next_token),
             }
         }
         Ok(numbers)
@@ -496,7 +496,7 @@ impl<'a> Parser<'a> {
         let token = self.read_token()?;
         match token.token {
             Token::Identifier(id) => Ok(String::from(id)),
-            _ => self.unexpected_token(token),
+            _ => self.unexpected_token(&token),
         }
     }
 
@@ -509,16 +509,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_simple_token(&mut self, expected: Token<'static>) -> Result<()> {
+    fn expect_simple_token(&mut self, expected: &Token<'static>) -> Result<()> {
         let token = self.read_token()?;
-        if token.token != expected {
+        if token.token != *expected {
             bail!(ErrorKind::ParseError(format!("Expected '{}', found '{}' instead", expected, token.token), token.position))
         } else {
             Ok(())
         }
     }
 
-    fn unexpected_token<T>(&self, token: TokenWithPosition<'a>) -> Result<T> {
+    fn unexpected_token<T>(&self, token: &TokenWithPosition<'a>) -> Result<T> {
         bail!(ErrorKind::ParseError(format!("Unexpected token: '{}'", token.token), token.position))
     }
 }

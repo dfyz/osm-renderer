@@ -35,7 +35,7 @@ impl PureRustDrawer {
         }
     }
 
-    fn draw_ways(&self, image: &mut PngImage, styled_ways: Vec<(&Way, Style)>, tile: &t::Tile) {
+    fn draw_ways(&self, image: &mut PngImage, styled_ways: &[(&Way, Style)], tile: &t::Tile) {
         let ways_to_draw = || {
             styled_ways.iter()
                 .filter(|&&(w, _)| {
@@ -105,7 +105,7 @@ impl Drawer for PureRustDrawer {
         fill_canvas(&mut image, styler);
 
         let styled_ways = styler.style_ways(entities.ways.iter(), tile.zoom);
-        self.draw_ways(&mut image, styled_ways, tile);
+        self.draw_ways(&mut image, &styled_ways, tile);
 
         image.to_bytes()
     }
