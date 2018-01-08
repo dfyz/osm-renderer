@@ -141,14 +141,14 @@ fn compute_segments(
 }
 
 fn get_opacity_by_segment(dist: f64, segment: &DashSegment) -> Option<f64> {
-    let base_opacity = if dist <= segment.start_to {
+    let base_opacity = if dist < segment.start_from || dist > segment.end_to {
+        None
+    } else if dist <= segment.start_to {
         Some((dist - segment.start_from) / (segment.start_to - segment.start_from))
     } else if dist < segment.end_from {
         Some(1.0)
-    } else if dist <= segment.end_to {
-        Some((segment.end_to - dist) / (segment.end_to - segment.end_from))
     } else {
-        None
+        Some((segment.end_to - dist) / (segment.end_to - segment.end_from))
     };
 
     base_opacity.map(|op| segment.opacity_mul * op)
