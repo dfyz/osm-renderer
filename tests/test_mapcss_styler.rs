@@ -4,10 +4,10 @@ mod common;
 
 use common::{get_test_path, import_nano_moscow};
 use renderer::geodata::reader::OsmEntity;
-use renderer::mapcss::color::{Color, from_color_name};
+use renderer::mapcss::color::{from_color_name, Color};
 use renderer::mapcss::token::Tokenizer;
 use renderer::mapcss::parser::Parser;
-use renderer::mapcss::styler::{LineCap, LineJoin, Styler, Style};
+use renderer::mapcss::styler::{LineCap, LineJoin, Style, Styler};
 use renderer::tile::Tile;
 use std::collections::HashMap;
 use std::fs::File;
@@ -19,14 +19,27 @@ fn test_styling() {
     let reader = renderer::geodata::reader::GeodataReader::new(&nano_moscow).unwrap();
 
     let mut mapcss_style = String::new();
-    File::open(&get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap().read_to_string(&mut mapcss_style).unwrap();
+    File::open(&get_test_path(&["mapcss", "mapnik.mapcss"]))
+        .unwrap()
+        .read_to_string(&mut mapcss_style)
+        .unwrap();
     let tokenizer = Tokenizer::new(&mapcss_style);
     let mut parser = Parser::new(tokenizer);
     let styler = Styler::new(parser.parse().unwrap());
 
-    let entities = reader.get_entities_in_tile(&Tile { x: 158_458, y: 81_948, zoom: 18 }, &None);
+    let entities = reader.get_entities_in_tile(
+        &Tile {
+            x: 158_458,
+            y: 81_948,
+            zoom: 18,
+        },
+        &None,
+    );
 
-    let named_ways = entities.ways.iter().filter(|x| x.tags().get_by_key("name").is_some());
+    let named_ways = entities
+        .ways
+        .iter()
+        .filter(|x| x.tags().get_by_key("name").is_some());
     let styles = styler.style_ways(named_ways, 18);
 
     let get_styles = |id, name| {
@@ -47,14 +60,21 @@ fn test_styling() {
 
     let s2 = get_styles(373_569_473, "Аллея Романов");
     compare_with_josm_style(s2[0], false, "Cascade{ color:Keyword{grey}; linecap:Keyword{round}; linejoin:Keyword{round}; width:9.0; z-index:-1.0; }");
-    compare_with_josm_style(s2[1], false, "Cascade{ color:#ededed; linecap:Keyword{round}; linejoin:Keyword{round}; width:8.0; }");
+    compare_with_josm_style(
+        s2[1],
+        false,
+        "Cascade{ color:#ededed; linecap:Keyword{round}; linejoin:Keyword{round}; width:8.0; }",
+    );
 
     let building_josm_style = "Cascade{ color:#330066; fill-color:#bca9a9; fill-opacity:0.9; linejoin:Keyword{miter}; width:0.2; z-index:-900.0;";
 
     for &(id, name) in &[
         (31_497_212, "БЦ «Романов двор»"),
         (31_482_164, "Факультет искусств МГУ"),
-        (44_642_919, "Факультет журналистики МГУ"),
+        (
+            44_642_919,
+            "Факультет журналистики МГУ",
+        ),
     ] {
         compare_with_josm_style(get_styles(id, name)[0], true, building_josm_style);
     }
@@ -79,23 +99,30 @@ fn assert_styles_eq(our_style: &Style, josm_style: &Style) {
 
 fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
     let mut props = HashMap::new();
-    for p in style.trim_left_matches("Cascade{ ").trim_right_matches('}').split(';').map(|x| x.trim().splitn(2, ':').collect::<Vec<_>>()) {
+    for p in style
+        .trim_left_matches("Cascade{ ")
+        .trim_right_matches('}')
+        .split(';')
+        .map(|x| x.trim().splitn(2, ':').collect::<Vec<_>>())
+    {
         if p.len() > 1 {
             props.insert(p[0], p[1]);
         }
     }
 
-    let parse_color = |prop_name| props.get(prop_name).map(|x| {
-        if x.starts_with('#') {
-            Color {
-                r: u8::from_str_radix(&x[1..3], 16).unwrap(),
-                g: u8::from_str_radix(&x[3..5], 16).unwrap(),
-                b: u8::from_str_radix(&x[5..7], 16).unwrap(),
+    let parse_color = |prop_name| {
+        props.get(prop_name).map(|x| {
+            if x.starts_with('#') {
+                Color {
+                    r: u8::from_str_radix(&x[1..3], 16).unwrap(),
+                    g: u8::from_str_radix(&x[3..5], 16).unwrap(),
+                    b: u8::from_str_radix(&x[5..7], 16).unwrap(),
+                }
+            } else {
+                from_color_name(x.trim_left_matches("Keyword{").trim_right_matches('}')).unwrap()
             }
-        } else {
-            from_color_name(x.trim_left_matches("Keyword{").trim_right_matches('}')).unwrap()
-        }
-    });
+        })
+    };
 
     let parse_num = |prop_name| props.get(prop_name).map(|x| x.parse().unwrap());
 
@@ -109,8 +136,7 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
 
         width: parse_num("width"),
         dashes: props.get("dashes").map(|x| {
-            x
-                .trim_left_matches('[')
+            x.trim_left_matches('[')
                 .trim_right_matches(']')
                 .split(", ")
                 .map(|x| x.parse().unwrap())
@@ -122,9 +148,14 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
             "Keyword{bevel}" => LineJoin::Bevel,
             _ => unreachable!(),
         }),
-        line_cap: Some(props.get("linecap").map(|x| match *x {
-            "Keyword{round}" => LineCap::Round,
-            _ => unreachable!(),
-        }).unwrap_or(LineCap::Butt)),
+        line_cap: Some(
+            props
+                .get("linecap")
+                .map(|x| match *x {
+                    "Keyword{round}" => LineCap::Round,
+                    _ => unreachable!(),
+                })
+                .unwrap_or(LineCap::Butt),
+        ),
     }
 }

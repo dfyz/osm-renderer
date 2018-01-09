@@ -1,4 +1,4 @@
-use mapcss::color::{Color, from_color_name};
+use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
 use geodata::reader::{OsmEntity, Way};
@@ -62,7 +62,9 @@ impl Style {
             self.opacity.map(&float_to_int),
             self.fill_opacity.map(&float_to_int),
             self.width.map(&float_to_int),
-            self.dashes.as_ref().map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()),
+            self.dashes
+                .as_ref()
+                .map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()),
             self.line_join.clone(),
             self.line_cap.clone(),
         )
@@ -86,12 +88,12 @@ impl Styler {
     }
 
     pub fn style_ways<'w, 'wp, I>(&self, ways: I, zoom: u8) -> Vec<(&'wp Way<'w>, Style)>
-        where I: Iterator<Item=&'wp Way<'w>>
+    where
+        I: Iterator<Item = &'wp Way<'w>>,
     {
         let mut styled_ways = ways.flat_map(|x| {
             let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
-            self
-                .style_way(x, zoom)
+            self.style_way(x, zoom)
                 .into_iter()
                 .filter(|&(k, _)| k != "*")
                 .map(move |(_, v)| (x, property_map_to_style(&v, default_z_index, x)))
@@ -120,9 +122,9 @@ impl Styler {
                 };
 
                 {
-                    // Can't use result.entry(...).or_insert_with(...) because we need to immutably borrow
-                    // the result to compute the default value in or_insert_with(), and the map is already borrowed
-                    // as mutable when we call entry().
+                    // Can't use result.entry(...).or_insert_with(...) because we need to immutably
+                    // borrow the result to compute the default value in or_insert_with(), and the
+                    // map is already borrowed as mutable when we call entry().
                     if !result.contains_key(layer_id) {
                         let parent_layer = result.get("*").cloned().unwrap_or_default();
                         result.insert(layer_id, parent_layer);
@@ -146,12 +148,23 @@ impl Styler {
 type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
 type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
-fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_index: f64, osm_entity: &E) -> Style
-    where E: OsmEntity<'w>
+fn property_map_to_style<'r, 'w, E>(
+    property_map: &PropertyMap<'r>,
+    default_z_index: f64,
+    osm_entity: &E,
+) -> Style
+where
+    E: OsmEntity<'w>,
 {
     let warn = |prop_name, msg| {
         if let Some(val) = property_map.get(prop_name) {
-            warn!("Entity #{}, property \"{}\" (value {:?}): {}", osm_entity.global_id(), prop_name, val, msg);
+            warn!(
+                "Entity #{}, property \"{}\" (value {:?}): {}",
+                osm_entity.global_id(),
+                prop_name,
+                val,
+                msg
+            );
         }
     };
 
@@ -163,11 +176,11 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
                 warn(prop_name, "unknown color");
             }
             color
-        },
+        }
         _ => {
             warn(prop_name, "expected a valid color");
             None
-        },
+        }
     };
 
     let get_num = |prop_name| match property_map.get(prop_name) {
@@ -175,7 +188,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
         _ => {
             warn(prop_name, "expected a number");
             None
-        },
+        }
     };
 
     let get_id = |prop_name| match property_map.get(prop_name) {
@@ -183,7 +196,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
         _ => {
             warn(prop_name, "expected an identifier");
             None
-        },
+        }
     };
 
     let line_join = match get_id("linejoin") {
@@ -193,7 +206,7 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
         _ => {
             warn("linejoin", "unknown line join value");
             None
-        },
+        }
     };
 
     let line_cap = match get_id("linecap") {
@@ -203,17 +216,15 @@ fn property_map_to_style<'r, 'w, E>(property_map: &PropertyMap<'r>, default_z_in
         _ => {
             warn("linecap", "unknown line cap value");
             None
-        },
+        }
     };
 
     let dashes = match property_map.get("dashes") {
-        Some(&&PropertyValue::Numbers(ref nums)) => {
-            Some(nums.clone())
-        },
+        Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
         _ => {
             warn("dashes", "expected a sequence of numbers");
             None
-        },
+        }
     };
 
     let z_index = get_num("z-index").unwrap_or(default_z_index);
@@ -256,7 +267,10 @@ fn way_matches_test<'w>(way: &Way<'w>, test: &Test) -> bool {
     let is_true_value = |x| x == "yes" || x == "true" || x == "1";
 
     match *test {
-        Test::Unary { ref tag_name, ref test_type } => {
+        Test::Unary {
+            ref tag_name,
+            ref test_type,
+        } => {
             let tag_val = tags.get_by_key(tag_name);
             match *test_type {
                 UnaryTestType::Exists => tag_val.is_some(),
@@ -270,15 +284,23 @@ fn way_matches_test<'w>(way: &Way<'w>, test: &Test) -> bool {
                     _ => true,
                 },
             }
-        },
-        Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
+        }
+        Test::BinaryStringCompare {
+            ref tag_name,
+            ref value,
+            ref test_type,
+        } => {
             let tag_val = tags.get_by_key(tag_name);
             match *test_type {
                 BinaryStringTestType::Equal => tag_val == Some(value),
                 BinaryStringTestType::NotEqual => tag_val != Some(value),
             }
-        },
-        Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
+        }
+        Test::BinaryNumericCompare {
+            ref tag_name,
+            ref value,
+            ref test_type,
+        } => {
             let tag_val = match tags.get_by_key(tag_name).map(|x| x.parse::<f64>()) {
                 Some(Ok(x)) => x,
                 _ => return false,
@@ -289,28 +311,30 @@ fn way_matches_test<'w>(way: &Way<'w>, test: &Test) -> bool {
                 BinaryNumericTestType::Greater => tag_val > *value,
                 BinaryNumericTestType::GreaterOrEqual => tag_val >= *value,
             }
-        },
+        }
     }
 }
 
 fn way_matches_single<'w>(way: &Way<'w>, selector: &SingleSelector, zoom: u8) -> bool {
     if let Some(min_zoom) = selector.min_zoom {
         if zoom < min_zoom {
-            return false
+            return false;
         }
     }
 
     if let Some(max_zoom) = selector.max_zoom {
         if zoom > max_zoom {
-            return false
+            return false;
         }
     }
 
     let good_object_type = match selector.object_type {
-        ObjectType::Way { should_be_closed: None } => true,
-        ObjectType::Way { should_be_closed: Some(expected) } => {
-            expected == way.is_closed()
-        },
+        ObjectType::Way {
+            should_be_closed: None,
+        } => true,
+        ObjectType::Way {
+            should_be_closed: Some(expected),
+        } => expected == way.is_closed(),
         _ => return false,
     };
 
@@ -319,7 +343,7 @@ fn way_matches_single<'w>(way: &Way<'w>, selector: &SingleSelector, zoom: u8) ->
 
 fn way_matches<'w>(way: &Way<'w>, selector: &Selector, zoom: u8) -> bool {
     match *selector {
-        Selector::Nested {..} => false,
+        Selector::Nested { .. } => false,
         Selector::Single(ref sel) => way_matches_single(way, sel, zoom),
     }
 }
@@ -327,7 +351,7 @@ fn way_matches<'w>(way: &Way<'w>, selector: &Selector, zoom: u8) -> bool {
 fn get_layer_id(selector: &Selector) -> &str {
     let single = match *selector {
         Selector::Single(ref single) => single,
-        Selector::Nested { ref child , .. } => child,
+        Selector::Nested { ref child, .. } => child,
     };
     match single.layer_id {
         Some(ref id) => id,

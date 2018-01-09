@@ -12,7 +12,10 @@ pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
     Number(f64),
-    ZoomRange { min_zoom: ZoomLevel, max_zoom: ZoomLevel },
+    ZoomRange {
+        min_zoom: ZoomLevel,
+        max_zoom: ZoomLevel,
+    },
     Color(Color),
 
     LeftBracket,
@@ -125,7 +128,7 @@ impl<'a> Tokenizer<'a> {
         if let Some(token) = get_one_char_simple_token(ch) {
             Ok(token)
         } else if ch == '*' {
-            Ok(Token::Identifier(&self.text[idx .. idx + 1]))
+            Ok(Token::Identifier(&self.text[idx..idx + 1]))
         } else if can_start_identifier(ch) {
             Ok(self.read_identifier(idx, ch))
         } else if ch == '"' {
@@ -152,7 +155,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
         let (end_idx, last_char) = last_good_char_with_pos;
-        Token::Identifier(&self.text[start_idx .. end_idx + last_char.len_utf8()])
+        Token::Identifier(&self.text[start_idx..end_idx + last_char.len_utf8()])
     }
 
     fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>> {
@@ -168,7 +171,7 @@ impl<'a> Tokenizer<'a> {
         if !terminated_correctly {
             self.lexer_error("Unterminated string")
         } else {
-            Ok(Token::String(&self.text[start_idx .. end_idx]))
+            Ok(Token::String(&self.text[start_idx..end_idx]))
         }
     }
 
@@ -192,7 +195,8 @@ impl<'a> Tokenizer<'a> {
         let mut had_dot = false;
         let mut digits_after_dot = 0;
 
-        let add_digit = |current: &mut f64, digit| *current = 10.0_f64 * (*current) + f64::from(digit);
+        let add_digit =
+            |current: &mut f64, digit| *current = 10.0_f64 * (*current) + f64::from(digit);
 
         while let Some(next_ch) = self.peek_char() {
             if let Some(digit) = next_ch.to_digit(10) {
@@ -276,14 +280,12 @@ impl<'a> Tokenizer<'a> {
 
     fn read_digit(&mut self, radix: u32) -> Option<u8> {
         match self.peek_char() {
-            Some(ch) => {
-                match ch.to_digit(radix) {
-                    Some(digit) => {
-                        self.advance();
-                        Some(digit as u8)
-                    },
-                    None => None,
+            Some(ch) => match ch.to_digit(radix) {
+                Some(digit) => {
+                    self.advance();
+                    Some(digit as u8)
                 }
+                None => None,
             },
             _ => None,
         }
@@ -301,7 +303,7 @@ impl<'a> Tokenizer<'a> {
                         match self.try_skip_comment() {
                             Err(err) => return Some(Err(err)),
                             Ok(true) => continue,
-                            _ => {},
+                            _ => {}
                         }
                     }
                     return Some(Ok((idx, ch)));
@@ -352,11 +354,11 @@ impl<'a> Tokenizer<'a> {
             Some('/') => {
                 self.advance();
                 self.skip_line_comment();
-            },
+            }
             Some('*') => {
                 self.advance();
                 self.skip_block_comment()?;
-            },
+            }
             _ => {
                 return Ok(false);
             }
@@ -404,37 +406,33 @@ impl<'a> Iterator for Tokenizer<'a> {
 fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
     TWO_LETTER_MATCH_TABLE
         .iter()
-        .filter_map(|&(x, ref token)|
+        .filter_map(|&(x, ref token)| {
             if x == (fst, snd) {
                 Some(token.clone())
             } else {
                 None
-            })
+            }
+        })
         .next()
 }
 
 fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
     ONE_LETTER_MATCH_TABLE
         .iter()
-        .filter_map(|&(x, ref token)|
-            if x == ch {
-                Some(token.clone())
-            } else {
-                None
-            })
+        .filter_map(|&(x, ref token)| if x == ch { Some(token.clone()) } else { None })
         .next()
 }
 
 fn can_start_identifier(ch: char) -> bool {
     match ch {
-        '_' | 'a' ... 'z' | 'A' ... 'Z' => true,
+        '_' | 'a'...'z' | 'A'...'Z' => true,
         _ => false,
     }
 }
 
 fn can_continue_identifier(ch: char) -> bool {
     match ch {
-        '-' | '0' ... '9' => true,
+        '-' | '0'...'9' => true,
         ch if can_start_identifier(ch) => true,
         _ => false,
     }
@@ -460,24 +458,33 @@ mod tests {
     fn unindent(s: &str) -> String {
         let lines = s.trim_matches('\n').split('\n').collect::<Vec<_>>();
         let space_count = lines[0].chars().take_while(|x| *x == ' ').count();
-        lines.iter().map(|x| &x[space_count ..]).collect::<Vec<_>>().join("\n")
+        lines
+            .iter()
+            .map(|x| &x[space_count..])
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn tok(s: &str, expected: Vec<(Token, usize, usize)>) {
-        assert_eq!(tokenize(&unindent(s)), expected.iter().map(|&(ref token, line, ch)| {
-            TokenWithPosition {
-                token: token.clone(),
-                position: InputPosition {
-                    line: line,
-                    character: ch,
-                }
-            }
-        }).collect::<Vec<_>>())
+        assert_eq!(
+            tokenize(&unindent(s)),
+            expected
+                .iter()
+                .map(|&(ref token, line, ch)| TokenWithPosition {
+                    token: token.clone(),
+                    position: InputPosition {
+                        line: line,
+                        character: ch,
+                    },
+                })
+                .collect::<Vec<_>>()
+        )
     }
 
     #[test]
     fn test1() {
-        tok(r#"
+        tok(
+            r#"
             /* this is a comment */
             way|z14-[highway=byway][bridge?],
             *::* {
@@ -489,115 +496,161 @@ mod tests {
                 z-index: -999;
             }
             "#,
-        vec![
-            (Token::Identifier("way"), 2, 1),
-            (Token::ZoomRange { min_zoom: Some(14), max_zoom: None }, 2, 4),
-            (Token::LeftBracket, 2, 9),
-            (Token::Identifier("highway"), 2, 10),
-            (Token::Equal, 2, 17),
-            (Token::Identifier("byway"), 2, 18),
-            (Token::RightBracket, 2, 23),
-            (Token::LeftBracket, 2, 24),
-            (Token::Identifier("bridge"), 2, 25),
-            (Token::QuestionMark, 2, 31),
-            (Token::RightBracket, 2, 32),
-            (Token::Comma, 2, 33),
-            (Token::Identifier("*"), 3, 1),
-            (Token::DoubleColon, 3, 2),
-            (Token::Identifier("*"), 3, 4),
-            (Token::LeftBrace, 3, 6),
-            (Token::Identifier("color"), 4, 5),
-            (Token::Colon, 4, 10),
-            (Token::Color(Color { r: 255, g: 204, b: 0 }), 4, 12),
-            (Token::SemiColon, 4, 19),
-            (Token::Identifier("dashes"), 5, 5),
-            (Token::Colon, 5, 11),
-            (Token::Number(3.0), 5, 13),
-            (Token::Comma, 5, 14),
-            (Token::Number(4.0), 5, 15),
-            (Token::SemiColon, 5, 16),
-            (Token::Identifier("linejoin"), 6, 5),
-            (Token::Colon, 6, 13),
-            (Token::Identifier("round"), 6, 15),
-            (Token::SemiColon, 6, 20),
-            (Token::Identifier("width"), 7, 5),
-            (Token::Colon, 7, 10),
-            (Token::Number(1.5), 7, 12),
-            (Token::SemiColon, 7, 15),
-            (Token::Identifier("y-index"), 8, 5),
-            (Token::Colon, 8, 12),
-            (Token::Number(4.0), 8, 14),
-            (Token::SemiColon, 8, 15),
-            (Token::Identifier("z-index"), 9, 5),
-            (Token::Colon, 9, 12),
-            (Token::Number(-999.0), 9, 14),
-            (Token::SemiColon, 9, 18),
-            (Token::RightBrace, 10, 1),
-        ]);
+            vec![
+                (Token::Identifier("way"), 2, 1),
+                (
+                    Token::ZoomRange {
+                        min_zoom: Some(14),
+                        max_zoom: None,
+                    },
+                    2,
+                    4,
+                ),
+                (Token::LeftBracket, 2, 9),
+                (Token::Identifier("highway"), 2, 10),
+                (Token::Equal, 2, 17),
+                (Token::Identifier("byway"), 2, 18),
+                (Token::RightBracket, 2, 23),
+                (Token::LeftBracket, 2, 24),
+                (Token::Identifier("bridge"), 2, 25),
+                (Token::QuestionMark, 2, 31),
+                (Token::RightBracket, 2, 32),
+                (Token::Comma, 2, 33),
+                (Token::Identifier("*"), 3, 1),
+                (Token::DoubleColon, 3, 2),
+                (Token::Identifier("*"), 3, 4),
+                (Token::LeftBrace, 3, 6),
+                (Token::Identifier("color"), 4, 5),
+                (Token::Colon, 4, 10),
+                (
+                    Token::Color(Color {
+                        r: 255,
+                        g: 204,
+                        b: 0,
+                    }),
+                    4,
+                    12,
+                ),
+                (Token::SemiColon, 4, 19),
+                (Token::Identifier("dashes"), 5, 5),
+                (Token::Colon, 5, 11),
+                (Token::Number(3.0), 5, 13),
+                (Token::Comma, 5, 14),
+                (Token::Number(4.0), 5, 15),
+                (Token::SemiColon, 5, 16),
+                (Token::Identifier("linejoin"), 6, 5),
+                (Token::Colon, 6, 13),
+                (Token::Identifier("round"), 6, 15),
+                (Token::SemiColon, 6, 20),
+                (Token::Identifier("width"), 7, 5),
+                (Token::Colon, 7, 10),
+                (Token::Number(1.5), 7, 12),
+                (Token::SemiColon, 7, 15),
+                (Token::Identifier("y-index"), 8, 5),
+                (Token::Colon, 8, 12),
+                (Token::Number(4.0), 8, 14),
+                (Token::SemiColon, 8, 15),
+                (Token::Identifier("z-index"), 9, 5),
+                (Token::Colon, 9, 12),
+                (Token::Number(-999.0), 9, 14),
+                (Token::SemiColon, 9, 18),
+                (Token::RightBrace, 10, 1),
+            ],
+        );
     }
 
     #[test]
     fn test2() {
-        tok(r#"
+        tok(
+            r#"
             line|z12-14[piste:lift=j-bar],
             line|z12-14[piste:lift=magic_carpet],
             line|z19-[power=line],
             way|z-16[highway=secondary]
             {width: 2.5;opacity: 0.6;dashes: 0.9,18;}
             "#,
-        vec![
-            (Token::Identifier("line"), 1, 1),
-            (Token::ZoomRange { min_zoom: Some(12), max_zoom: Some(14) }, 1, 5),
-            (Token::LeftBracket, 1, 12),
-            (Token::Identifier("piste"), 1, 13),
-            (Token::Colon, 1, 18),
-            (Token::Identifier("lift"), 1, 19),
-            (Token::Equal, 1, 23),
-            (Token::Identifier("j-bar"), 1, 24),
-            (Token::RightBracket, 1, 29),
-            (Token::Comma, 1, 30),
-            (Token::Identifier("line"), 2, 1),
-            (Token::ZoomRange { min_zoom: Some(12), max_zoom: Some(14) }, 2, 5),
-            (Token::LeftBracket, 2, 12),
-            (Token::Identifier("piste"), 2, 13),
-            (Token::Colon, 2, 18),
-            (Token::Identifier("lift"), 2, 19),
-            (Token::Equal, 2, 23),
-            (Token::Identifier("magic_carpet"), 2, 24),
-            (Token::RightBracket, 2, 36),
-            (Token::Comma, 2, 37),
-            (Token::Identifier("line"), 3, 1),
-            (Token::ZoomRange { min_zoom: Some(19), max_zoom: None }, 3, 5),
-            (Token::LeftBracket, 3, 10),
-            (Token::Identifier("power"), 3, 11),
-            (Token::Equal, 3, 16),
-            (Token::Identifier("line"), 3, 17),
-            (Token::RightBracket, 3, 21),
-            (Token::Comma, 3, 22),
-            (Token::Identifier("way"), 4, 1),
-            (Token::ZoomRange { min_zoom: None, max_zoom: Some(16) }, 4, 4),
-            (Token::LeftBracket, 4, 9),
-            (Token::Identifier("highway"), 4, 10),
-            (Token::Equal, 4, 17),
-            (Token::Identifier("secondary"), 4, 18),
-            (Token::RightBracket, 4, 27),
-            (Token::LeftBrace, 5, 1),
-            (Token::Identifier("width"), 5, 2),
-            (Token::Colon, 5, 7),
-            (Token::Number(2.5), 5, 9),
-            (Token::SemiColon, 5, 12),
-            (Token::Identifier("opacity"), 5, 13),
-            (Token::Colon, 5, 20),
-            (Token::Number(0.6), 5, 22),
-            (Token::SemiColon, 5, 25),
-            (Token::Identifier("dashes"), 5, 26),
-            (Token::Colon, 5, 32),
-            (Token::Number(0.9), 5, 34),
-            (Token::Comma, 5, 37),
-            (Token::Number(18.0), 5, 38),
-            (Token::SemiColon, 5, 40),
-            (Token::RightBrace, 5, 41),
-        ]);
+            vec![
+                (Token::Identifier("line"), 1, 1),
+                (
+                    Token::ZoomRange {
+                        min_zoom: Some(12),
+                        max_zoom: Some(14),
+                    },
+                    1,
+                    5,
+                ),
+                (Token::LeftBracket, 1, 12),
+                (Token::Identifier("piste"), 1, 13),
+                (Token::Colon, 1, 18),
+                (Token::Identifier("lift"), 1, 19),
+                (Token::Equal, 1, 23),
+                (Token::Identifier("j-bar"), 1, 24),
+                (Token::RightBracket, 1, 29),
+                (Token::Comma, 1, 30),
+                (Token::Identifier("line"), 2, 1),
+                (
+                    Token::ZoomRange {
+                        min_zoom: Some(12),
+                        max_zoom: Some(14),
+                    },
+                    2,
+                    5,
+                ),
+                (Token::LeftBracket, 2, 12),
+                (Token::Identifier("piste"), 2, 13),
+                (Token::Colon, 2, 18),
+                (Token::Identifier("lift"), 2, 19),
+                (Token::Equal, 2, 23),
+                (Token::Identifier("magic_carpet"), 2, 24),
+                (Token::RightBracket, 2, 36),
+                (Token::Comma, 2, 37),
+                (Token::Identifier("line"), 3, 1),
+                (
+                    Token::ZoomRange {
+                        min_zoom: Some(19),
+                        max_zoom: None,
+                    },
+                    3,
+                    5,
+                ),
+                (Token::LeftBracket, 3, 10),
+                (Token::Identifier("power"), 3, 11),
+                (Token::Equal, 3, 16),
+                (Token::Identifier("line"), 3, 17),
+                (Token::RightBracket, 3, 21),
+                (Token::Comma, 3, 22),
+                (Token::Identifier("way"), 4, 1),
+                (
+                    Token::ZoomRange {
+                        min_zoom: None,
+                        max_zoom: Some(16),
+                    },
+                    4,
+                    4,
+                ),
+                (Token::LeftBracket, 4, 9),
+                (Token::Identifier("highway"), 4, 10),
+                (Token::Equal, 4, 17),
+                (Token::Identifier("secondary"), 4, 18),
+                (Token::RightBracket, 4, 27),
+                (Token::LeftBrace, 5, 1),
+                (Token::Identifier("width"), 5, 2),
+                (Token::Colon, 5, 7),
+                (Token::Number(2.5), 5, 9),
+                (Token::SemiColon, 5, 12),
+                (Token::Identifier("opacity"), 5, 13),
+                (Token::Colon, 5, 20),
+                (Token::Number(0.6), 5, 22),
+                (Token::SemiColon, 5, 25),
+                (Token::Identifier("dashes"), 5, 26),
+                (Token::Colon, 5, 32),
+                (Token::Number(0.9), 5, 34),
+                (Token::Comma, 5, 37),
+                (Token::Number(18.0), 5, 38),
+                (Token::SemiColon, 5, 40),
+                (Token::RightBrace, 5, 41),
+            ],
+        );
     }
 
     #[test]
@@ -642,16 +695,7 @@ mod tests {
 
     #[test]
     fn test_errors() {
-        let malformed_strings = [
-            "/*abc",
-            "-",
-            "123.",
-            "\"abc",
-            "|z-",
-            "#",
-            "&",
-            "+",
-        ];
+        let malformed_strings = ["/*abc", "-", "123.", "\"abc", "|z-", "#", "&", "+"];
         for s in &malformed_strings {
             let errors = Tokenizer::new(s).collect::<Vec<_>>();
             assert_eq!(1, errors.len(), "Expected exactly one error for {}", s);

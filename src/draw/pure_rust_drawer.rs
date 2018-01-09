@@ -36,12 +36,7 @@ impl PureRustDrawer {
     }
 
     fn draw_ways(&self, image: &mut PngImage, styled_ways: &[(&Way, Style)], tile: &t::Tile) {
-        let ways_to_draw = || {
-            styled_ways.iter()
-                .filter(|&&(w, _)| {
-                    w.node_count() > 0
-                })
-        };
+        let ways_to_draw = || styled_ways.iter().filter(|&&(w, _)| w.node_count() > 0);
 
         for &(way, ref style) in ways_to_draw() {
             self.draw_one_way(image, way, style, true, tile);
@@ -52,7 +47,14 @@ impl PureRustDrawer {
         }
     }
 
-    fn draw_one_way(&self, image: &mut PngImage, way: &Way, style: &Style, is_fill: bool, tile: &t::Tile) {
+    fn draw_one_way(
+        &self,
+        image: &mut PngImage,
+        way: &Way,
+        style: &Style,
+        is_fill: bool,
+        tile: &t::Tile,
+    ) {
         let cache_key = CacheKey {
             entity_id: way.global_id(),
             style: style.to_hash_key(),
@@ -75,9 +77,10 @@ impl PureRustDrawer {
         });
 
         let figure = if is_fill {
-            style.fill_color.as_ref().map(|color| {
-                fill_contour(points, color, float_or_one(&style.fill_opacity))
-            })
+            style
+                .fill_color
+                .as_ref()
+                .map(|color| fill_contour(points, color, float_or_one(&style.fill_opacity)))
         } else {
             style.color.as_ref().map(|color| {
                 draw_lines(
@@ -86,7 +89,7 @@ impl PureRustDrawer {
                     color,
                     float_or_one(&style.opacity),
                     &style.dashes,
-                    &style.line_cap
+                    &style.line_cap,
                 )
             })
         };
@@ -100,7 +103,12 @@ impl PureRustDrawer {
 }
 
 impl Drawer for PureRustDrawer {
-    fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
+    fn draw_tile<'a>(
+        &self,
+        entities: &OsmEntities<'a>,
+        tile: &t::Tile,
+        styler: &Styler,
+    ) -> Result<Vec<u8>> {
         let mut image = PngImage::new();
         fill_canvas(&mut image, styler);
 
@@ -126,7 +134,10 @@ fn draw_figure(figure: &Figure, image: &mut PngImage, tile: &t::Tile) {
     let to_tile_start = |c| (c as usize) * TILE_SIZE;
     let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
 
-    for (y, x_to_color) in figure.pixels.range(tile_start_y..(tile_start_y + TILE_SIZE)) {
+    for (y, x_to_color) in figure
+        .pixels
+        .range(tile_start_y..(tile_start_y + TILE_SIZE))
+    {
         let real_y = *y - tile_start_y;
         for (x, color) in x_to_color.range(tile_start_x..(tile_start_x + TILE_SIZE)) {
             let real_x = *x - tile_start_x;

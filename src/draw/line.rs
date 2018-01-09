@@ -5,13 +5,22 @@ use draw::opacity_calculator::OpacityCalculator;
 use mapcss::color::Color;
 use mapcss::styler::{is_non_trivial_cap, LineCap};
 
-pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Figure
-    where I: Iterator<Item=(Point, Point)>
+pub fn draw_lines<I>(
+    points: I,
+    width: f64,
+    color: &Color,
+    opacity: f64,
+    dashes: &Option<Vec<f64>>,
+    line_cap: &Option<LineCap>,
+) -> Figure
+where
+    I: Iterator<Item = (Point, Point)>,
 {
     let half_width = width / 2.0;
     let mut figure = Default::default();
     let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap);
-    let opacity_calculator_for_caps = OpacityCalculator::new(half_width, &Some(vec![0.0]), line_cap);
+    let opacity_calculator_for_caps =
+        OpacityCalculator::new(half_width, &Some(vec![0.0]), line_cap);
 
     let has_caps = is_non_trivial_cap(line_cap);
 
@@ -25,12 +34,26 @@ pub fn draw_lines<I>(points: I, width: f64, color: &Color, opacity: f64, dashes:
         if p1 != p2 && has_caps {
             if first {
                 let cap_end = p1.push_away_from(&p2, half_width);
-                draw_line(&p1, &cap_end, color, opacity, &opacity_calculator_for_caps, &mut figure);
+                draw_line(
+                    &p1,
+                    &cap_end,
+                    color,
+                    opacity,
+                    &opacity_calculator_for_caps,
+                    &mut figure,
+                );
             }
 
             if !peekable_points.peek().is_some() {
                 let cap_end = p2.push_away_from(&p1, half_width);
-                draw_line(&p2, &cap_end, color, opacity, &opacity_calculator_for_caps, &mut figure);
+                draw_line(
+                    &p2,
+                    &cap_end,
+                    color,
+                    opacity,
+                    &opacity_calculator_for_caps,
+                    &mut figure,
+                );
             }
         }
 
@@ -48,7 +71,7 @@ fn draw_line(
     color: &Color,
     initial_opacity: f64,
     opacity_calculator: &OpacityCalculator,
-    figure: &mut Figure
+    figure: &mut Figure,
 ) {
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
@@ -59,7 +82,8 @@ fn draw_line(
     let (mn, mx) = swap_x_y_if_needed(&mut x0, &mut y0, should_swap_x_y);
     let (mn_last, mx_last) = swap_x_y_if_needed(p2.x, p2.y, should_swap_x_y);
     let (mn_delta, mx_delta) = swap_x_y_if_needed(dx, dy, should_swap_x_y);
-    let (mn_inc, mx_inc) = swap_x_y_if_needed(get_inc(p1.x, p2.x), get_inc(p1.y, p2.y), should_swap_x_y);
+    let (mn_inc, mx_inc) =
+        swap_x_y_if_needed(get_inc(p1.x, p2.x), get_inc(p1.y, p2.y), should_swap_x_y);
 
     let mut error = 0;
     let mut p_error = 0;
@@ -76,7 +100,7 @@ fn draw_line(
     };
 
     let center_dist_numer_const = f64::from((p2.x * p1.y) - (p2.y * p1.x));
-    let center_dist_denom = (f64::from(dy*dy + dx*dx)).sqrt();
+    let center_dist_denom = (f64::from(dy * dy + dx * dx)).sqrt();
 
     let mut draw_perpendiculars = |mn, mx, p_error| {
         let mut draw_one_perpendicular = |mul| {
@@ -90,8 +114,10 @@ fn draw_line(
                     y: perp_y,
                 };
 
-                let center_dist_numer_non_const = f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
-                let center_dist = (center_dist_numer_const + center_dist_numer_non_const).abs() / center_dist_denom;
+                let center_dist_numer_non_const =
+                    f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
+                let center_dist = (center_dist_numer_const + center_dist_numer_non_const).abs()
+                    / center_dist_denom;
 
                 let long_start_dist = current_point.dist(p1);
                 let short_start_dist = (long_start_dist.powi(2) - center_dist.powi(2)).sqrt();
@@ -102,8 +128,13 @@ fn draw_line(
                     break;
                 }
 
-                let current_color = RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
-                figure.add(current_point.x as usize, current_point.y as usize, current_color);
+                let current_color =
+                    RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
+                figure.add(
+                    current_point.x as usize,
+                    current_point.y as usize,
+                    current_color,
+                );
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;

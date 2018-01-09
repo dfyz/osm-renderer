@@ -3,11 +3,12 @@ use draw::png_image::RgbaColor;
 use draw::point::Point;
 use mapcss::color::Color;
 
-use std::cmp::{min, max};
+use std::cmp::{max, min};
 use std::collections::HashMap;
 
 pub fn fill_contour<I>(points: I, color: &Color, opacity: f64) -> Figure
-    where I: Iterator<Item=(Point, Point)>
+where
+    I: Iterator<Item = (Point, Point)>,
 {
     let mut figure: Figure = Default::default();
     let mut y_to_edges = Default::default();
@@ -18,14 +19,17 @@ pub fn fill_contour<I>(points: I, color: &Color, opacity: f64) -> Figure
     }
 
     for (y, edges) in &y_to_edges {
-        let mut good_edges = edges.values().filter(|e| !e.is_poisoned).collect::<Vec<_>>();
+        let mut good_edges = edges
+            .values()
+            .filter(|e| !e.is_poisoned)
+            .collect::<Vec<_>>();
         good_edges.sort_by_key(|e| e.x_min);
 
         let mut idx = 0;
         while idx < good_edges.len() {
             let e1 = good_edges[idx];
             let e2 = good_edges[idx + 1];
-            for x in e1.x_min .. (e2.x_max + 1) {
+            for x in e1.x_min..(e2.x_max + 1) {
                 figure.add(x as usize, *y as usize, fill_color.clone());
             }
             idx += 2;

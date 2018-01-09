@@ -55,9 +55,20 @@ pub enum BinaryNumericTestType {
 
 #[derive(Debug)]
 pub enum Test {
-    Unary { tag_name: String, test_type: UnaryTestType },
-    BinaryStringCompare { tag_name: String, value: String, test_type: BinaryStringTestType },
-    BinaryNumericCompare { tag_name: String, value: f64, test_type: BinaryNumericTestType }
+    Unary {
+        tag_name: String,
+        test_type: UnaryTestType,
+    },
+    BinaryStringCompare {
+        tag_name: String,
+        value: String,
+        test_type: BinaryStringTestType,
+    },
+    BinaryNumericCompare {
+        tag_name: String,
+        value: f64,
+        test_type: BinaryNumericTestType,
+    },
 }
 
 impl fmt::Display for Test {
@@ -70,20 +81,31 @@ impl fmt::Display for Test {
             }
         };
         let result = match *self {
-            Test::Unary { ref tag_name, ref test_type } => match *test_type {
+            Test::Unary {
+                ref tag_name,
+                ref test_type,
+            } => match *test_type {
                 UnaryTestType::Exists => quote(tag_name),
                 UnaryTestType::NotExists => format!("!{}", quote(tag_name)),
                 UnaryTestType::True => format!("{}?", quote(tag_name)),
                 UnaryTestType::False => format!("!{}?", quote(tag_name)),
             },
-            Test::BinaryStringCompare { ref tag_name, ref value, ref test_type } => {
+            Test::BinaryStringCompare {
+                ref tag_name,
+                ref value,
+                ref test_type,
+            } => {
                 let sign = match *test_type {
                     BinaryStringTestType::Equal => "=",
                     BinaryStringTestType::NotEqual => "!=",
                 };
                 format!("{}{}{}", quote(tag_name), sign, value)
-            },
-            Test::BinaryNumericCompare { ref tag_name, ref value, ref test_type } => {
+            }
+            Test::BinaryNumericCompare {
+                ref tag_name,
+                ref value,
+                ref test_type,
+            } => {
                 let sign = match *test_type {
                     BinaryNumericTestType::Less => "<",
                     BinaryNumericTestType::LessOrEqual => "<=",
@@ -91,7 +113,7 @@ impl fmt::Display for Test {
                     BinaryNumericTestType::GreaterOrEqual => ">=",
                 };
                 format!("{}{}{}", quote(tag_name), sign, value)
-            },
+            }
         };
         write!(f, "[{}]", result)
     }
@@ -114,8 +136,11 @@ impl fmt::Display for PropertyValue {
             PropertyValue::Numbers(ref nums) => write!(
                 f,
                 "{}",
-                nums.iter().map(fmt_item::<f64>).collect::<Vec<_>>().join(",")
-            )
+                nums.iter()
+                    .map(fmt_item::<f64>)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
         }
     }
 }
@@ -153,7 +178,7 @@ impl fmt::Display for SingleSelector {
                 } else {
                     format!("{}", mn)
                 }
-            },
+            }
         };
         let formatted_layer_id = match self.layer_id {
             Some(ref id) => format!("::{}", id),
@@ -163,9 +188,17 @@ impl fmt::Display for SingleSelector {
             f,
             "{}{}{}{}{}",
             self.object_type,
-            if formatted_zoom_range.is_empty() { "" } else { "|z" },
+            if formatted_zoom_range.is_empty() {
+                ""
+            } else {
+                "|z"
+            },
             formatted_zoom_range,
-            self.tests.iter().map(fmt_item::<Test>).collect::<Vec<_>>().join(""),
+            self.tests
+                .iter()
+                .map(fmt_item::<Test>)
+                .collect::<Vec<_>>()
+                .join(""),
             formatted_layer_id
         )
     }
@@ -174,14 +207,20 @@ impl fmt::Display for SingleSelector {
 #[derive(Debug)]
 pub enum Selector {
     Single(SingleSelector),
-    Nested { parent: SingleSelector, child: SingleSelector },
+    Nested {
+        parent: SingleSelector,
+        child: SingleSelector,
+    },
 }
 
 impl fmt::Display for Selector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Selector::Single(ref s) => write!(f, "{}", s),
-            Selector::Nested { ref parent, ref child } => write!(f, "{} > {}", parent, child),
+            Selector::Nested {
+                ref parent,
+                ref child,
+            } => write!(f, "{} > {}", parent, child),
         }
     }
 }
@@ -197,8 +236,16 @@ impl fmt::Display for Rule {
         write!(
             f,
             "{} {{\n{}\n}}",
-            self.selectors.iter().map(fmt_item::<Selector>).collect::<Vec<_>>().join(",\n"),
-            self.properties.iter().map(fmt_item::<Property>).collect::<Vec<_>>().join("\n")
+            self.selectors
+                .iter()
+                .map(fmt_item::<Selector>)
+                .collect::<Vec<_>>()
+                .join(",\n"),
+            self.properties
+                .iter()
+                .map(fmt_item::<Property>)
+                .collect::<Vec<_>>()
+                .join("\n")
         )
     }
 }
@@ -259,7 +306,7 @@ impl<'a> Parser<'a> {
             let selector_to_add = match consumed_selector.selector_type {
                 ConsumedSelectorType::Ordinary | ConsumedSelectorType::Last => {
                     Selector::Single(consumed_selector.selector)
-                },
+                }
                 ConsumedSelectorType::Parent => {
                     let next_token = self.read_token()?;
                     let child_selector = self.read_selector(&next_token)?;
@@ -267,21 +314,23 @@ impl<'a> Parser<'a> {
                     match child_selector.selector_type {
                         ConsumedSelectorType::Parent => {
                             bail!(ErrorKind::ParseError(
-                                String::from("A child selector can't be a parent to another selector"),
+                                String::from(
+                                    "A child selector can't be a parent to another selector"
+                                ),
                                 self.tokenizer.position()
                             ));
-                        },
+                        }
                         ConsumedSelectorType::Last => {
                             expect_more_selectors = false;
-                        },
-                        _ => {},
+                        }
+                        _ => {}
                     }
 
                     Selector::Nested {
                         parent: consumed_selector.selector,
                         child: child_selector.selector,
                     }
-                },
+                }
             };
 
             rule.selectors.push(selector_to_add);
@@ -296,14 +345,18 @@ impl<'a> Parser<'a> {
         Ok(Some(rule))
     }
 
-    fn read_selector(&mut self, selector_first_token: &TokenWithPosition<'a>) -> Result<ConsumedSelector> {
+    fn read_selector(
+        &mut self,
+        selector_first_token: &TokenWithPosition<'a>,
+    ) -> Result<ConsumedSelector> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
-                let object_type = id_to_object_type(id)
-                    .ok_or_else(|| ErrorKind::ParseError(
+                let object_type = id_to_object_type(id).ok_or_else(|| {
+                    ErrorKind::ParseError(
                         format!("Unknown object type: {}", id),
-                        selector_first_token.position
-                    ))?;
+                        selector_first_token.position,
+                    )
+                })?;
                 SingleSelector {
                     object_type: object_type,
                     min_zoom: None,
@@ -311,7 +364,7 @@ impl<'a> Parser<'a> {
                     tests: Vec::new(),
                     layer_id: None,
                 }
-            },
+            }
             _ => return self.unexpected_token(selector_first_token),
         };
 
@@ -322,25 +375,25 @@ impl<'a> Parser<'a> {
             match current_token.token {
                 Token::LeftBrace => {
                     consumed_selector_type = Some(ConsumedSelectorType::Last);
-                },
+                }
                 Token::Comma => {
                     consumed_selector_type = Some(ConsumedSelectorType::Ordinary);
-                },
+                }
                 Token::Greater => {
                     consumed_selector_type = Some(ConsumedSelectorType::Parent);
-                },
+                }
                 Token::ZoomRange { min_zoom, max_zoom } => {
                     selector.min_zoom = min_zoom;
                     selector.max_zoom = max_zoom;
-                },
+                }
                 Token::LeftBracket => {
                     selector.tests.push(self.read_test()?);
-                },
+                }
                 Token::Colon => {
                     // This is a pseudo-class. Even though we don't use them,
                     // we still have to parse them correctly.
                     self.read_identifier()?;
-                },
+                }
                 Token::DoubleColon => {
                     selector.layer_id = Some(self.read_identifier()?);
                 }
@@ -351,7 +404,7 @@ impl<'a> Parser<'a> {
                 return Ok(ConsumedSelector {
                     selector: selector,
                     selector_type: selector_type,
-                })
+                });
             }
         }
     }
@@ -367,7 +420,7 @@ impl<'a> Parser<'a> {
             Token::Bang => {
                 starts_with_bang = true;
                 self.read_identifier()?
-            },
+            }
             _ => return self.unexpected_token(&current_token),
         };
 
@@ -389,7 +442,7 @@ impl<'a> Parser<'a> {
                     tag_name: lhs,
                     value: rhs,
                     test_type: binary_op,
-                })
+                });
             }
 
             if let Some(binary_op) = to_binary_numeric_test_type(&current_token.token) {
@@ -412,19 +465,27 @@ impl<'a> Parser<'a> {
 
         let unary_test_type = match current_token.token {
             Token::RightBracket => {
-                if starts_with_bang { UnaryTestType::NotExists } else { UnaryTestType::Exists }
-            },
+                if starts_with_bang {
+                    UnaryTestType::NotExists
+                } else {
+                    UnaryTestType::Exists
+                }
+            }
             Token::QuestionMark => {
                 current_token = self.read_token()?;
                 match current_token.token {
-                    Token::RightBracket => if starts_with_bang { UnaryTestType::False } else { UnaryTestType::True },
+                    Token::RightBracket => if starts_with_bang {
+                        UnaryTestType::False
+                    } else {
+                        UnaryTestType::True
+                    },
                     Token::Bang if !starts_with_bang => {
                         self.expect_simple_token(&Token::RightBracket)?;
                         UnaryTestType::False
-                    },
+                    }
                     _ => return self.unexpected_token(&current_token),
                 }
-            },
+            }
             _ => return self.unexpected_token(&current_token),
         };
 
@@ -445,7 +506,7 @@ impl<'a> Parser<'a> {
                         name: String::from(id),
                         value: self.read_property_value()?,
                     })
-                },
+                }
                 Token::RightBrace => break,
                 _ => return self.unexpected_token(&token),
             }
@@ -463,7 +524,7 @@ impl<'a> Parser<'a> {
             Token::Number(num) => {
                 expect_semicolon = false;
                 PropertyValue::Numbers(self.read_number_list(num)?)
-            },
+            }
             _ => return self.unexpected_token(&token)?,
         };
         if expect_semicolon {
@@ -480,12 +541,12 @@ impl<'a> Parser<'a> {
             match next_token.token {
                 Token::Comma if consumed_number => {
                     consumed_number = false;
-                },
+                }
                 Token::SemiColon if consumed_number => break,
                 Token::Number(next_num) if !consumed_number => {
                     consumed_number = true;
                     numbers.push(next_num);
-                },
+                }
                 _ => return self.unexpected_token(&next_token),
             }
         }
@@ -503,23 +564,30 @@ impl<'a> Parser<'a> {
     fn read_token(&mut self) -> Result<TokenWithPosition<'a>> {
         match self.tokenizer.next() {
             Some(token) => token.map_err(From::from),
-            None => {
-                bail!(ErrorKind::ParseError(String::from("Unexpected end of file"), self.tokenizer.position()))
-            },
+            None => bail!(ErrorKind::ParseError(
+                String::from("Unexpected end of file"),
+                self.tokenizer.position()
+            )),
         }
     }
 
     fn expect_simple_token(&mut self, expected: &Token<'static>) -> Result<()> {
         let token = self.read_token()?;
         if token.token != *expected {
-            bail!(ErrorKind::ParseError(format!("Expected '{}', found '{}' instead", expected, token.token), token.position))
+            bail!(ErrorKind::ParseError(
+                format!("Expected '{}', found '{}' instead", expected, token.token),
+                token.position
+            ))
         } else {
             Ok(())
         }
     }
 
     fn unexpected_token<T>(&self, token: &TokenWithPosition<'a>) -> Result<T> {
-        bail!(ErrorKind::ParseError(format!("Unexpected token: '{}'", token.token), token.position))
+        bail!(ErrorKind::ParseError(
+            format!("Unexpected token: '{}'", token.token),
+            token.position
+        ))
     }
 }
 

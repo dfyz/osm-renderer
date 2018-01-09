@@ -9,7 +9,11 @@ use mapcss::styler::{LineCap, LineJoin, Style, Styler};
 use std::slice;
 use tile::{coords_to_float_xy, Tile, TILE_SIZE};
 
-unsafe extern "C" fn write_func(closure: *mut libc::c_void, data: *mut u8, len: libc::c_uint) -> cs::enums::Status {
+unsafe extern "C" fn write_func(
+    closure: *mut libc::c_void,
+    data: *mut u8,
+    len: libc::c_uint,
+) -> cs::enums::Status {
     let png_bytes: &mut Vec<u8> = &mut *(closure as *mut Vec<u8>);
     png_bytes.extend(slice::from_raw_parts(data, len as usize));
     cs::enums::Status::Success
@@ -17,7 +21,13 @@ unsafe extern "C" fn write_func(closure: *mut libc::c_void, data: *mut u8, len: 
 
 unsafe fn set_color(cr: *mut cs::cairo_t, color: &Color, opacity: f64) {
     let to_double_color = |u8_color| f64::from(u8_color) / 255.0_f64;
-    cs::cairo_set_source_rgba(cr, to_double_color(color.r), to_double_color(color.g), to_double_color(color.b), opacity);
+    cs::cairo_set_source_rgba(
+        cr,
+        to_double_color(color.r),
+        to_double_color(color.g),
+        to_double_color(color.b),
+        opacity,
+    );
 }
 
 unsafe fn draw_way_path(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
@@ -50,7 +60,12 @@ unsafe fn draw_way(cr: *mut cs::cairo_t, w: &Way, style: &Style, zoom: u8) {
     let default_dashes = Vec::new();
     let dashes = style.dashes.as_ref().unwrap_or(&default_dashes);
     let unwrapped_dashes = dashes.to_vec();
-    cs::cairo_set_dash(cr, unwrapped_dashes.as_ptr(), unwrapped_dashes.len() as i32, 0.0);
+    cs::cairo_set_dash(
+        cr,
+        unwrapped_dashes.as_ptr(),
+        unwrapped_dashes.len() as i32,
+        0.0,
+    );
 
     if let Some(ref c) = style.color {
         draw_way_path(cr, w, style, zoom);
@@ -75,7 +90,11 @@ impl Drawer for CairoDrawer {
         let mut data = Vec::new();
 
         unsafe {
-            let s = cs::cairo_image_surface_create(cs::enums::Format::Rgb24, TILE_SIZE as i32, TILE_SIZE as i32);
+            let s = cs::cairo_image_surface_create(
+                cs::enums::Format::Rgb24,
+                TILE_SIZE as i32,
+                TILE_SIZE as i32,
+            );
 
             let cr = cs::cairo_create(s);
 
@@ -99,7 +118,11 @@ impl Drawer for CairoDrawer {
 
             cs::cairo_destroy(cr);
 
-            cs::cairo_surface_write_to_png_stream(s, Some(write_func), &mut data as *mut Vec<u8> as *mut libc::c_void);
+            cs::cairo_surface_write_to_png_stream(
+                s,
+                Some(write_func),
+                &mut data as *mut Vec<u8> as *mut libc::c_void,
+            );
             cs::cairo_surface_destroy(s);
         }
 

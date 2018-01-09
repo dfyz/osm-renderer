@@ -14,10 +14,8 @@ pub fn get_test_path(relative_path: &[&str]) -> String {
 
 pub fn import_nano_moscow() -> String {
     let bin_file = get_test_path(&["osm", "nano_moscow.bin"]);
-    renderer::geodata::importer::import(
-        &get_test_path(&["osm", "nano_moscow.osm"]),
-        &bin_file
-    ).unwrap();
+    renderer::geodata::importer::import(&get_test_path(&["osm", "nano_moscow.osm"]), &bin_file)
+        .unwrap();
 
     bin_file
 }

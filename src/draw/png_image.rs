@@ -36,7 +36,12 @@ impl PngImage {
     pub fn new() -> PngImage {
         PngImage {
             pixels: vec![
-                RgbaColor { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
+                RgbaColor {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 1.0,
+                };
                 TILE_SIZE * TILE_SIZE
             ],
         }
@@ -62,21 +67,25 @@ impl PngImage {
         {
             let mut png_encoder = Encoder::new(&mut buf, t::TILE_SIZE, t::TILE_SIZE);
             png_encoder.set(ColorType::RGB);
-            let mut png_writer = png_encoder.write_header().chain_err(|| "Failed to write PNG header")?;
+            let mut png_writer = png_encoder
+                .write_header()
+                .chain_err(|| "Failed to write PNG header")?;
 
             let mut image_bytes = Vec::new();
             for p in &self.pixels {
                 let postdivide = |val| {
-                    let mul = if p.a == 0.0 { 0.0 } else { val / p.a };
+                    let mul = if p.a == 0.0 {
+                        0.0
+                    } else {
+                        val / p.a
+                    };
                     (f64::from(u8::max_value()) * mul) as u8
                 };
-                image_bytes.extend([
-                    postdivide(p.r),
-                    postdivide(p.g),
-                    postdivide(p.b),
-                ].into_iter());
+                image_bytes.extend([postdivide(p.r), postdivide(p.g), postdivide(p.b)].into_iter());
             }
-            png_writer.write_image_data(image_bytes.as_slice()).chain_err(|| "Failed to write PNG data")?;
+            png_writer
+                .write_image_data(image_bytes.as_slice())
+                .chain_err(|| "Failed to write PNG data")?;
         }
         Ok(buf)
     }

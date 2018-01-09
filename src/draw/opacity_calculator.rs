@@ -14,12 +14,22 @@ pub struct OpacityData {
 }
 
 impl OpacityCalculator {
-    pub fn new(half_line_width: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Self {
+    pub fn new(
+        half_line_width: f64,
+        dashes: &Option<Vec<f64>>,
+        line_cap: &Option<LineCap>,
+    ) -> Self {
         let mut dash_segments = Vec::new();
         let mut len_before = 0.0;
 
         if let Some(ref dashes) = *dashes {
-            compute_segments(half_line_width, dashes, line_cap, &mut dash_segments, &mut len_before);
+            compute_segments(
+                half_line_width,
+                dashes,
+                line_cap,
+                &mut dash_segments,
+                &mut len_before,
+            );
         }
 
         Self {
@@ -60,18 +70,21 @@ impl OpacityCalculator {
             dist_rem %= self.total_dash_len;
         }
         let safe_cmp_floats = |x: &f64, y: &f64| x.partial_cmp(y).unwrap_or(Ordering::Equal);
-        let opacities_with_cap_distances = self.dashes.iter()
+        let opacities_with_cap_distances = self.dashes
+            .iter()
             .filter_map(|d| {
                 get_opacity_by_segment(dist_rem, d).map(|op| (op, get_distance_in_cap(dist_rem, d)))
             })
             .collect::<Vec<_>>();
 
         StartDistanceOpacityData {
-            opacity: opacities_with_cap_distances.iter()
+            opacity: opacities_with_cap_distances
+                .iter()
                 .map(|x| x.0)
                 .max_by(&safe_cmp_floats)
                 .unwrap_or_default(),
-            distance_in_cap: opacities_with_cap_distances.iter()
+            distance_in_cap: opacities_with_cap_distances
+                .iter()
                 .filter_map(|x| x.1)
                 .min_by(&safe_cmp_floats),
         }
@@ -98,7 +111,7 @@ fn compute_segments(
     dashes: &[f64],
     line_cap: &Option<LineCap>,
     segments: &mut Vec<DashSegment>,
-    len_before: &mut f64
+    len_before: &mut f64,
 ) {
     // Use the first dash twice to make sure we don't miss the very first cap.
     let dash_indexes = (0..dashes.len()).chain(0..1);

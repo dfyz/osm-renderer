@@ -1,17 +1,19 @@
-extern crate capnp;
 extern crate cairo_sys as cs;
-#[macro_use] extern crate error_chain;
+extern crate capnp;
+#[macro_use]
+extern crate error_chain;
 extern crate futures;
 extern crate hyper;
 extern crate libc;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate memmap;
 extern crate owning_ref;
 extern crate png;
 extern crate xml;
 
 pub mod errors {
-	error_chain! {}
+    error_chain!{}
 }
 
 pub mod geodata_capnp {

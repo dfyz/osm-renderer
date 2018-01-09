@@ -10,15 +10,19 @@ pub struct Figure {
 
 impl Figure {
     pub fn add(&mut self, x: usize, y: usize, color: RgbaColor) {
-        match self.pixels.entry(y).or_insert_with(Default::default).entry(x) {
+        match self.pixels
+            .entry(y)
+            .or_insert_with(Default::default)
+            .entry(x)
+        {
             Entry::Occupied(o) => {
                 if color.a > o.get().a {
                     *o.into_mut() = color;
                 }
-            },
+            }
             Entry::Vacant(v) => {
                 v.insert(color);
-            },
+            }
         }
     }
 }

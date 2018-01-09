@@ -17,10 +17,7 @@ use tile;
 
 type GeodataHandle<'a> = OwningHandle<
     Box<(File, Mmap)>,
-    OwningHandle<
-        Box<Reader<SliceSegments<'a>>>,
-        Box<geodata_capnp::geodata::Reader<'a>>
-    >
+    OwningHandle<Box<Reader<SliceSegments<'a>>>, Box<geodata_capnp::geodata::Reader<'a>>>,
 >;
 
 pub trait OsmEntity<'a> {
@@ -47,34 +44,34 @@ impl<'a> GeodataReader<'a> {
         let input_file = File::open(file_name)
             .chain_err(|| format!("Failed to open {} for memory mapping", file_name))?;
         let mmap = unsafe {
-            MmapOptions::new().map(&input_file)
+            MmapOptions::new()
+                .map(&input_file)
                 .chain_err(|| format!("Failed to map {} to memory", file_name))?
         };
 
-        let handle = OwningHandle::try_new(
-            Box::new((input_file, mmap)),
-            |x| {
-                let message = serialize::read_message_from_words(
-                    Word::bytes_to_words(unsafe{&(*x).1}),
-                    ReaderOptions {
-                        traversal_limit_in_words: u64::max_value(),
-                        nesting_limit: i32::max_value(),
-                    }
-                )?;
-                OwningHandle::try_new(
-                    Box::new(message),
-                    |y| unsafe{&*y}.get_root::<geodata_capnp::geodata::Reader>().map(Box::new)
-                )
-            }
-        )
-            .chain_err(|| format!("Failed to decode geodata from {}", file_name))?;
+        let handle = OwningHandle::try_new(Box::new((input_file, mmap)), |x| {
+            let message = serialize::read_message_from_words(
+                Word::bytes_to_words(unsafe { &(*x).1 }),
+                ReaderOptions {
+                    traversal_limit_in_words: u64::max_value(),
+                    nesting_limit: i32::max_value(),
+                },
+            )?;
+            OwningHandle::try_new(Box::new(message), |y| {
+                unsafe { &*y }
+                    .get_root::<geodata_capnp::geodata::Reader>()
+                    .map(Box::new)
+            })
+        }).chain_err(|| format!("Failed to decode geodata from {}", file_name))?;
 
-        Ok(GeodataReader {
-            handle: handle,
-        })
+        Ok(GeodataReader { handle: handle })
     }
 
-    pub fn get_entities_in_tile(&'a self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities<'a> {
+    pub fn get_entities_in_tile(
+        &'a self,
+        t: &tile::Tile,
+        osm_ids: &Option<HashSet<u64>>,
+    ) -> OsmEntities<'a> {
         let tiles = self.get_reader().get_tiles().unwrap();
         let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
@@ -96,7 +93,9 @@ impl<'a> GeodataReader<'a> {
             let mut current_tile = tiles.get(current_index);
             let current_x = current_tile.get_tile_x();
 
-            while (current_tile.get_tile_x() == current_x) && (current_tile.get_tile_y() <= bounds.max_y) {
+            while (current_tile.get_tile_x() == current_x)
+                && (current_tile.get_tile_y() <= bounds.max_y)
+            {
                 for node_id in current_tile.get_local_node_ids().unwrap().iter() {
                     let node = Node {
                         reader: nodes.get(node_id),
@@ -139,8 +138,12 @@ impl<'a> GeodataReader<'a> {
     }
 }
 
-fn insert_entity_if_needed<'a, E>(entity: E, osm_ids: &Option<HashSet<u64>>, result: &mut HashSet<E>)
-    where E: OsmEntity<'a> + Hash + Eq
+fn insert_entity_if_needed<'a, E>(
+    entity: E,
+    osm_ids: &Option<HashSet<u64>>,
+    result: &mut HashSet<E>,
+) where
+    E: OsmEntity<'a> + Hash + Eq,
 {
     let should_insert = match *osm_ids {
         Some(ref ids) => ids.contains(&entity.global_id()),
@@ -152,7 +155,7 @@ fn insert_entity_if_needed<'a, E>(entity: E, osm_ids: &Option<HashSet<u64>>, res
 }
 
 pub struct Tags<'a> {
-    reader: struct_list::Reader<'a, geodata_capnp::tag::Owned>
+    reader: struct_list::Reader<'a, geodata_capnp::tag::Owned>,
 }
 
 impl<'a> Tags<'a> {
@@ -295,7 +298,11 @@ impl<'a> Relation<'a> {
     }
 }
 
-fn next_good_tile<'a>(tiles: struct_list::Reader<'a, geodata_capnp::tile::Owned>, bounds: &mut tile::TileRange, start_index: u32) -> Option<u32> {
+fn next_good_tile<'a>(
+    tiles: struct_list::Reader<'a, geodata_capnp::tile::Owned>,
+    bounds: &mut tile::TileRange,
+    start_index: u32,
+) -> Option<u32> {
     if start_index >= tiles.len() {
         return None;
     }
@@ -321,11 +328,17 @@ fn next_good_tile<'a>(tiles: struct_list::Reader<'a, geodata_capnp::tile::Owned>
             }
         }
 
-        if large_enough(lo) { Some(lo) } else { None }
+        if large_enough(lo) {
+            Some(lo)
+        } else {
+            None
+        }
     };
 
     let mut current_index = start_index;
-    while let Some(next_index) = find_smallest_feasible_index(current_index, bounds.min_x, bounds.min_y) {
+    while let Some(next_index) =
+        find_smallest_feasible_index(current_index, bounds.min_x, bounds.min_y)
+    {
         if get_tile_xy(next_index) > (bounds.max_x, bounds.max_y) {
             return None;
         }

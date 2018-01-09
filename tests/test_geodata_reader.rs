@@ -36,24 +36,47 @@ fn compare_ids<'a>(
     actual: &BTreeSet<u64>,
     expected: &BTreeSet<u64>,
     actual_ids_with_tags: &HashMap<u64, renderer::geodata::reader::Tags<'a>>,
-    expected_ids_with_tags: &IdsWithTags
+    expected_ids_with_tags: &IdsWithTags,
 ) {
     for e in expected.iter() {
         match actual.get(e) {
             Some(_) => {
                 if let Some(expected_tags) = expected_ids_with_tags.get(e) {
-                    let actual_tags = actual_ids_with_tags.get(e).expect(&format!("Expected to have tags for {} {}", entity_type, e));
+                    let actual_tags = actual_ids_with_tags
+                        .get(e)
+                        .expect(&format!("Expected to have tags for {} {}", entity_type, e));
                     for (k, v) in expected_tags.iter() {
                         let actual_tag = actual_tags.get_by_key(k);
-                        assert_eq!(Some(v.as_ref()), actual_tag, "Expected {}={} for {} {}, found {:?}", k, v, entity_type, e, actual_tag);
+                        assert_eq!(
+                            Some(v.as_ref()),
+                            actual_tag,
+                            "Expected {}={} for {} {}, found {:?}",
+                            k,
+                            v,
+                            entity_type,
+                            e,
+                            actual_tag
+                        );
                     }
                 }
-            },
-            None => assert!(actual.contains(e), "{} {} is expected to be present in tile {:?}", entity_type, e, tile),
+            }
+            None => assert!(
+                actual.contains(e),
+                "{} {} is expected to be present in tile {:?}",
+                entity_type,
+                e,
+                tile
+            ),
         }
     }
     for a in actual.iter() {
-        assert!(expected.contains(a), "Found an unexpected {} {} in tile {:?}", entity_type, a, tile);
+        assert!(
+            expected.contains(a),
+            "Found an unexpected {} {} in tile {:?}",
+            entity_type,
+            a,
+            tile
+        );
     }
 }
 
@@ -146,7 +169,12 @@ fn test_synthetic_data() {
         x: 0,
         y: 1,
     };
-    let node_ids = reader.get_entities_in_tile(&tile, &None).nodes.iter().map(|x| x.global_id()).collect::<BTreeSet<_>>();
+    let node_ids = reader
+        .get_entities_in_tile(&tile, &None)
+        .nodes
+        .iter()
+        .map(|x| x.global_id())
+        .collect::<BTreeSet<_>>();
     assert_eq!(good_node_ids, node_ids);
 }
 
@@ -154,7 +182,9 @@ fn test_synthetic_data() {
 fn test_nano_moscow_import() {
     let mut test_data_file = File::open(&get_test_path(&["osm", "test_data.json"])).unwrap();
     let mut test_data_content = String::new();
-    test_data_file.read_to_string(&mut test_data_content).unwrap();
+    test_data_file
+        .read_to_string(&mut test_data_content)
+        .unwrap();
     let tiles: Vec<Tile> = json::decode(&test_data_content).unwrap();
 
     let nano_moscow = import_nano_moscow();
@@ -169,8 +199,11 @@ fn test_nano_moscow_import() {
 
         let tile_content = reader.get_entities_in_tile(&tile, &None);
 
-        fn collect_ids_with_tags<'a, E>(entity: &HashSet<E>) -> HashMap<u64, renderer::geodata::reader::Tags<'a>>
-            where E : Eq + Hash + OsmEntity<'a>
+        fn collect_ids_with_tags<'a, E>(
+            entity: &HashSet<E>,
+        ) -> HashMap<u64, renderer::geodata::reader::Tags<'a>>
+        where
+            E: Eq + Hash + OsmEntity<'a>,
         {
             entity
                 .iter()
@@ -178,22 +211,55 @@ fn test_nano_moscow_import() {
                 .collect::<HashMap<_, _>>()
         }
 
-        let actual_nodes = tile_content.nodes.iter().map(|x| x.global_id()).collect::<BTreeSet<_>>();
+        let actual_nodes = tile_content
+            .nodes
+            .iter()
+            .map(|x| x.global_id())
+            .collect::<BTreeSet<_>>();
         let actual_node_ids_with_tags = collect_ids_with_tags(&tile_content.nodes);
         let expected_nodes = t.nodes.iter().map(|x| *x.0).collect::<BTreeSet<_>>();
 
-        compare_ids("node", &tile, &actual_nodes, &expected_nodes, &actual_node_ids_with_tags, &t.nodes);
+        compare_ids(
+            "node",
+            &tile,
+            &actual_nodes,
+            &expected_nodes,
+            &actual_node_ids_with_tags,
+            &t.nodes,
+        );
 
-        let actual_ways = tile_content.ways.iter().map(|x| x.global_id()).collect::<BTreeSet<_>>();
+        let actual_ways = tile_content
+            .ways
+            .iter()
+            .map(|x| x.global_id())
+            .collect::<BTreeSet<_>>();
         let actual_way_ids_with_tags = collect_ids_with_tags(&tile_content.ways);
         let expected_ways = t.ways.iter().map(|x| *x.0).collect::<BTreeSet<_>>();
 
-        compare_ids("way", &tile, &actual_ways, &expected_ways, &actual_way_ids_with_tags, &t.ways);
+        compare_ids(
+            "way",
+            &tile,
+            &actual_ways,
+            &expected_ways,
+            &actual_way_ids_with_tags,
+            &t.ways,
+        );
 
-        let actual_relations = tile_content.relations.iter().map(|x| x.global_id()).collect::<BTreeSet<_>>();
+        let actual_relations = tile_content
+            .relations
+            .iter()
+            .map(|x| x.global_id())
+            .collect::<BTreeSet<_>>();
         let actual_relation_ids_with_tags = collect_ids_with_tags(&tile_content.relations);
         let expected_relations = t.relations.iter().map(|x| *x.0).collect::<BTreeSet<_>>();
 
-        compare_ids("relation", &tile, &actual_relations, &expected_relations, &actual_relation_ids_with_tags, &t.relations);
+        compare_ids(
+            "relation",
+            &tile,
+            &actual_relations,
+            &expected_relations,
+            &actual_relation_ids_with_tags,
+            &t.relations,
+        );
     }
 }
