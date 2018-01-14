@@ -1,6 +1,6 @@
+extern crate renderer;
 #[macro_use]
 extern crate serde_derive;
-extern crate renderer;
 
 mod common;
 
@@ -23,7 +23,11 @@ fn test_rendering() {
         .read_to_string(&mut mapcss_content)
         .unwrap();
 
-    let styler = Styler::new(Parser::new(Tokenizer::new(&mapcss_content)).parse().unwrap());
+    let styler = Styler::new(
+        Parser::new(Tokenizer::new(&mapcss_content))
+            .parse()
+            .unwrap(),
+    );
     let drawer = renderer::draw::pure_rust_drawer::PureRustDrawer::new();
 
     for tile in tiles {
@@ -32,10 +36,12 @@ fn test_rendering() {
             x: tile.x,
             y: tile.y,
         };
-        drawer.draw_tile(
-            &reader.get_entities_in_tile(&tile_to_draw, &None),
-            &tile_to_draw,
-            &styler
-        ).unwrap();
+        drawer
+            .draw_tile(
+                &reader.get_entities_in_tile(&tile_to_draw, &None),
+                &tile_to_draw,
+                &styler,
+            )
+            .unwrap();
     }
 }

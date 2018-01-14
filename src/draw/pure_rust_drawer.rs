@@ -9,7 +9,7 @@ use draw::drawer::Drawer;
 use draw::figure::Figure;
 use draw::fill::fill_contour;
 use draw::line::draw_lines;
-use draw::tile_pixels::{TilePixels, RgbaColor};
+use draw::tile_pixels::{RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
@@ -116,7 +116,11 @@ impl Drawer for PureRustDrawer {
         let styled_ways = styler.style_ways(entities.ways.iter(), tile.zoom);
         self.draw_ways(&mut pixels, &styled_ways, tile);
 
-        rgb_triples_to_png(&pixels.to_rgb_triples(), pixels.dimension(), pixels.dimension())
+        rgb_triples_to_png(
+            &pixels.to_rgb_triples(),
+            pixels.dimension(),
+            pixels.dimension(),
+        )
     }
 }
 
