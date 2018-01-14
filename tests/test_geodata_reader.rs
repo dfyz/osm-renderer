@@ -117,7 +117,7 @@ fn test_synthetic_data() {
                 add_tile(2, 15, true);
                 add_tile(2, 16, false);
                 add_tile(2, 17, false);
-                // nothing is in the range fox x = 4
+                // nothing is in the range for x = 4
                 add_tile(4, 1, false);
                 add_tile(4, 4, false);
                 // nothing is in the range for x = 5
