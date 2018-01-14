@@ -1,5 +1,5 @@
 use draw::figure::Figure;
-use draw::png_image::RgbaColor;
+use draw::tile_pixels::RgbaColor;
 use draw::point::Point;
 use mapcss::color::Color;
 

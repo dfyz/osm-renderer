@@ -9,7 +9,8 @@ use draw::drawer::Drawer;
 use draw::figure::Figure;
 use draw::fill::fill_contour;
 use draw::line::draw_lines;
-use draw::png_image::{PngImage, RgbaColor};
+use draw::tile_pixels::{TilePixels, RgbaColor};
+use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
 use std::collections::HashMap;
@@ -35,7 +36,7 @@ impl PureRustDrawer {
         }
     }
 
-    fn draw_ways(&self, image: &mut PngImage, styled_ways: &[(&Way, Style)], tile: &t::Tile) {
+    fn draw_ways(&self, image: &mut TilePixels, styled_ways: &[(&Way, Style)], tile: &t::Tile) {
         let ways_to_draw = || styled_ways.iter().filter(|&&(w, _)| w.node_count() > 0);
 
         for &(way, ref style) in ways_to_draw() {
@@ -49,7 +50,7 @@ impl PureRustDrawer {
 
     fn draw_one_way(
         &self,
-        image: &mut PngImage,
+        image: &mut TilePixels,
         way: &Way,
         style: &Style,
         is_fill: bool,
@@ -109,17 +110,17 @@ impl Drawer for PureRustDrawer {
         tile: &t::Tile,
         styler: &Styler,
     ) -> Result<Vec<u8>> {
-        let mut image = PngImage::new();
-        fill_canvas(&mut image, styler);
+        let mut pixels = TilePixels::new();
+        fill_canvas(&mut pixels, styler);
 
         let styled_ways = styler.style_ways(entities.ways.iter(), tile.zoom);
-        self.draw_ways(&mut image, &styled_ways, tile);
+        self.draw_ways(&mut pixels, &styled_ways, tile);
 
-        image.to_bytes()
+        rgb_triples_to_png(&pixels.to_rgb_triples(), pixels.dimension(), pixels.dimension())
     }
 }
 
-fn fill_canvas(image: &mut PngImage, styler: &Styler) {
+fn fill_canvas(image: &mut TilePixels, styler: &Styler) {
     if let Some(ref c) = styler.canvas_fill_color {
         let canvas_rgba = RgbaColor::from_color(c, 1.0);
         for x in 0..TILE_SIZE {
@@ -130,7 +131,7 @@ fn fill_canvas(image: &mut PngImage, styler: &Styler) {
     }
 }
 
-fn draw_figure(figure: &Figure, image: &mut PngImage, tile: &t::Tile) {
+fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
     let to_tile_start = |c| (c as usize) * TILE_SIZE;
     let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
 

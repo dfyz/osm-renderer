@@ -1,4 +1,4 @@
-use draw::png_image::RgbaColor;
+use draw::tile_pixels::RgbaColor;
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;

@@ -1,6 +1,5 @@
-extern crate rustc_serialize;
-use rustc_serialize::json;
-
+#[macro_use]
+extern crate serde_derive;
 extern crate capnp;
 extern crate renderer;
 
@@ -8,27 +7,14 @@ mod common;
 
 use capnp::message::Builder;
 use capnp::serialize;
-use common::{get_test_path, import_nano_moscow};
+use common::{get_test_path, import_nano_moscow, read_tiles, IdsWithTags};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::cmp::Eq;
 use std::fs::File;
 use std::hash::Hash;
-use std::io::{BufWriter, Read};
+use std::io::BufWriter;
 use renderer::geodata_capnp::geodata;
 use renderer::geodata::reader::OsmEntity;
-
-type Tags = HashMap<String, String>;
-type IdsWithTags = HashMap<u64, Tags>;
-
-#[derive(RustcDecodable)]
-pub struct Tile {
-    zoom: u8,
-    x: u32,
-    y: u32,
-    nodes: IdsWithTags,
-    ways: IdsWithTags,
-    relations: IdsWithTags,
-}
 
 fn compare_ids<'a>(
     entity_type: &str,
@@ -180,17 +166,10 @@ fn test_synthetic_data() {
 
 #[test]
 fn test_nano_moscow_import() {
-    let mut test_data_file = File::open(&get_test_path(&["osm", "test_data.json"])).unwrap();
-    let mut test_data_content = String::new();
-    test_data_file
-        .read_to_string(&mut test_data_content)
-        .unwrap();
-    let tiles: Vec<Tile> = json::decode(&test_data_content).unwrap();
-
     let nano_moscow = import_nano_moscow();
     let reader = renderer::geodata::reader::GeodataReader::new(&nano_moscow).unwrap();
 
-    for t in tiles {
+    for t in read_tiles() {
         let tile = renderer::tile::Tile {
             zoom: t.zoom,
             x: t.x,

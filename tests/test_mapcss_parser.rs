@@ -1,7 +1,5 @@
-// We don't use import_nano_moscow() from common.rs in this test.
-// We could split common.rs in submodules, but this is just a test, so why bother.
-#![allow(dead_code)]
-
+#[macro_use]
+extern crate serde_derive;
 extern crate renderer;
 
 mod common;

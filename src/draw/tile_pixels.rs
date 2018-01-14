@@ -1,8 +1,4 @@
-use errors::*;
-
 use mapcss::color::Color;
-use png::{ColorType, Encoder, HasParameters};
-use tile as t;
 
 use draw::TILE_SIZE;
 
@@ -28,13 +24,13 @@ impl RgbaColor {
 }
 
 #[derive(Default)]
-pub struct PngImage {
+pub struct TilePixels {
     pixels: Vec<RgbaColor>,
 }
 
-impl PngImage {
-    pub fn new() -> PngImage {
-        PngImage {
+impl TilePixels {
+    pub fn new() -> TilePixels {
+        TilePixels {
             pixels: vec![
                 RgbaColor {
                     r: 0.0,
@@ -45,6 +41,10 @@ impl PngImage {
                 TILE_SIZE * TILE_SIZE
             ],
         }
+    }
+
+    pub fn dimension(&self) -> usize {
+        TILE_SIZE
     }
 
     pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
@@ -62,32 +62,22 @@ impl PngImage {
         self.pixels[idx] = new_pixel;
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        {
-            let mut png_encoder = Encoder::new(&mut buf, t::TILE_SIZE, t::TILE_SIZE);
-            png_encoder.set(ColorType::RGB);
-            let mut png_writer = png_encoder
-                .write_header()
-                .chain_err(|| "Failed to write PNG header")?;
+    pub fn to_rgb_triples(&self) -> Vec<(u8, u8, u8)> {
+        let mut result = Vec::new();
 
-            let mut image_bytes = Vec::new();
-            for p in &self.pixels {
-                let postdivide = |val| {
-                    let mul = if p.a == 0.0 {
-                        0.0
-                    } else {
-                        val / p.a
-                    };
-                    (f64::from(u8::max_value()) * mul) as u8
+        for p in &self.pixels {
+            let postdivide = |val| {
+                let mul = if p.a == 0.0 {
+                    0.0
+                } else {
+                    val / p.a
                 };
-                image_bytes.extend([postdivide(p.r), postdivide(p.g), postdivide(p.b)].into_iter());
-            }
-            png_writer
-                .write_image_data(image_bytes.as_slice())
-                .chain_err(|| "Failed to write PNG data")?;
+                (f64::from(u8::max_value()) * mul) as u8
+            };
+            result.push((postdivide(p.r), postdivide(p.g), postdivide(p.b)));
         }
-        Ok(buf)
+
+        result
     }
 }
 
