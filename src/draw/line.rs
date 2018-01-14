@@ -99,7 +99,12 @@ fn draw_line(
         was_corrected
     };
 
-    let center_dist_numer_const = f64::from((p2.x * p1.y) - (p2.y * p1.x));
+    let center_dist_numer_const =
+        ((i64::from(p2.x) * i64::from(p1.y)) - (i64::from(p2.y) * i64::from(p1.x)));
+    let (sdx, sdy) = (
+        i64::from(p2.y) - i64::from(p1.y),
+        i64::from(p2.x) - i64::from(p1.x),
+    );
     let center_dist_denom = (f64::from(dy * dy + dx * dx)).sqrt();
 
     let mut draw_perpendiculars = |mn, mx, p_error| {
@@ -114,10 +119,9 @@ fn draw_line(
                     y: perp_y,
                 };
 
-                let center_dist_numer_non_const =
-                    f64::from((p2.y - p1.y) * perp_x - (p2.x - p1.x) * perp_y);
-                let center_dist = (center_dist_numer_const + center_dist_numer_non_const).abs()
-                    / center_dist_denom;
+                let center_dist_numer_non_const = sdy * i64::from(perp_x) - sdx * i64::from(perp_y);
+                let center_dist_raw = center_dist_numer_const + center_dist_numer_non_const;
+                let center_dist = (center_dist_raw as f64).abs() / center_dist_denom;
 
                 let long_start_dist = current_point.dist(p1);
                 let short_start_dist = (long_start_dist.powi(2) - center_dist.powi(2)).sqrt();
