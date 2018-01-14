@@ -100,7 +100,7 @@ fn draw_line(
     };
 
     let center_dist_numer_const =
-        ((i64::from(p2.x) * i64::from(p1.y)) - (i64::from(p2.y) * i64::from(p1.x)));
+        (i64::from(p2.x) * i64::from(p1.y)) - (i64::from(p2.y) * i64::from(p1.x));
     let (sdx, sdy) = (
         i64::from(p2.y) - i64::from(p1.y),
         i64::from(p2.x) - i64::from(p1.x),
