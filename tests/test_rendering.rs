@@ -44,9 +44,9 @@ fn test_rendering() {
         let rendered = drawer.draw_to_pixels(&entities, &tile_to_draw, &styler);
         rendered_tiles
             .entry(tile_to_draw.zoom)
-            .or_insert_with(|| Default::default())
+            .or_insert_with(Default::default)
             .entry(tile_to_draw.y)
-            .or_insert_with(|| Default::default())
+            .or_insert_with(Default::default)
             .insert(tile_to_draw.x, rendered);
     }
 
