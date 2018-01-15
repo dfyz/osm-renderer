@@ -1,3 +1,4 @@
+extern crate png;
 extern crate renderer;
 #[macro_use]
 extern crate serde_derive;
@@ -13,6 +14,72 @@ use renderer::mapcss::parser::Parser;
 use renderer::mapcss::styler::Styler;
 use renderer::mapcss::token::Tokenizer;
 
+const RED_PIXEL: (u8, u8, u8) = (255, 0, 0);
+
+fn read_png(file_name: &str) -> (RgbTriples, png::OutputInfo) {
+    let decoder = png::Decoder::new(File::open(file_name).unwrap());
+    let (info, mut reader) = decoder.read_info().unwrap();
+    let mut result = RgbTriples::new();
+    while let Some(row) = reader.next_row().unwrap() {
+        result.extend(row.chunks(3).map(|v| (v[0], v[1], v[2])))
+    }
+    (result, info)
+}
+
+fn compare_png_outputs(zoom: u8) {
+    let (expected, expected_info) = read_png(&common::get_test_path(&[
+        "rendered",
+        &format!("{}_expected.png", zoom),
+    ]));
+    let (actual, actual_info) = read_png(&common::get_test_path(&[
+        "rendered",
+        &format!("{}.png", zoom),
+    ]));
+
+    assert_eq!(
+        expected_info.width,
+        actual_info.width,
+        "different widths for zoom level {}",
+        zoom
+    );
+    assert_eq!(
+        expected_info.height,
+        actual_info.height,
+        "different heights for zoom level {}",
+        zoom
+    );
+
+    let diff = expected
+        .iter()
+        .zip(actual)
+        .map(|(e, a)| {
+            if *e != a {
+                RED_PIXEL
+            } else {
+                Default::default()
+            }
+        })
+        .collect::<Vec<_>>();
+    let has_diff = diff.contains(&RED_PIXEL);
+
+    if has_diff {
+        let diff_output_path = common::get_test_path(&["rendered", &format!("{}_diff.png", zoom)]);
+        let diff_output = File::create(&diff_output_path);
+
+        diff_output
+            .unwrap()
+            .write_all(&rgb_triples_to_png(&diff, actual_info.width as usize, actual_info.height as usize).unwrap())
+            .unwrap();
+        assert!(
+            false,
+            "the tiles for zoom level {} differ from the expected ones; see {} for more details",
+            zoom,
+            std::fs::canonicalize(diff_output_path).unwrap().to_str().unwrap()
+        );
+    }
+}
+
+#[ignore]
 #[test]
 fn test_rendering() {
     let nano_moscow = common::import_nano_moscow();
@@ -50,17 +117,16 @@ fn test_rendering() {
             .insert(tile_to_draw.x, rendered);
     }
 
-    let red_pixel = (255, 0, 0);
     for (zoom, y_x_rendered) in rendered_tiles {
         let mut rgb = RgbTriples::new();
         for x_rendered in y_x_rendered.values() {
             for sub_y in 0..dimension() {
                 for rendered in x_rendered.values() {
                     if sub_y == 0 {
-                        rgb.extend(std::iter::repeat(red_pixel).take(dimension()));
+                        rgb.extend(std::iter::repeat(RED_PIXEL).take(dimension()));
                     } else {
                         rgb.extend(&rendered[sub_y * dimension()..(sub_y + 1) * dimension() - 1]);
-                        rgb.push(red_pixel);
+                        rgb.push(RED_PIXEL);
                     }
                 }
             }
@@ -76,5 +142,7 @@ fn test_rendering() {
         ]));
 
         png_output.unwrap().write_all(&png_bytes.unwrap()).unwrap();
+
+        compare_png_outputs(zoom);
     }
 }
