@@ -28,6 +28,12 @@ pub struct TilePixels {
     pixels: Vec<RgbaColor>,
 }
 
+pub fn dimension() -> usize {
+    TILE_SIZE
+}
+
+pub type RgbTriples = Vec<(u8, u8, u8)>;
+
 impl TilePixels {
     pub fn new() -> TilePixels {
         TilePixels {
@@ -41,10 +47,6 @@ impl TilePixels {
                 TILE_SIZE * TILE_SIZE
             ],
         }
-    }
-
-    pub fn dimension(&self) -> usize {
-        TILE_SIZE
     }
 
     pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
@@ -62,7 +64,7 @@ impl TilePixels {
         self.pixels[idx] = new_pixel;
     }
 
-    pub fn to_rgb_triples(&self) -> Vec<(u8, u8, u8)> {
+    pub fn to_rgb_triples(&self) -> RgbTriples {
         let mut result = Vec::new();
 
         for p in &self.pixels {

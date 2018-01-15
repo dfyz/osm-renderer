@@ -9,7 +9,7 @@ use draw::drawer::Drawer;
 use draw::figure::Figure;
 use draw::fill::fill_contour;
 use draw::line::draw_lines;
-use draw::tile_pixels::{RgbaColor, TilePixels};
+use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
@@ -34,6 +34,21 @@ impl PureRustDrawer {
         PureRustDrawer {
             cache: Default::default(),
         }
+    }
+
+    pub fn draw_to_pixels<'a>(
+        &self,
+        entities: &OsmEntities<'a>,
+        tile: &t::Tile,
+        styler: &Styler,
+    ) -> RgbTriples {
+        let mut pixels = TilePixels::new();
+        fill_canvas(&mut pixels, styler);
+
+        let styled_ways = styler.style_ways(entities.ways.iter(), tile.zoom);
+        self.draw_ways(&mut pixels, &styled_ways, tile);
+
+        pixels.to_rgb_triples()
     }
 
     fn draw_ways(&self, image: &mut TilePixels, styled_ways: &[(&Way, Style)], tile: &t::Tile) {
@@ -110,17 +125,8 @@ impl Drawer for PureRustDrawer {
         tile: &t::Tile,
         styler: &Styler,
     ) -> Result<Vec<u8>> {
-        let mut pixels = TilePixels::new();
-        fill_canvas(&mut pixels, styler);
-
-        let styled_ways = styler.style_ways(entities.ways.iter(), tile.zoom);
-        self.draw_ways(&mut pixels, &styled_ways, tile);
-
-        rgb_triples_to_png(
-            &pixels.to_rgb_triples(),
-            pixels.dimension(),
-            pixels.dimension(),
-        )
+        let pixels = self.draw_to_pixels(entities, tile, styler);
+        rgb_triples_to_png(&pixels, dimension(), dimension())
     }
 }
 
