@@ -68,13 +68,20 @@ fn compare_png_outputs(zoom: u8) {
 
         diff_output
             .unwrap()
-            .write_all(&rgb_triples_to_png(&diff, actual_info.width as usize, actual_info.height as usize).unwrap())
+            .write_all(&rgb_triples_to_png(
+                &diff,
+                actual_info.width as usize,
+                actual_info.height as usize,
+            ).unwrap())
             .unwrap();
         assert!(
             false,
             "the tiles for zoom level {} differ from the expected ones; see {} for more details",
             zoom,
-            std::fs::canonicalize(diff_output_path).unwrap().to_str().unwrap()
+            std::fs::canonicalize(diff_output_path)
+                .unwrap()
+                .to_str()
+                .unwrap()
         );
     }
 }
