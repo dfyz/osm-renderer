@@ -9,7 +9,7 @@ use clap::{App, Arg};
 use renderer::http_server::run_server;
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let matches = App::new("OSM renderer server")
         .arg(Arg::with_name("SERVER_ADDRESS").required(true).index(1))

@@ -8,7 +8,7 @@ extern crate renderer;
 use clap::{App, Arg};
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let matches = App::new("OSM importer")
         .about("Imports an XML file with OpenStreetMap data to a format suitable for map rendering")
