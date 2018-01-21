@@ -29,6 +29,3 @@ features = ["v1_14", "png"]
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
-
-[profile.release]
-debug = true
