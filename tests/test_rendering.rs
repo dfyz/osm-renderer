@@ -37,14 +37,12 @@ fn compare_png_outputs(zoom: u8) {
     ]));
 
     assert_eq!(
-        expected_info.width,
-        actual_info.width,
+        expected_info.width, actual_info.width,
         "different widths for zoom level {}",
         zoom
     );
     assert_eq!(
-        expected_info.height,
-        actual_info.height,
+        expected_info.height, actual_info.height,
         "different heights for zoom level {}",
         zoom
     );
