@@ -7,5 +7,4 @@ pub mod line;
 pub mod tile_pixels;
 pub mod png_writer;
 pub mod point;
-pub mod pure_rust_drawer;
 pub mod opacity_calculator;

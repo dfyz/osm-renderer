@@ -101,7 +101,7 @@ fn test_rendering() {
             .parse()
             .unwrap(),
     );
-    let drawer = renderer::draw::pure_rust_drawer::PureRustDrawer::new();
+    let drawer = renderer::draw::drawer::Drawer::new();
 
     let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> =
         BTreeMap::new();

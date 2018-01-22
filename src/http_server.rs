@@ -2,7 +2,6 @@ use errors::*;
 
 use std::collections::HashSet;
 use draw::drawer::Drawer;
-use draw::pure_rust_drawer::PureRustDrawer;
 use futures;
 use futures::future::FutureResult;
 use geodata::reader::GeodataReader;
@@ -40,7 +39,7 @@ pub fn run_server(
     let tile_server = TileServer {
         reader,
         styler: Styler::new(rules),
-        pure_drawer: PureRustDrawer::new(),
+        drawer: Drawer::new(),
         osm_ids: osm_ids,
     };
 
@@ -61,7 +60,7 @@ pub fn run_server(
 struct TileServer<'a> {
     reader: GeodataReader<'a>,
     styler: Styler,
-    pure_drawer: PureRustDrawer,
+    drawer: Drawer,
     osm_ids: Option<HashSet<u64>>,
 }
 
@@ -105,7 +104,7 @@ impl<'a> TileHandler<'a> {
         let entities = self.tile_server
             .reader
             .get_entities_in_tile(tile, &self.tile_server.osm_ids);
-        let tile_png_bytes = self.tile_server.pure_drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
+        let tile_png_bytes = self.tile_server.drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
         Ok(tile_png_bytes)
     }
 }
