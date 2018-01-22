@@ -4,7 +4,7 @@ use draw::point::Point;
 use mapcss::color::Color;
 
 use std::cmp::{max, min};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub fn fill_contour<I>(points: I, color: &Color, opacity: f64) -> Figure
 where
@@ -94,7 +94,7 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY)
     }
 }
 
-type EdgesByY = HashMap<i32, HashMap<usize, Edge>>;
+type EdgesByY = BTreeMap<i32, BTreeMap<usize, Edge>>;
 
 struct Edge {
     x_min: i32,

@@ -86,7 +86,6 @@ fn compare_png_outputs(zoom: u8) {
     }
 }
 
-#[ignore]
 #[test]
 fn test_rendering() {
     let nano_moscow = common::import_nano_moscow();
