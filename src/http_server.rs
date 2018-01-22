@@ -104,7 +104,10 @@ impl<'a> TileHandler<'a> {
         let entities = self.tile_server
             .reader
             .get_entities_in_tile(tile, &self.tile_server.osm_ids);
-        let tile_png_bytes = self.tile_server.drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
+        let tile_png_bytes =
+            self.tile_server
+                .drawer
+                .draw_tile(&entities, tile, &self.tile_server.styler)?;
         Ok(tile_png_bytes)
     }
 }
