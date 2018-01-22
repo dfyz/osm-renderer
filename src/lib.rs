@@ -15,11 +15,7 @@ pub mod errors {
     error_chain!{}
 }
 
-pub mod geodata_capnp {
-    #![allow(unknown_lints)]
-    #![allow(clippy)]
-    include!(concat!(env!("OUT_DIR"), "/geodata_capnp.rs"));
-}
+pub mod geodata_capnp;
 
 pub mod geodata {
     pub mod importer;
