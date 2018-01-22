@@ -21,10 +21,6 @@ owning_ref = "*"
 png = "*"
 xml-rs = "*"
 
-[dependencies.cairo-sys-rs]
-version = "*"
-features = ["v1_14", "png"]
-
 [dev-dependencies]
 serde = "*"
 serde_derive = "*"

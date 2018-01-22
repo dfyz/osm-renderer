@@ -1,7 +1,6 @@
 use errors::*;
 
 use std::collections::HashSet;
-use draw::cairo_drawer::CairoDrawer;
 use draw::drawer::Drawer;
 use draw::pure_rust_drawer::PureRustDrawer;
 use futures;
@@ -42,7 +41,6 @@ pub fn run_server(
         reader,
         styler: Styler::new(rules),
         pure_drawer: PureRustDrawer::new(),
-        cairo_drawer: Default::default(),
         osm_ids: osm_ids,
     };
 
@@ -64,7 +62,6 @@ struct TileServer<'a> {
     reader: GeodataReader<'a>,
     styler: Styler,
     pure_drawer: PureRustDrawer,
-    cairo_drawer: CairoDrawer,
     osm_ids: Option<HashSet<u64>>,
 }
 
@@ -90,9 +87,7 @@ impl<'a> Service for TileHandler<'a> {
             Some(tile) => tile,
         };
 
-        let use_cairo = req.uri().path().starts_with("/cairo");
-
-        let response = match self.draw_tile_contents(&tile, use_cairo) {
+        let response = match self.draw_tile_contents(&tile) {
             Ok(content) => Response::new()
                 .with_header(ContentType::png())
                 .with_body(content),
@@ -106,16 +101,11 @@ impl<'a> Service for TileHandler<'a> {
 }
 
 impl<'a> TileHandler<'a> {
-    fn draw_tile_contents(&self, tile: &Tile, use_cairo: bool) -> Result<Vec<u8>> {
+    fn draw_tile_contents(&self, tile: &Tile) -> Result<Vec<u8>> {
         let entities = self.tile_server
             .reader
             .get_entities_in_tile(tile, &self.tile_server.osm_ids);
-        let drawer: &Drawer = if use_cairo {
-            &self.tile_server.cairo_drawer
-        } else {
-            &self.tile_server.pure_drawer
-        };
-        let tile_png_bytes = drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
+        let tile_png_bytes = self.tile_server.pure_drawer.draw_tile(&entities, tile, &self.tile_server.styler)?;
         Ok(tile_png_bytes)
     }
 }

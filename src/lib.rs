@@ -1,4 +1,3 @@
-extern crate cairo_sys as cs;
 extern crate capnp;
 #[macro_use]
 extern crate error_chain;

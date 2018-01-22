@@ -50,10 +50,6 @@
 				unloadInvisibleTiles: false,
 				reuseTiles: true });
 
-			var cairo = L.tileLayer('http://localhost:8080/cairo/{z}/{x}/{y}.png', {
-				maxZoom: 18,
-				attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, Imagery &copy; alaCarte',
-				unloadInvisibleTiles: false });
 			var ours = L.tileLayer('http://localhost:8080/{z}/{x}/{y}.png', {
 				maxZoom: 18,
 				attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, Imagery &copy; alaCarte',
@@ -66,7 +62,6 @@
 				"Mapnik": osm
 			};
 			var overlayMaps = {
-				"Cairo": cairo,
 				"Ours": ours,
 			};
 			
