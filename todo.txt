@@ -1,6 +1,5 @@
 Goals:
 * render multipolygonal relations (rivers are mostly broken without them)
-  * fix odd egde count when filling multipolygons
   * better detection of which relation cover a tile (bounding boxes)
   * don't import useless relations
   * get rid of Cap'N'Proto
