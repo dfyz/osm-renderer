@@ -1,5 +1,6 @@
 Goals:
 * render multipolygonal relations (rivers are mostly broken without them)
+  * multipolygons with weird shapes (e.g., https://www.openstreetmap.org/relation/5625085)
   * better detection of which relation cover a tile (bounding boxes)
   * don't import useless relations
   * get rid of Cap'N'Proto
