@@ -1,6 +1,6 @@
 use errors::*;
 
-use geodata::reader::{OsmEntities, OsmEntity, Relation, Way};
+use geodata::reader::{OsmEntities, OsmEntity, Node, Relation, Way};
 use mapcss::styler::{Style, StyleHashKey, Styler};
 use tile as t;
 
@@ -12,7 +12,7 @@ use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 
 #[derive(Default)]
@@ -85,7 +85,7 @@ impl Drawer {
         is_fill: bool,
         tile: &t::Tile,
     ) where
-        A: OsmEntity<'e> + PointCollection,
+        A: OsmEntity<'e> + NodePairCollection<'e>,
     {
         let cache_key = CacheKey {
             entity_id: area.global_id(),
@@ -102,17 +102,26 @@ impl Drawer {
             }
         }
 
-        let points = area.to_points(tile.zoom).into_iter();
+        let mut seen_node_pairs = HashSet::new();
+        let mut points = Vec::new();
+
+        for np in area.to_node_pairs() {
+            if seen_node_pairs.contains(&np) || seen_node_pairs.contains(&np.reverse()) {
+                continue;
+            }
+            points.push(np.to_points(tile.zoom));
+            seen_node_pairs.insert(np);
+        }
 
         let figure = if is_fill {
             style
                 .fill_color
                 .as_ref()
-                .map(|color| fill_contour(points, color, float_or_one(&style.fill_opacity)))
+                .map(|color| fill_contour(points.into_iter(), color, float_or_one(&style.fill_opacity)))
         } else {
             style.color.as_ref().map(|color| {
                 draw_lines(
-                    points,
+                    points.into_iter(),
                     float_or_one(&style.width),
                     color,
                     float_or_one(&style.opacity),
@@ -161,26 +170,49 @@ fn float_or_one(num: &Option<f64>) -> f64 {
     num.unwrap_or(1.0)
 }
 
-trait PointCollection {
-    fn to_points(&self, zoom: u8) -> Vec<(Point, Point)>;
+#[derive(Eq, PartialEq, Hash)]
+struct NodePair<'n> {
+    n1: Node<'n>,
+    n2: Node<'n>,
 }
 
-impl<'w> PointCollection for Way<'w> {
-    fn to_points(&self, zoom: u8) -> Vec<(Point, Point)> {
+impl<'n> NodePair<'n> {
+    fn to_points(&self, zoom: u8) -> (Point, Point) {
+        (
+            Point::from_node(&self.n1, zoom),
+            Point::from_node(&self.n2, zoom),
+        )
+    }
+
+    fn reverse(&self) -> NodePair<'n> {
+        NodePair {
+            n1: self.n2.clone(),
+            n2: self.n1.clone(),
+        }
+    }
+}
+
+trait NodePairCollection<'a> {
+    fn to_node_pairs(&self) -> Vec<NodePair<'a>>;
+}
+
+impl<'w> NodePairCollection<'w> for Way<'w> {
+    fn to_node_pairs(&self) -> Vec<NodePair<'w>> {
         (1..self.node_count())
-            .map(|idx| {
-                let p1 = Point::from_node(&self.get_node(idx - 1), zoom);
-                let p2 = Point::from_node(&self.get_node(idx), zoom);
-                (p1, p2)
-            })
+            .map(|idx|
+                NodePair {
+                    n1: self.get_node(idx - 1),
+                    n2: self.get_node(idx)
+                }
+            )
             .collect()
     }
 }
 
-impl<'r> PointCollection for Relation<'r> {
-    fn to_points(&self, zoom: u8) -> Vec<(Point, Point)> {
+impl<'r> NodePairCollection<'r> for Relation<'r> {
+    fn to_node_pairs(&self) -> Vec<NodePair<'r>> {
         (0..self.way_count())
-            .flat_map(|idx| self.get_way(idx).to_points(zoom))
+            .flat_map(|idx| self.get_way(idx).to_node_pairs())
             .collect()
     }
 }

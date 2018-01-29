@@ -237,6 +237,7 @@ macro_rules! implement_osm_entity {
     }
 }
 
+#[derive(Clone)]
 pub struct Node<'a> {
     reader: geodata_capnp::node::Reader<'a>,
 }

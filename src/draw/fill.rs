@@ -4,7 +4,7 @@ use draw::point::Point;
 use mapcss::color::Color;
 
 use std::cmp::{max, min};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 pub fn fill_contour<I>(points: I, color: &Color, opacity: f64) -> Figure
 where
@@ -14,16 +14,8 @@ where
     let mut y_to_edges = Default::default();
     let fill_color = RgbaColor::from_color(color, opacity);
 
-    let mut seen_edges: HashSet<_> = Default::default();
-
     for (idx, (p1, p2)) in points.enumerate() {
-        let edge = (p1.clone(), p2.clone());
-        let rev_edge = (p2.clone(), p1.clone());
-        if seen_edges.contains(&edge) || seen_edges.contains(&rev_edge) {
-            continue;
-        }
         draw_line(idx, &p1, &p2, &mut y_to_edges);
-        seen_edges.insert(edge);
     }
 
     for (y, edges) in &y_to_edges {
