@@ -32,6 +32,10 @@ pub struct OsmEntities<'a> {
     pub relations: HashSet<Relation<'a>>,
 }
 
+pub trait OsmArea {
+    fn is_closed(&self) -> bool;
+}
+
 pub struct GeodataReader<'a> {
     handle: GeodataHandle<'a>,
 }
@@ -108,7 +112,9 @@ impl<'a> GeodataReader<'a> {
                         geodata: self.get_reader(),
                         reader: ways.get(way_id),
                     };
-                    insert_entity_if_needed(way, osm_ids, &mut result.ways);
+                    if way.node_count() > 0 {
+                        insert_entity_if_needed(way, osm_ids, &mut result.ways);
+                    }
                 }
 
                 for relation_id in current_tile.get_local_relation_ids().unwrap().iter() {
@@ -116,7 +122,9 @@ impl<'a> GeodataReader<'a> {
                         geodata: self.get_reader(),
                         reader: relations.get(relation_id),
                     };
-                    insert_entity_if_needed(relation, osm_ids, &mut result.relations);
+                    if relation.way_count() > 0 || relation.node_count() > 0 {
+                        insert_entity_if_needed(relation, osm_ids, &mut result.relations);
+                    }
                 }
 
                 current_index += 1;
@@ -269,8 +277,10 @@ macro_rules! implement_node_methods {
 
 impl<'a> Way<'a> {
     implement_node_methods!();
+}
 
-    pub fn is_closed(&self) -> bool {
+impl<'a> OsmArea for Way<'a> {
+    fn is_closed(&self) -> bool {
         self.node_count() > 2 && (self.get_node(0) == self.get_node(self.node_count() - 1))
     }
 }
@@ -295,6 +305,12 @@ impl<'a> Relation<'a> {
             geodata: self.geodata,
             reader: self.geodata.get_ways().unwrap().get(way_id),
         }
+    }
+}
+
+impl<'a> OsmArea for Relation<'a> {
+    fn is_closed(&self) -> bool {
+        true
     }
 }
 

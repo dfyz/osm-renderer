@@ -42,7 +42,7 @@ fn test_styling() {
         .ways
         .iter()
         .filter(|x| x.tags().get_by_key("name").is_some());
-    let styles = styler.style_ways(named_ways, 18);
+    let styles = styler.style_areas(named_ways, 18);
 
     let get_styles = |id, name| {
         styles
