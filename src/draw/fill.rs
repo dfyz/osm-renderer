@@ -26,7 +26,7 @@ where
         good_edges.sort_by_key(|e| e.x_min);
 
         let mut idx = 0;
-        while idx < good_edges.len() {
+        while idx + 1 < good_edges.len() {
             let e1 = good_edges[idx];
             let e2 = good_edges[idx + 1];
             for x in e1.x_min..(e2.x_max + 1) {

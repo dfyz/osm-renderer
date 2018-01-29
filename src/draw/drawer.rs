@@ -55,7 +55,12 @@ impl Drawer {
         fill_canvas(&mut pixels, styler);
 
         let styled_ways = styler.style_areas(entities.ways.iter(), tile.zoom);
-        let styled_relations = styler.style_areas(entities.relations.iter(), tile.zoom);
+
+        let multipolygons = entities
+            .relations
+            .iter()
+            .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
+        let styled_relations = styler.style_areas(multipolygons, tile.zoom);
 
         for &(way, ref style) in styled_ways.iter() {
             self.draw_one_area(&mut pixels, way, style, true, tile);
