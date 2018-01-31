@@ -3,7 +3,6 @@ extern crate capnp;
 extern crate error_chain;
 extern crate futures;
 extern crate hyper;
-extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate memmap;
