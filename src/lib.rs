@@ -3,8 +3,6 @@ extern crate capnp;
 extern crate error_chain;
 extern crate futures;
 extern crate hyper;
-#[macro_use]
-extern crate log;
 extern crate memmap;
 extern crate owning_ref;
 extern crate png;

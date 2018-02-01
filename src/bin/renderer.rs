@@ -1,7 +1,4 @@
 extern crate clap;
-extern crate env_logger;
-#[macro_use]
-extern crate log;
 
 extern crate renderer;
 
@@ -9,8 +6,6 @@ use clap::{App, Arg};
 use renderer::http_server::run_server;
 
 fn main() {
-    env_logger::init();
-
     let matches = App::new("OSM renderer server")
         .arg(Arg::with_name("SERVER_ADDRESS").required(true).index(1))
         .arg(Arg::with_name("GEODATA_FILE").required(true).index(2))
@@ -36,7 +31,7 @@ fn main() {
         Err(e) => {
             for (i, suberror) in e.iter().enumerate() {
                 let description = if i == 0 { "Reason" } else { "Caused by" };
-                error!("{}: {:?}", description, suberror);
+                eprintln!("{}: {:?}", description, suberror);
             }
             std::process::exit(1);
         }
