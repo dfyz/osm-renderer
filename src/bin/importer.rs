@@ -1,28 +1,18 @@
-extern crate clap;
-
 extern crate renderer;
 
-use clap::{App, Arg};
+use std::env;
 
 fn main() {
-    let matches = App::new("OSM importer")
-        .about("Imports an XML file with OpenStreetMap data to a format suitable for map rendering")
-        .arg(
-            Arg::with_name("INPUT")
-                .help("The input XML file")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("OUTPUT")
-                .help("The output file to convert to")
-                .required(true)
-                .index(2),
-        )
-        .get_matches();
+	let args: Vec<_> = env::args().collect();
 
-    let input = matches.value_of("INPUT").unwrap();
-    let output = matches.value_of("OUTPUT").unwrap();
+	if args.len() != 3 {
+		let bin_name = args.first().map(|x| x.as_str()).unwrap_or("importer");
+		eprintln!("Usage: {} INPUT OUTPUT", bin_name);
+		std::process::exit(1);
+	}
+
+    let input = &args[1];
+    let output = &args[2];
 
     println!("Importing from {} to {}", input, output);
 

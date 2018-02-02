@@ -5,7 +5,6 @@ authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
 
 [dependencies]
 capnp = "*"
-clap = "*"
 error-chain = "*"
 futures = "*"
 hyper = "*"
