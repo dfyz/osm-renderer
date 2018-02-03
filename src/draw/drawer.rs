@@ -56,25 +56,52 @@ impl Drawer {
 
         let styled_ways = styler.style_areas(entities.ways.iter(), tile.zoom);
 
-        let multipolygons = entities
-            .relations
-            .iter()
-            .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
-        let styled_relations = styler.style_areas(multipolygons, tile.zoom);
-
-        for &(way, ref style) in styled_ways.iter() {
-            self.draw_one_area(&mut pixels, way, style, true, tile);
-        }
-
-        for &(rel, ref style) in styled_relations.iter() {
-            self.draw_one_area(&mut pixels, rel, style, true, tile);
-        }
+        self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
         for &(way, ref style) in styled_ways.iter() {
             self.draw_one_area(&mut pixels, way, style, false, tile);
         }
 
         pixels.to_rgb_triples()
+    }
+
+    fn draw_fills<'a>(
+        &self,
+        pixels: &mut TilePixels,
+        entities: &OsmEntities<'a>,
+        tile: &t::Tile,
+        styler: &Styler,
+        ways: &[(&Way<'a>, Style)]
+    ) {
+        let multipolygons = entities
+            .relations
+            .iter()
+            .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
+        let styled_relations = styler.style_areas(multipolygons, tile.zoom);
+
+        let mut rel_iter = styled_relations.iter();
+        let mut way_iter = ways.iter();
+        let mut rel = rel_iter.next();
+        let mut way = way_iter.next();
+        loop {
+            let is_rel_better = {
+                match (rel, way) {
+                    (None, None) => break,
+                    (Some(_), None) => true,
+                    (None, Some(_)) => false,
+                    (Some(r), Some(w)) => r.1.z_index <= w.1.z_index,
+                }
+            };
+            if is_rel_better {
+                let r = rel.unwrap();
+                self.draw_one_area(pixels, r.0, &r.1, true, tile);
+                rel = rel_iter.next();
+            } else {
+                let w = way.unwrap();
+                self.draw_one_area(pixels, w.0, &w.1, true, tile);
+                way = way_iter.next();
+            }
+        }
     }
 
     fn draw_one_area<'e, A>(
