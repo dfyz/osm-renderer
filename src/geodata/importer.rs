@@ -124,11 +124,7 @@ impl OsmEntityStorage {
     }
 
     fn translate_id(&self, global_id: u64) -> Option<usize> {
-        let result = self.global_id_to_local_id.get(&global_id);
-        if result.is_none() {
-            eprintln!("Failed to find an entity with ID = {}", global_id);
-        }
-        result.cloned()
+        self.global_id_to_local_id.get(&global_id).cloned()
     }
 }
 
@@ -450,26 +446,29 @@ fn convert_to_message<A: Allocator>(
 }
 
 fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
-    fn insert_entity_id_to_tiles<'a>(
+    fn insert_entity_id_to_tiles<'a, I>(
         result: &mut TileIdToReferences,
         nodes: NodeReader<'a>,
         nodes_are_isolated: bool,
-        local_node_ids: ::capnp::primitive_list::Reader<'a, u32>,
+        local_node_ids_iter: I,
         get_refs: &Fn(&mut TileReferences) -> &mut BTreeSet<u32>,
         entity_id: u32,
-    ) {
-        if local_node_ids.len() == 0 {
+    ) where
+        I: Iterator<Item = u32>,
+    {
+        let local_node_ids: Vec<_> = local_node_ids_iter.collect();
+        if local_node_ids.is_empty() {
             return;
         }
         if nodes_are_isolated || local_node_ids.len() == 1 {
-            for node_ref in local_node_ids.iter() {
+            for node_ref in local_node_ids {
                 get_refs(result.tile_ref_by_node(nodes, node_ref)).insert(entity_id);
             }
             return;
         }
 
         let first_tile =
-            tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids.get(0)));
+            tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids[0]));
         let mut tile_range = tile::TileRange {
             min_x: first_tile.x,
             max_x: first_tile.x,
@@ -478,7 +477,7 @@ fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
         };
         for i in 1..local_node_ids.len() {
             let next_tile =
-                tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids.get(i)));
+                tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids[i]));
             tile_range.min_x = min(tile_range.min_x, next_tile.x);
             tile_range.max_x = max(tile_range.max_x, next_tile.x);
             tile_range.min_y = min(tile_range.min_y, next_tile.y);
@@ -503,7 +502,7 @@ fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
 
     let all_ways = geodata.get_ways().unwrap();
     for i in 0..all_ways.len() {
-        let local_node_ids = all_ways.get(i).get_local_node_ids().unwrap();
+        let local_node_ids = all_ways.get(i).get_local_node_ids().unwrap().iter();
         insert_entity_id_to_tiles(
             &mut result,
             all_nodes,
@@ -516,7 +515,7 @@ fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
 
     let all_relations = geodata.get_relations().unwrap();
     for i in 0..all_relations.len() {
-        let local_node_ids = all_relations.get(i).get_local_node_ids().unwrap();
+        let local_node_ids = all_relations.get(i).get_local_node_ids().unwrap().iter();
         insert_entity_id_to_tiles(
             &mut result,
             all_nodes,
@@ -526,18 +525,21 @@ fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
             i,
         );
 
-        let local_ways_ids = all_relations.get(i).get_local_way_ids().unwrap();
-        for way_ref in local_ways_ids.iter() {
-            let local_node_ids = all_ways.get(way_ref).get_local_node_ids().unwrap();
-            insert_entity_id_to_tiles(
-                &mut result,
-                all_nodes,
-                false,
-                local_node_ids,
-                &|x| &mut x.local_relation_ids,
-                i,
-            );
-        }
+        let local_node_ids_from_ways = all_relations
+            .get(i)
+            .get_local_way_ids()
+            .unwrap()
+            .iter()
+            .flat_map(|way_ref| all_ways.get(way_ref).get_local_node_ids().unwrap());
+
+        insert_entity_id_to_tiles(
+            &mut result,
+            all_nodes,
+            false,
+            local_node_ids_from_ways,
+            &|x| &mut x.local_relation_ids,
+            i,
+        );
     }
 
     result
