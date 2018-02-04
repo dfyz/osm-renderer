@@ -475,9 +475,9 @@ fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
             min_y: first_tile.y,
             max_y: first_tile.y,
         };
-        for i in 1..local_node_ids.len() {
+        for local_node in local_node_ids.iter().skip(1) {
             let next_tile =
-                tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids[i]));
+                tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, *local_node));
             tile_range.min_x = min(tile_range.min_x, next_tile.x);
             tile_range.max_x = max(tile_range.max_x, next_tile.x);
             tile_range.min_y = min(tile_range.min_y, next_tile.y);
