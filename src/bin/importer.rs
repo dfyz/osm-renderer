@@ -1,43 +1,28 @@
-extern crate clap;
-extern crate env_logger;
-#[macro_use]
-extern crate log;
-
 extern crate renderer;
 
-use clap::{App, Arg};
+use std::env;
 
 fn main() {
-    env_logger::init();
+	let args: Vec<_> = env::args().collect();
 
-    let matches = App::new("OSM importer")
-        .about("Imports an XML file with OpenStreetMap data to a format suitable for map rendering")
-        .arg(
-            Arg::with_name("INPUT")
-                .help("The input XML file")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("OUTPUT")
-                .help("The output file to convert to")
-                .required(true)
-                .index(2),
-        )
-        .get_matches();
+	if args.len() != 3 {
+		let bin_name = args.first().map(|x| x.as_str()).unwrap_or("importer");
+		eprintln!("Usage: {} INPUT OUTPUT", bin_name);
+		std::process::exit(1);
+	}
 
-    let input = matches.value_of("INPUT").unwrap();
-    let output = matches.value_of("OUTPUT").unwrap();
+    let input = &args[1];
+    let output = &args[2];
 
-    info!("Importing from {} to {}", input, output);
+    println!("Importing from {} to {}", input, output);
 
     match renderer::geodata::importer::import(input, output) {
-        Ok(_) => info!("All good"),
+        Ok(_) => println!("All good"),
         Err(err) => {
-            error!("Import failed");
+            eprintln!("Import failed");
             for (i, suberror) in err.iter().enumerate() {
                 let description = if i == 0 { "Reason" } else { "Caused by" };
-                error!("{}: {}", description, suberror);
+                eprintln!("{}: {}", description, suberror);
             }
             std::process::exit(1);
         }

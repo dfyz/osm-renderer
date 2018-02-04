@@ -167,7 +167,7 @@ where
 {
     let warn = |prop_name, msg| {
         if let Some(val) = property_map.get(prop_name) {
-            warn!(
+            eprintln!(
                 "Entity #{}, property \"{}\" (value {:?}): {}",
                 osm_entity.global_id(),
                 prop_name,

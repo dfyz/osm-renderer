@@ -24,10 +24,10 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     let parser = EventReader::new(BufReader::new(input_file));
     let mut writer = BufWriter::new(output_file);
 
-    info!("Parsing XML");
+    println!("Parsing XML");
     let parsed_xml = parse_osm_xml(parser)?;
 
-    info!("Converting geodata to internal format");
+    println!("Converting geodata to internal format");
     let mut message = Builder::new_default();
     convert_to_message(&mut message, &parsed_xml)?;
 
@@ -126,7 +126,7 @@ impl OsmEntityStorage {
     fn translate_id(&self, global_id: u64) -> Option<usize> {
         let result = self.global_id_to_local_id.get(&global_id);
         if result.is_none() {
-            warn!("Failed to find an entity with ID = {}", global_id);
+            eprintln!("Failed to find an entity with ID = {}", global_id);
         }
         result.cloned()
     }
@@ -161,7 +161,7 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
                 process_start_element(name, attributes, parser.position(), &mut parsing_state);
                 elem_count += 1;
                 if elem_count % 100_000 == 0 {
-                    info!(
+                    println!(
                         "Got {} nodes, {} ways and {} relations",
                         parsing_state.node_storage.entities.len(),
                         parsing_state.way_storage.entities.len(),
