@@ -19,11 +19,6 @@ owning_ref = "*"
 png = "*"
 xml-rs = "*"
 
-[dev-dependencies]
-serde = "*"
-serde_derive = "*"
-serde_json = "*"
-
 # So that we have line numbers in backtraces with RUST_BACKTRACE=1.
 [profile.release]
 debug = true

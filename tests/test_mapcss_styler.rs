@@ -1,10 +1,8 @@
 extern crate renderer;
-#[macro_use]
-extern crate serde_derive;
 
 mod common;
 
-use common::{get_test_path, import_nano_moscow};
+use common::get_test_path;
 use renderer::geodata::reader::OsmEntity;
 use renderer::mapcss::color::{from_color_name, Color};
 use renderer::mapcss::token::Tokenizer;
@@ -17,8 +15,10 @@ use std::io::Read;
 
 #[test]
 fn test_styling() {
-    let nano_moscow = import_nano_moscow();
-    let reader = renderer::geodata::reader::GeodataReader::new(&nano_moscow).unwrap();
+    let bin_file = get_test_path(&["osm", "nano_moscow.bin"]);
+    renderer::geodata::importer::import(&get_test_path(&["osm", "nano_moscow.osm"]), &bin_file)
+        .unwrap();
+    let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
 
     let mut mapcss_style = String::new();
     File::open(&get_test_path(&["mapcss", "mapnik.mapcss"]))
@@ -71,7 +71,10 @@ fn test_styling() {
     let building_josm_style = "Cascade{ color:#330066; fill-color:#bca9a9; fill-opacity:0.9; linejoin:Keyword{miter}; width:0.2; z-index:-900.0;";
 
     for &(id, name) in &[
-        (31_497_212, "БЦ «Романов двор»"),
+        (
+            31_497_212,
+            "Бизнес-центр «Романов двор»",
+        ),
         (31_482_164, "Факультет искусств МГУ"),
         (
             44_642_919,
