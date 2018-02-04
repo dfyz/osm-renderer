@@ -1,6 +1,6 @@
 use errors::*;
 
-use geodata::reader::{OsmEntities, OsmEntity, Way};
+use geodata::reader::{Node, OsmEntities, OsmEntity, Relation, Way};
 use mapcss::styler::{Style, StyleHashKey, Styler};
 use tile as t;
 
@@ -12,7 +12,7 @@ use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 
 #[derive(Default)]
@@ -54,34 +54,68 @@ impl Drawer {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
-        let styled_ways = styler.style_ways(entities.ways.iter(), tile.zoom);
-        self.draw_ways(&mut pixels, &styled_ways, tile);
+        let styled_ways = styler.style_areas(entities.ways.iter(), tile.zoom);
+
+        self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
+
+        for &(way, ref style) in &styled_ways {
+            self.draw_one_area(&mut pixels, way, style, false, tile);
+        }
 
         pixels.to_rgb_triples()
     }
 
-    fn draw_ways(&self, image: &mut TilePixels, styled_ways: &[(&Way, Style)], tile: &t::Tile) {
-        let ways_to_draw = || styled_ways.iter().filter(|&&(w, _)| w.node_count() > 0);
+    fn draw_fills<'a>(
+        &self,
+        pixels: &mut TilePixels,
+        entities: &OsmEntities<'a>,
+        tile: &t::Tile,
+        styler: &Styler,
+        ways: &[(&Way<'a>, Style)],
+    ) {
+        let multipolygons = entities
+            .relations
+            .iter()
+            .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
+        let styled_relations = styler.style_areas(multipolygons, tile.zoom);
 
-        for &(way, ref style) in ways_to_draw() {
-            self.draw_one_way(image, way, style, true, tile);
-        }
-
-        for &(way, ref style) in ways_to_draw() {
-            self.draw_one_way(image, way, style, false, tile);
+        let mut rel_iter = styled_relations.iter();
+        let mut way_iter = ways.iter();
+        let mut rel = rel_iter.next();
+        let mut way = way_iter.next();
+        loop {
+            let is_rel_better = {
+                match (rel, way) {
+                    (None, None) => break,
+                    (Some(_), None) => true,
+                    (None, Some(_)) => false,
+                    (Some(r), Some(w)) => r.1.z_index <= w.1.z_index,
+                }
+            };
+            if is_rel_better {
+                let r = rel.unwrap();
+                self.draw_one_area(pixels, r.0, &r.1, true, tile);
+                rel = rel_iter.next();
+            } else {
+                let w = way.unwrap();
+                self.draw_one_area(pixels, w.0, &w.1, true, tile);
+                way = way_iter.next();
+            }
         }
     }
 
-    fn draw_one_way(
+    fn draw_one_area<'e, A>(
         &self,
         image: &mut TilePixels,
-        way: &Way,
+        area: &A,
         style: &Style,
         is_fill: bool,
         tile: &t::Tile,
-    ) {
+    ) where
+        A: OsmEntity<'e> + NodePairCollection<'e>,
+    {
         let cache_key = CacheKey {
-            entity_id: way.global_id(),
+            entity_id: area.global_id(),
             style: style.to_hash_key(),
             zoom_level: tile.zoom,
             is_fill,
@@ -95,21 +129,25 @@ impl Drawer {
             }
         }
 
-        let points = (1..way.node_count()).map(|idx| {
-            let p1 = Point::from_node(&way.get_node(idx - 1), tile.zoom);
-            let p2 = Point::from_node(&way.get_node(idx), tile.zoom);
-            (p1, p2)
-        });
+        let mut seen_node_pairs = HashSet::new();
+        let mut points = Vec::new();
+
+        for np in area.to_node_pairs() {
+            if seen_node_pairs.contains(&np) || seen_node_pairs.contains(&np.reverse()) {
+                continue;
+            }
+            points.push(np.to_points(tile.zoom));
+            seen_node_pairs.insert(np);
+        }
 
         let figure = if is_fill {
-            style
-                .fill_color
-                .as_ref()
-                .map(|color| fill_contour(points, color, float_or_one(&style.fill_opacity)))
+            style.fill_color.as_ref().map(|color| {
+                fill_contour(points.into_iter(), color, float_or_one(&style.fill_opacity))
+            })
         } else {
             style.color.as_ref().map(|color| {
                 draw_lines(
-                    points,
+                    points.into_iter(),
                     float_or_one(&style.width),
                     color,
                     float_or_one(&style.opacity),
@@ -156,4 +194,49 @@ fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
 
 fn float_or_one(num: &Option<f64>) -> f64 {
     num.unwrap_or(1.0)
+}
+
+#[derive(Eq, PartialEq, Hash)]
+struct NodePair<'n> {
+    n1: Node<'n>,
+    n2: Node<'n>,
+}
+
+impl<'n> NodePair<'n> {
+    fn to_points(&self, zoom: u8) -> (Point, Point) {
+        (
+            Point::from_node(&self.n1, zoom),
+            Point::from_node(&self.n2, zoom),
+        )
+    }
+
+    fn reverse(&self) -> NodePair<'n> {
+        NodePair {
+            n1: self.n2.clone(),
+            n2: self.n1.clone(),
+        }
+    }
+}
+
+trait NodePairCollection<'a> {
+    fn to_node_pairs(&self) -> Vec<NodePair<'a>>;
+}
+
+impl<'w> NodePairCollection<'w> for Way<'w> {
+    fn to_node_pairs(&self) -> Vec<NodePair<'w>> {
+        (1..self.node_count())
+            .map(|idx| NodePair {
+                n1: self.get_node(idx - 1),
+                n2: self.get_node(idx),
+            })
+            .collect()
+    }
+}
+
+impl<'r> NodePairCollection<'r> for Relation<'r> {
+    fn to_node_pairs(&self) -> Vec<NodePair<'r>> {
+        (0..self.way_count())
+            .flat_map(|idx| self.get_way(idx).to_node_pairs())
+            .collect()
+    }
 }

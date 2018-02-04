@@ -1,7 +1,7 @@
 use geodata::reader::Node;
 use tile as t;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Point {
     pub x: i32,
     pub y: i32,

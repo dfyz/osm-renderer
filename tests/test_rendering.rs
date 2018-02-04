@@ -1,7 +1,5 @@
 extern crate png;
 extern crate renderer;
-#[macro_use]
-extern crate serde_derive;
 
 mod common;
 
@@ -84,11 +82,13 @@ fn compare_png_outputs(zoom: u8) {
     }
 }
 
-#[test]
-fn test_rendering() {
-    let nano_moscow = common::import_nano_moscow();
-    let reader = renderer::geodata::reader::GeodataReader::new(&nano_moscow).unwrap();
-    let tiles = common::read_tiles();
+fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32) {
+    let bin_file = common::get_test_path(&["osm", &format!("nano_moscow_{}.bin", zoom)]);
+    renderer::geodata::importer::import(
+        &common::get_test_path(&["osm", "nano_moscow.osm"]),
+        &bin_file,
+    ).unwrap();
+    let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
 
     let mut mapcss_content = String::new();
     File::open(common::get_test_path(&["mapcss", "mapnik.mapcss"]))
@@ -105,20 +105,23 @@ fn test_rendering() {
 
     let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> =
         BTreeMap::new();
-    for tile in tiles {
-        let tile_to_draw = renderer::tile::Tile {
-            zoom: tile.zoom,
-            x: tile.x,
-            y: tile.y,
-        };
-        let entities = reader.get_entities_in_tile(&tile_to_draw, &None);
-        let rendered = drawer.draw_to_pixels(&entities, &tile_to_draw, &styler);
-        rendered_tiles
-            .entry(tile_to_draw.zoom)
-            .or_insert_with(Default::default)
-            .entry(tile_to_draw.y)
-            .or_insert_with(Default::default)
-            .insert(tile_to_draw.x, rendered);
+
+    for y in min_y..(max_y + 1) {
+        for x in min_x..(max_x + 1) {
+            let tile_to_draw = renderer::tile::Tile {
+                zoom: zoom,
+                x: x,
+                y: y,
+            };
+            let entities = reader.get_entities_in_tile(&tile_to_draw, &None);
+            let rendered = drawer.draw_to_pixels(&entities, &tile_to_draw, &styler);
+            rendered_tiles
+                .entry(tile_to_draw.zoom)
+                .or_insert_with(Default::default)
+                .entry(tile_to_draw.y)
+                .or_insert_with(Default::default)
+                .insert(tile_to_draw.x, rendered);
+        }
     }
 
     for (zoom, y_x_rendered) in rendered_tiles {
@@ -149,4 +152,29 @@ fn test_rendering() {
 
         compare_png_outputs(zoom);
     }
+}
+
+#[test]
+fn test_zoom_14() {
+    test_rendering_zoom(14, 9903, 9904, 5121, 5122)
+}
+
+#[test]
+fn test_zoom_15() {
+    test_rendering_zoom(15, 19_807, 19_808, 10_243, 10_244)
+}
+
+#[test]
+fn test_zoom_16() {
+    test_rendering_zoom(16, 39_614, 39_616, 20_486, 20_488)
+}
+
+#[test]
+fn test_zoom_17() {
+    test_rendering_zoom(17, 79_228, 79_232, 40_973, 40_976)
+}
+
+#[test]
+fn test_zoom_18() {
+    test_rendering_zoom(18, 158_457, 158_465, 81_946, 81_953)
 }

@@ -1,7 +1,7 @@
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
-use geodata::reader::{OsmEntity, Way};
+use geodata::reader::{OsmArea, OsmEntity};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -87,32 +87,41 @@ impl Styler {
         }
     }
 
-    pub fn style_ways<'w, 'wp, I>(&self, ways: I, zoom: u8) -> Vec<(&'wp Way<'w>, Style)>
+    pub fn style_areas<'e, 'wp, I, A>(&self, areas: I, zoom: u8) -> Vec<(&'wp A, Style)>
     where
-        I: Iterator<Item = &'wp Way<'w>>,
+        A: OsmArea + OsmEntity<'e>,
+        I: Iterator<Item = &'wp A>,
     {
-        let mut styled_ways = ways.flat_map(|x| {
-            let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
-            self.style_way(x, zoom)
-                .into_iter()
-                .filter(|&(k, _)| k != "*")
-                .map(move |(_, v)| (x, property_map_to_style(&v, default_z_index, x)))
-        }).collect::<Vec<_>>();
+        let mut styled_areas = areas
+            .flat_map(|x| {
+                let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
+                self.style_area(x, zoom)
+                    .into_iter()
+                    .filter(|&(k, _)| k != "*")
+                    .map(move |(_, v)| (x, property_map_to_style(&v, default_z_index, x)))
+            })
+            .collect::<Vec<_>>();
 
-        styled_ways.sort_by(|&(w1, ref s1), &(w2, ref s2)| {
+        styled_areas.sort_by(|&(w1, ref s1), &(w2, ref s2)| {
             let cmp1 = (s1.z_index, w1.global_id());
             let cmp2 = (s2.z_index, w2.global_id());
             cmp1.partial_cmp(&cmp2).unwrap()
         });
 
-        styled_ways
+        styled_areas
     }
 
-    fn style_way<'r, 'w>(&'r self, way: &Way<'w>, zoom: u8) -> LayerToPropertyMap<'r> {
+    fn style_area<'r, 'e, A>(&'r self, area: &A, zoom: u8) -> LayerToPropertyMap<'r>
+    where
+        A: OsmArea + OsmEntity<'e>,
+    {
         let mut result: LayerToPropertyMap<'r> = HashMap::new();
 
         for rule in &self.rules {
-            for sel in rule.selectors.iter().filter(|x| way_matches(way, x, zoom)) {
+            for sel in rule.selectors
+                .iter()
+                .filter(|x| area_matches(area, x, zoom))
+            {
                 let layer_id = get_layer_id(sel);
 
                 let update_layer = |layer: &mut PropertyMap<'r>| {
@@ -148,13 +157,13 @@ impl Styler {
 type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
 type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
-fn property_map_to_style<'r, 'w, E>(
+fn property_map_to_style<'r, 'e, E>(
     property_map: &PropertyMap<'r>,
     default_z_index: f64,
     osm_entity: &E,
 ) -> Style
 where
-    E: OsmEntity<'w>,
+    E: OsmEntity<'e>,
 {
     let warn = |prop_name, msg| {
         if let Some(val) = property_map.get(prop_name) {
@@ -261,8 +270,11 @@ fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
     None
 }
 
-fn way_matches_test<'w>(way: &Way<'w>, test: &Test) -> bool {
-    let tags = way.tags();
+fn matches_by_tags<'e, E>(entity: &E, test: &Test) -> bool
+where
+    E: OsmEntity<'e>,
+{
+    let tags = entity.tags();
 
     let is_true_value = |x| x == "yes" || x == "true" || x == "1";
 
@@ -315,7 +327,10 @@ fn way_matches_test<'w>(way: &Way<'w>, test: &Test) -> bool {
     }
 }
 
-fn way_matches_single<'w>(way: &Way<'w>, selector: &SingleSelector, zoom: u8) -> bool {
+fn area_matches_single<'e, A>(area: &A, selector: &SingleSelector, zoom: u8) -> bool
+where
+    A: OsmArea + OsmEntity<'e>,
+{
     if let Some(min_zoom) = selector.min_zoom {
         if zoom < min_zoom {
             return false;
@@ -334,17 +349,20 @@ fn way_matches_single<'w>(way: &Way<'w>, selector: &SingleSelector, zoom: u8) ->
         } => true,
         ObjectType::Way {
             should_be_closed: Some(expected),
-        } => expected == way.is_closed(),
+        } => expected == area.is_closed(),
         _ => return false,
     };
 
-    good_object_type && selector.tests.iter().all(|x| way_matches_test(way, x))
+    good_object_type && selector.tests.iter().all(|x| matches_by_tags(area, x))
 }
 
-fn way_matches<'w>(way: &Way<'w>, selector: &Selector, zoom: u8) -> bool {
+fn area_matches<'e, A>(area: &A, selector: &Selector, zoom: u8) -> bool
+where
+    A: OsmArea + OsmEntity<'e>,
+{
     match *selector {
         Selector::Nested { .. } => false,
-        Selector::Single(ref sel) => way_matches_single(way, sel, zoom),
+        Selector::Single(ref sel) => area_matches_single(area, sel, zoom),
     }
 }
 
