@@ -161,20 +161,20 @@ fn test_zoom_14() {
 
 #[test]
 fn test_zoom_15() {
-    test_rendering_zoom(15, 19807, 19808, 10243, 10244)
+    test_rendering_zoom(15, 19_807, 19_808, 10_243, 10_244)
 }
 
 #[test]
 fn test_zoom_16() {
-    test_rendering_zoom(16, 39614, 39616, 20486, 20488)
+    test_rendering_zoom(16, 39_614, 39_616, 20_486, 20_488)
 }
 
 #[test]
 fn test_zoom_17() {
-    test_rendering_zoom(17, 79228, 79232, 40973, 40976)
+    test_rendering_zoom(17, 79_228, 79_232, 40_973, 40_976)
 }
 
 #[test]
 fn test_zoom_18() {
-    test_rendering_zoom(18, 158457, 158465, 81946, 81953)
+    test_rendering_zoom(18, 158_457, 158_465, 81_946, 81_953)
 }

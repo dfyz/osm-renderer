@@ -58,7 +58,7 @@ impl Drawer {
 
         self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
-        for &(way, ref style) in styled_ways.iter() {
+        for &(way, ref style) in &styled_ways {
             self.draw_one_area(&mut pixels, way, style, false, tile);
         }
 
