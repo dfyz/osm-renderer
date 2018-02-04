@@ -1,6 +1,6 @@
 use errors::*;
 
-use geodata::reader::{OsmEntities, OsmEntity, Node, Relation, Way};
+use geodata::reader::{Node, OsmEntities, OsmEntity, Relation, Way};
 use mapcss::styler::{Style, StyleHashKey, Styler};
 use tile as t;
 
@@ -71,7 +71,7 @@ impl Drawer {
         entities: &OsmEntities<'a>,
         tile: &t::Tile,
         styler: &Styler,
-        ways: &[(&Way<'a>, Style)]
+        ways: &[(&Way<'a>, Style)],
     ) {
         let multipolygons = entities
             .relations
@@ -141,10 +141,9 @@ impl Drawer {
         }
 
         let figure = if is_fill {
-            style
-                .fill_color
-                .as_ref()
-                .map(|color| fill_contour(points.into_iter(), color, float_or_one(&style.fill_opacity)))
+            style.fill_color.as_ref().map(|color| {
+                fill_contour(points.into_iter(), color, float_or_one(&style.fill_opacity))
+            })
         } else {
             style.color.as_ref().map(|color| {
                 draw_lines(
@@ -226,12 +225,10 @@ trait NodePairCollection<'a> {
 impl<'w> NodePairCollection<'w> for Way<'w> {
     fn to_node_pairs(&self) -> Vec<NodePair<'w>> {
         (1..self.node_count())
-            .map(|idx|
-                NodePair {
-                    n1: self.get_node(idx - 1),
-                    n2: self.get_node(idx)
-                }
-            )
+            .map(|idx| NodePair {
+                n1: self.get_node(idx - 1),
+                n2: self.get_node(idx),
+            })
             .collect()
     }
 }
