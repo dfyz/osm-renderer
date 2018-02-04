@@ -1,13 +1,5 @@
-Goals:
-* render multipolygonal relations (rivers are mostly broken without them)
-  * multipolygons with weird shapes (e.g., https://www.openstreetmap.org/relation/5625085)
-  * better detection of which relation cover a tile (bounding boxes)
-  * don't import useless relations
-  * get rid of Cap'N'Proto
+* correctly render multipolygons with weird shapes (e.g., https://www.openstreetmap.org/relation/5625085)
+* get rid of Cap'N'Proto
 * implement icon-image/fill-image (this will require loading external files when mapcss files are parsed)
 * try to integrate the maps.me stylesheet if their mapcss dialect is not too different from the official spec
 * draw labels (probably the hardest part; maybe look at font-rs for inspiration)
-
-Non-goals:
-* line-join attribute (makes virtually zero visual difference, hard to implement)
-* live mapcss reloading (should be not too hard to implement but the renderer starts almost instantly as it is)
