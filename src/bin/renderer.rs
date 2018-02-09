@@ -1,5 +1,7 @@
+extern crate error_chain;
 extern crate renderer;
 
+use error_chain::ChainedError;
 use renderer::http_server::run_server;
 use std::env;
 
@@ -29,14 +31,10 @@ fn main() {
         None
     };
 
-    match run_server(server_address, geodata_file, stylesheet_file, osm_ids) {
-        Ok(_) => {}
-        Err(e) => {
-            for (i, suberror) in e.iter().enumerate() {
-                let description = if i == 0 { "Reason" } else { "Caused by" };
-                eprintln!("{}: {:?}", description, suberror);
-            }
-            std::process::exit(1);
-        }
+    let res = run_server(server_address, geodata_file, stylesheet_file, osm_ids);
+
+    if let Err(e) = res {
+        eprintln!("{}", e.display_chain());
+        std::process::exit(1);
     }
 }

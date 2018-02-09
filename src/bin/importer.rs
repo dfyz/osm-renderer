@@ -1,5 +1,7 @@
+extern crate error_chain;
 extern crate renderer;
 
+use error_chain::ChainedError;
 use std::env;
 
 fn main() {
@@ -19,11 +21,7 @@ fn main() {
     match renderer::geodata::importer::import(input, output) {
         Ok(_) => println!("All good"),
         Err(err) => {
-            eprintln!("Import failed");
-            for (i, suberror) in err.iter().enumerate() {
-                let description = if i == 0 { "Reason" } else { "Caused by" };
-                eprintln!("{}: {}", description, suberror);
-            }
+            eprintln!("{}", err.display_chain());
             std::process::exit(1);
         }
     }

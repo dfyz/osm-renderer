@@ -85,6 +85,12 @@ pub struct InputPosition {
     pub character: usize,
 }
 
+impl fmt::Display for InputPosition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "line {}, col {}", self.line, self.character)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TokenWithPosition<'a> {
     pub token: Token<'a>,
