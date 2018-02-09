@@ -2,6 +2,7 @@ extern crate capnp;
 #[macro_use]
 extern crate error_chain;
 extern crate memmap;
+extern crate num_cpus;
 extern crate owning_ref;
 extern crate png;
 extern crate xml;

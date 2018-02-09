@@ -7,6 +7,7 @@ authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
 capnp = "*"
 error-chain = "*"
 memmap = "*"
+num_cpus = "*"
 owning_ref = "*"
 png = "*"
 xml-rs = "*"
