@@ -296,6 +296,10 @@ impl<'a> Parser<'a> {
         };
 
         loop {
+            if let Token::LeftBrace = selector_start.token {
+                break;
+            }
+
             let consumed_selector = self.read_selector(&selector_start)?;
 
             let mut expect_more_selectors = match consumed_selector.selector_type {
