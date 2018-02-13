@@ -12,7 +12,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
 use std::thread;
 use tile::Tile;
@@ -30,7 +30,7 @@ pub fn run_server(
         styler: Styler::new(rules),
         reader: GeodataReader::new(geodata_file).chain_err(|| "Failed to load the geodata file")?,
         drawer: Drawer::new(),
-        osm_ids
+        osm_ids,
     });
 
     let thread_count = num_cpus::get();
@@ -110,7 +110,9 @@ impl<'a> HttpServer<'a> {
         };
 
         let entities = self.reader.get_entities_in_tile(&tile, &self.osm_ids);
-        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
+        let tile_png_bytes = self.drawer
+            .draw_tile(&entities, &tile, &self.styler)
+            .unwrap();
 
         let header = [
             "HTTP/1.1 200 OK",
