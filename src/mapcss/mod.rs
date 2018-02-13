@@ -4,9 +4,9 @@ pub mod parser;
 pub mod styler;
 pub mod token;
 
-use mapcss::token::InputPosition;
-
 mod errors {
+    use mapcss::token::InputPosition;
+
     error_chain! {
         errors {
             LexerError(message: String, pos: InputPosition) {
