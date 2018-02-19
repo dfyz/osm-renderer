@@ -9,7 +9,13 @@ extern crate png;
 extern crate xml;
 
 pub mod errors {
-    error_chain!{}
+    use std::io;
+
+    error_chain!{
+        foreign_links {
+            Io(io::Error);
+        }
+    }
 }
 
 pub mod geodata_capnp;

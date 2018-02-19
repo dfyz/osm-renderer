@@ -197,9 +197,9 @@ impl<'a> GeodataReader<'a> {
         (x, y)
     }
 
-    fn tile_local_ids(&self, idx: usize, local_ids_idx: usize) -> &'a [u32] {
+    fn tile_local_ids(&self, idx: usize, local_ids_idx: usize) -> &'a [u64] {
         let tile = self.storages().tile_storage.get_object(idx);
-        let offset = 2 * mem::size_of::<u32>() * (local_ids_idx + 1);
+        let offset = 2 * mem::size_of::<u32>() + 2 * mem::size_of::<u64>() * local_ids_idx;
         self.get_ints_by_ref(&tile[offset..])
     }
 
@@ -214,10 +214,10 @@ impl<'a> GeodataReader<'a> {
         }
     }
 
-    fn get_ints_by_ref(&self, ref_bytes: &'a [u8]) -> &'a [u32] {
+    fn get_ints_by_ref(&self, ref_bytes: &'a [u8]) -> &'a [u64] {
         let mut cursor = Cursor::new(ref_bytes);
-        let offset = cursor.read_u32::<LittleEndian>().unwrap() as usize;
-        let length = cursor.read_u32::<LittleEndian>().unwrap() as usize;
+        let offset = cursor.read_u64::<LittleEndian>().unwrap() as usize;
+        let length = cursor.read_u64::<LittleEndian>().unwrap() as usize;
         &self.storages().ints[offset..offset + length]
     }
 
@@ -249,19 +249,16 @@ struct ObjectStorage<'a> {
 }
 
 impl<'a> ObjectStorage<'a> {
-    fn from_bytes<'b>(bytes: &'b [u8]) -> Result<(ObjectStorage<'b>, &'b [u8])> {
-        let mut cursor = Cursor::new(bytes);
-        let object_count = cursor
-            .read_u32::<LittleEndian>()
-            .chain_err(|| "Failed to read object count")? as usize;
-        let byte_count = cursor
-            .read_u32::<LittleEndian>()
-            .chain_err(|| "Failed to read byte count")? as usize;
-        let object_start_pos = cursor.position() as usize;
-        let object_end_pos = object_start_pos + byte_count;
+    fn from_bytes<'b>(
+        bytes: &'b [u8],
+        object_size: usize,
+    ) -> Result<(ObjectStorage<'b>, &'b [u8])> {
+        let object_count = LittleEndian::read_u64(bytes) as usize;
+        let object_start_pos = mem::size_of::<u64>();
+        let object_end_pos = object_start_pos + object_size * object_count;
         let storage = ObjectStorage {
             object_count,
-            object_size: byte_count / object_count,
+            object_size,
             objects: &bytes[object_start_pos..object_end_pos],
         };
         let rest = &bytes[object_end_pos..];
@@ -280,23 +277,28 @@ struct ObjectStorages<'a> {
     way_storage: ObjectStorage<'a>,
     relation_storage: ObjectStorage<'a>,
     tile_storage: ObjectStorage<'a>,
-    ints: &'a [u32],
+    ints: &'a [u64],
     strings: &'a [u8],
 }
 
+const INT_REF_SIZE: usize = 2 * mem::size_of::<u64>();
+const NODE_SIZE: usize = mem::size_of::<u64>() + 2 * mem::size_of::<f64>() + INT_REF_SIZE;
+const WAY_OR_RELATION_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
+const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
+
 impl<'a> ObjectStorages<'a> {
     fn from_bytes<'b>(bytes: &'b [u8]) -> Result<ObjectStorages<'b>> {
-        let (node_storage, rest) = ObjectStorage::from_bytes(bytes)?;
-        let (way_storage, rest) = ObjectStorage::from_bytes(rest)?;
-        let (relation_storage, rest) = ObjectStorage::from_bytes(rest)?;
-        let (tile_storage, rest) = ObjectStorage::from_bytes(rest)?;
+        let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
+        let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;
+        let (relation_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;
+        let (tile_storage, rest) = ObjectStorage::from_bytes(rest, TILE_SIZE)?;
 
-        let int_count = LittleEndian::read_u32(rest) as usize;
-        let start_pos = mem::size_of::<u32>();
-        let end_pos = start_pos + mem::size_of::<u32>() * int_count;
+        let int_count = LittleEndian::read_u64(rest) as usize;
+        let start_pos = mem::size_of::<u64>();
+        let end_pos = start_pos + mem::size_of::<u64>() * int_count;
         let ints = unsafe {
             let byte_seq = &rest[start_pos..end_pos];
-            let int_ptr = byte_seq.as_ptr() as *const u32;
+            let int_ptr = byte_seq.as_ptr() as *const u64;
             slice::from_raw_parts(int_ptr, int_count)
         };
         let strings = &rest[end_pos..];
@@ -315,7 +317,7 @@ impl<'a> ObjectStorages<'a> {
 type GeodataHandle<'a> = OwningHandle<Box<Mmap>, Box<ObjectStorages<'a>>>;
 
 pub struct Tags<'a> {
-    kv_refs: &'a [u32],
+    kv_refs: &'a [u64],
     strings: &'a [u8],
 }
 
@@ -389,7 +391,7 @@ macro_rules! implement_osm_entity {
 
             fn tags(&self) -> Tags<'a> {
                 let entity = &self.entity;
-                let start_pos = entity.bytes.len() - (2 * mem::size_of::<u32>());
+                let start_pos = entity.bytes.len() - INT_REF_SIZE;
                 entity.reader.tags(&entity.bytes[start_pos ..])
             }
         }
@@ -417,7 +419,7 @@ impl<'a> Coords for Node<'a> {
 
 pub struct Way<'a> {
     entity: BaseOsmEntity<'a>,
-    node_ids: &'a [u32],
+    node_ids: &'a [u64],
 }
 
 implement_osm_entity!(Way<'a>);
@@ -440,7 +442,7 @@ impl<'a> OsmArea for Way<'a> {
 
 pub struct Relation<'a> {
     entity: BaseOsmEntity<'a>,
-    way_ids: &'a [u32],
+    way_ids: &'a [u64],
 }
 
 implement_osm_entity!(Relation<'a>);

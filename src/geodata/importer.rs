@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 
+use byteorder::{LittleEndian, WriteBytesExt};
 use xml::attribute::OwnedAttribute;
 use xml::common::{Position, TextPosition};
 use xml::name::OwnedName;
@@ -259,16 +260,12 @@ where
 
 type RawTags = Vec<(String, String)>;
 
-fn collect_tags(osm_entity: &OsmEntity, all_strings: &mut BTreeSet<String>) -> RawTags {
+fn collect_tags(osm_entity: &OsmEntity) -> RawTags {
     let mut result = osm_entity
         .get_elems_by_name("tag")
         .filter_map(
             |x| match (get_required_attr(x, "k"), get_required_attr(x, "v")) {
-                (Ok(k), Ok(v)) => {
-                    all_strings.insert(k.to_string());
-                    all_strings.insert(v.to_string());
-                    Some((k.to_string(), v.to_string()))
-                }
+                (Ok(k), Ok(v)) => Some((k.to_string(), v.to_string())),
                 _ => None,
             },
         )
@@ -334,11 +331,13 @@ impl TileIdToReferences {
     }
 }
 
-fn save_to_internal_format<W>(writer: W, osm_xml: &ParsedOsmXml) -> Result<()>
+fn save_to_internal_format<W>(writer: &mut W, osm_xml: &ParsedOsmXml) -> Result<()>
 where
     W: Write,
 {
-    let mut all_strings = BTreeSet::new();
+    let mut all_ints = Vec::new();
+    let mut string_to_offset = HashMap::new();
+    let mut all_strings = Vec::new();
 
     let mut nodes = Vec::new();
     for n in osm_xml.node_storage.entities.iter() {
@@ -346,8 +345,16 @@ where
             global_id: n.global_id,
             lat: parse_required_attr(&n.initial_elem, "lat")?,
             lon: parse_required_attr(&n.initial_elem, "lon")?,
-            tags: collect_tags(&n, &mut all_strings),
+            tags: collect_tags(&n),
         });
+    }
+
+    writer.write_u64::<LittleEndian>(nodes.len() as u64)?;
+    for node in nodes.iter() {
+        writer.write_u64::<LittleEndian>(node.global_id)?;
+        writer.write_f64::<LittleEndian>(node.lat)?;
+        writer.write_f64::<LittleEndian>(node.lon)?;
+        save_tags(writer, &node.tags, &mut string_to_offset, &mut all_strings);
     }
 
     let ways = osm_xml
@@ -357,9 +364,16 @@ where
         .map(|w| RawWay {
             global_id: w.global_id,
             node_ids: collect_references(w.get_elems_by_name("nd"), &osm_xml.node_storage),
-            tags: collect_tags(&w, &mut all_strings),
+            tags: collect_tags(&w),
         })
         .collect::<Vec<_>>();
+
+    writer.write_u64::<LittleEndian>(ways.len() as u64)?;
+    for way in ways.iter() {
+        writer.write_u64::<LittleEndian>(way.global_id)?;
+        save_refs(writer, &way.node_ids, &mut all_ints);
+        save_tags(writer, &way.tags, &mut string_to_offset, &mut all_strings);
+    }
 
     let relations = osm_xml
         .relation_storage
@@ -371,7 +385,7 @@ where
             RawRelation {
                 global_id: r.global_id,
                 way_ids: collect_references(members, &osm_xml.way_storage),
-                tags: collect_tags(&r, &mut all_strings),
+                tags: collect_tags(&r),
             }
         })
         .collect::<Vec<_>>();
@@ -379,6 +393,27 @@ where
     let tile_references = get_tile_references(&nodes, &ways, &relations);
 
     Ok(())
+}
+
+fn save_refs<W>(writer: &mut W, refs: &RawRefs, all_ints: &mut Vec<u64>) -> Result<()>
+where
+    W: Write,
+{
+    let offset = all_ints.len() as u64;
+    all_ints.extend(refs.iter().map(|x| *x as u64));
+    writer.write_u64::<LittleEndian>(offset)?;
+    writer.write_u64::<LittleEndian>(refs.len() as u64)?;
+    Ok(())
+}
+
+fn save_tags<W>(
+    writer: &mut W,
+    tags: &RawTags,
+    string_to_offset: &HashMap<String, usize>,
+    all_strings: &mut Vec<u8>,
+) where
+    W: Write,
+{
 }
 
 fn get_tile_references(
