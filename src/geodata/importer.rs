@@ -339,6 +339,9 @@ fn save_to_internal_format(writer: &mut Write, osm_xml: &ParsedOsmXml) -> Result
     let relations = save_relations(writer, osm_xml, &mut buffered_data)?;
 
     let tile_references = get_tile_references(&nodes, &ways, &relations);
+    save_tile_references(writer, &tile_references, &mut buffered_data)?;
+
+    buffered_data.save(writer)?;
 
     Ok(())
 }
@@ -388,7 +391,7 @@ fn save_ways(
     writer.write_u64::<LittleEndian>(ways.len() as u64)?;
     for way in ways.iter() {
         writer.write_u64::<LittleEndian>(way.global_id)?;
-        save_refs(writer, &way.node_ids, data)?;
+        save_refs(writer, way.node_ids.iter(), data)?;
         save_tags(writer, &way.tags, data)?;
     }
 
@@ -418,18 +421,39 @@ fn save_relations(
     writer.write_u64::<LittleEndian>(relations.len() as u64)?;
     for relation in relations.iter() {
         writer.write_u64::<LittleEndian>(relation.global_id)?;
-        save_refs(writer, &relation.way_ids, data)?;
+        save_refs(writer, relation.way_ids.iter(), data)?;
         save_tags(writer, &relation.tags, data)?;
     }
 
     Ok(relations)
 }
 
-fn save_refs(writer: &mut Write, refs: &RawRefs, data: &mut BufferedData) -> Result<()> {
-    let offset = data.all_ints.len() as u64;
-    data.all_ints.extend(refs.iter().map(|x| *x as u64));
-    writer.write_u64::<LittleEndian>(offset)?;
-    writer.write_u64::<LittleEndian>(refs.len() as u64)?;
+fn save_tile_references(
+    writer: &mut Write,
+    tile_references: &TileIdToReferences,
+    data: &mut BufferedData,
+) -> Result<()> {
+    writer.write_u64::<LittleEndian>(tile_references.refs.len() as u64)?;
+    for (k, v) in tile_references.refs.iter() {
+        writer.write_u32::<LittleEndian>(k.0)?;
+        writer.write_u32::<LittleEndian>(k.1)?;
+
+        save_refs(writer, v.local_node_ids.iter(), data)?;
+        save_refs(writer, v.local_way_ids.iter(), data)?;
+        save_refs(writer, v.local_relation_ids.iter(), data)?;
+    }
+
+    Ok(())
+}
+
+fn save_refs<'a, I>(writer: &mut Write, refs: I, data: &mut BufferedData) -> Result<()>
+where
+    I: Iterator<Item = &'a usize>
+{
+    let offset = data.all_ints.len();
+    data.all_ints.extend(refs.map(|x| *x as u64));
+    writer.write_u64::<LittleEndian>(offset as u64)?;
+    writer.write_u64::<LittleEndian>((data.all_ints.len() - offset) as u64)?;
     Ok(())
 }
 
@@ -437,12 +461,12 @@ fn save_tags(writer: &mut Write, tags: &RawTags, data: &mut BufferedData) -> Res
     let mut kv_refs = RawRefs::new();
 
     for &(ref k, ref v) in tags.iter() {
-        let (k_offset, k_length) = data.save_string(k);
-        let (v_offset, v_length) = data.save_string(v);
+        let (k_offset, k_length) = data.add_string(k);
+        let (v_offset, v_length) = data.add_string(v);
         kv_refs.extend([k_offset, k_length, v_offset, v_length].into_iter());
     }
 
-    save_refs(writer, &kv_refs, data)?;
+    save_refs(writer, kv_refs.iter(), data)?;
 
     Ok(())
 }
@@ -455,7 +479,7 @@ struct BufferedData {
 }
 
 impl BufferedData {
-    fn save_string(&mut self, s: &String) -> (usize, usize) {
+    fn add_string(&mut self, s: &String) -> (usize, usize) {
         let bytes = s.as_bytes();
         let all_strings = &mut self.all_strings;
         let offset = self.string_to_offset.entry(s.clone()).or_insert_with(|| {
@@ -464,6 +488,15 @@ impl BufferedData {
             offset
         });
         (*offset, bytes.len())
+    }
+
+    fn save(&self, writer: &mut Write) -> Result<()> {
+        writer.write_u64::<LittleEndian>(self.all_ints.len() as u64)?;
+        for i in self.all_ints.iter() {
+            writer.write_u64::<LittleEndian>(*i)?;
+        }
+        writer.write_all(&self.all_strings)?;
+        Ok(())
     }
 }
 
