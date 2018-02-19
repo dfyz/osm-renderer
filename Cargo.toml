@@ -5,7 +5,6 @@ authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
 
 [dependencies]
 byteorder = "*"
-capnp = "*"
 error-chain = "*"
 memmap = "*"
 num_cpus = "*"

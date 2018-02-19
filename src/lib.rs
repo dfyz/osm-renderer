@@ -1,5 +1,4 @@
 extern crate byteorder;
-extern crate capnp;
 #[macro_use]
 extern crate error_chain;
 extern crate memmap;
@@ -17,8 +16,6 @@ pub mod errors {
         }
     }
 }
-
-pub mod geodata_capnp;
 
 pub mod geodata {
     pub mod importer;
