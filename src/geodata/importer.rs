@@ -6,10 +6,9 @@ use tile;
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read};
+use std::io::prelude::*;
+use std::io::{BufReader, BufWriter};
 
-use capnp::message::{Allocator, Builder};
-use geodata_capnp::{geodata, node, tag_list};
 use xml::attribute::OwnedAttribute;
 use xml::common::{Position, TextPosition};
 use xml::name::OwnedName;
@@ -28,10 +27,7 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     let parsed_xml = parse_osm_xml(parser)?;
 
     println!("Converting geodata to internal format");
-    let mut message = Builder::new_default();
-    convert_to_message(&mut message, &parsed_xml)?;
-
-    ::capnp::serialize::write_message(&mut writer, &message)
+    save_to_internal_format(&mut writer, &parsed_xml)
         .chain_err(|| "Failed to write the imported data to the output file")?;
     Ok(())
 }
@@ -60,14 +56,14 @@ impl OsmXmlElement {
         }
     }
 
-    fn get_attr(&self, name: &str) -> Option<&String> {
+    fn get_attr(&self, name: &str) -> Option<&str> {
         self.attrs
             .binary_search_by(|probe| {
                 let probe_str: &str = probe.0.as_ref();
                 probe_str.cmp(name)
             })
             .ok()
-            .map(|idx| &self.attrs[idx].1)
+            .map(|idx| self.attrs[idx].1.as_str())
     }
 }
 
@@ -95,11 +91,11 @@ impl OsmEntity {
             })
     }
 
-    fn get_elems_by_name<'a>(&'a self, name: &str) -> Vec<&'a OsmXmlElement> {
-        self.additional_elems
-            .iter()
-            .filter(|x| x.name == name)
-            .collect::<Vec<_>>()
+    fn get_elems_by_name<'a>(
+        &'a self,
+        name: &'static str,
+    ) -> Box<Iterator<Item = &'a OsmXmlElement> + 'a> {
+        Box::new(self.additional_elems.iter().filter(move |x| x.name == name))
     }
 }
 
@@ -218,9 +214,9 @@ fn process_end_element(name: &OwnedName, parsing_state: &mut ParsedOsmXml) {
     }
 }
 
-fn get_required_attr(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<String> {
+fn get_required_attr<'a>(osm_elem: &'a OsmXmlElement, attr_name: &'static str) -> Result<&'a str> {
     match osm_elem.get_attr(attr_name) {
-        Some(value) => Ok(value.clone()),
+        Some(value) => Ok(value),
         None => bail!(
             "Element {} doesn't have required attribute: {}",
             osm_elem,
@@ -229,7 +225,7 @@ fn get_required_attr(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<String
     }
 }
 
-fn parse_required_attr<T>(osm_elem: &OsmXmlElement, attr_name: &str) -> Result<T>
+fn parse_required_attr<T>(osm_elem: &OsmXmlElement, attr_name: &'static str) -> Result<T>
 where
     T: ::std::str::FromStr,
     T::Err: ::std::error::Error + ::std::marker::Send + 'static,
@@ -246,76 +242,76 @@ where
     Ok(parsed_value)
 }
 
-fn collect_tags(tag_builder: &mut tag_list::Builder, osm_entity: &OsmEntity) -> Result<()> {
-    let mut tags_in = osm_entity
+type RawRefs = Vec<usize>;
+
+fn collect_references<'a, I>(elems: I, storage: &OsmEntityStorage) -> RawRefs
+where
+    I: Iterator<Item = &'a OsmXmlElement>,
+{
+    elems
+        .filter_map(|x| {
+            x.get_attr("ref")
+                .and_then(|y| y.parse().ok())
+                .and_then(|y| storage.translate_id(y))
+        })
+        .collect::<Vec<_>>()
+}
+
+type RawTags = Vec<(String, String)>;
+
+fn collect_tags(osm_entity: &OsmEntity, all_strings: &mut BTreeSet<String>) -> RawTags {
+    let mut result = osm_entity
         .get_elems_by_name("tag")
-        .into_iter()
         .filter_map(
             |x| match (get_required_attr(x, "k"), get_required_attr(x, "v")) {
-                (Ok(k), Ok(v)) => Some((k, v)),
+                (Ok(k), Ok(v)) => {
+                    all_strings.insert(k.to_string());
+                    all_strings.insert(v.to_string());
+                    Some((k.to_string(), v.to_string()))
+                }
                 _ => None,
             },
         )
         .collect::<Vec<_>>();
 
-    tags_in.sort();
+    result.sort();
+    result
+}
 
-    let mut tags_out = tag_builder.borrow().init_tags(tags_in.len() as u32);
+struct RawNode {
+    global_id: u64,
+    lat: f64,
+    lon: f64,
+    tags: RawTags,
+}
 
-    for (i, &(ref k, ref v)) in tags_in.iter().enumerate() {
-        let mut tag_out = tags_out.borrow().get(i as u32);
-        tag_out.set_key(k);
-        tag_out.set_value(v);
+impl coords::Coords for RawNode {
+    fn lat(&self) -> f64 {
+        self.lat
     }
 
-    Ok(())
+    fn lon(&self) -> f64 {
+        self.lon
+    }
 }
 
-macro_rules! fill_message_part {
-    ($entity_in:ident, $entity_out:ident, $geodata:expr, $init_part:ident, $storage:expr, $local_id:ident, $fill_part:block) => {{
-        let mut entities_out = $geodata.borrow().$init_part($storage.entities.len() as u32);
-        for (i, $entity_in) in $storage.entities.iter().enumerate() {
-            let $local_id = i as u32;
-            let mut $entity_out = entities_out.borrow().get($local_id);
-            $entity_out.set_global_id($entity_in.global_id);
-            $fill_part
-            collect_tags(&mut $entity_out.init_tags(), &$entity_in)?;
-        }
-    }}
+struct RawWay {
+    global_id: u64,
+    node_ids: RawRefs,
+    tags: RawTags,
 }
 
-macro_rules! collect_references {
-    ($refs_in:expr, $entity:expr, $init_part:ident, $storage:expr) => {{
-        let valid_refs = $refs_in
-            .iter()
-            .filter_map(|x| {
-                x
-                    .get_attr("ref")
-                    .and_then(|y| y.parse().ok())
-                    .and_then(|y| $storage.translate_id(y))
-            })
-            .collect::<Vec<_>>();
-        let mut refs_out = $entity.borrow().$init_part(valid_refs.len() as u32);
-        for (i, local_ref_id) in valid_refs.iter().enumerate() {
-            refs_out.set(i as u32, *local_ref_id as u32);
-        }
-    }}
-}
-
-macro_rules! copy_vec_to_capnproto {
-    ($entity:expr, $init_array:ident, $vec:expr) => {{
-        let mut elems_out = $entity.borrow().$init_array($vec.len() as u32);
-        for (i, elem_in) in $vec.iter().enumerate() {
-            elems_out.set(i as u32, *elem_in);
-        }
-    }}
+struct RawRelation {
+    global_id: u64,
+    way_ids: RawRefs,
+    tags: RawTags,
 }
 
 #[derive(Default)]
 struct TileReferences {
-    local_node_ids: BTreeSet<u32>,
-    local_way_ids: BTreeSet<u32>,
-    local_relation_ids: BTreeSet<u32>,
+    local_node_ids: BTreeSet<usize>,
+    local_way_ids: BTreeSet<usize>,
+    local_relation_ids: BTreeSet<usize>,
 }
 
 #[derive(Default)]
@@ -323,15 +319,9 @@ struct TileIdToReferences {
     refs: BTreeMap<(u32, u32), TileReferences>,
 }
 
-type NodeReader<'a> = ::capnp::struct_list::Reader<'a, node::Owned>;
-
 impl TileIdToReferences {
-    fn tile_ref_by_node<'a>(
-        &mut self,
-        nodes: NodeReader<'a>,
-        local_node_id: u32,
-    ) -> &mut TileReferences {
-        let node_tile = tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_id));
+    fn tile_ref_by_node(&mut self, node: &RawNode) -> &mut TileReferences {
+        let node_tile = tile::coords_to_max_zoom_tile(node);
         self.refs
             .entry((node_tile.x, node_tile.y))
             .or_insert_with(Default::default)
@@ -344,198 +334,112 @@ impl TileIdToReferences {
     }
 }
 
-fn get_coords_for_node(nodes: NodeReader, local_node_id: u32) -> ::geodata_capnp::coords::Reader {
-    nodes.get(local_node_id).get_coords().unwrap()
-}
+fn save_to_internal_format<W>(writer: W, osm_xml: &ParsedOsmXml) -> Result<()>
+where
+    W: Write,
+{
+    let mut all_strings = BTreeSet::new();
 
-impl<'a> coords::Coords for ::geodata_capnp::coords::Reader<'a> {
-    fn lat(&self) -> f64 {
-        self.get_lat()
+    let mut nodes = Vec::new();
+    for n in osm_xml.node_storage.entities.iter() {
+        nodes.push(RawNode {
+            global_id: n.global_id,
+            lat: parse_required_attr(&n.initial_elem, "lat")?,
+            lon: parse_required_attr(&n.initial_elem, "lon")?,
+            tags: collect_tags(&n, &mut all_strings),
+        });
     }
 
-    fn lon(&self) -> f64 {
-        self.get_lon()
-    }
-}
+    let ways = osm_xml
+        .way_storage
+        .entities
+        .iter()
+        .map(|w| RawWay {
+            global_id: w.global_id,
+            node_ids: collect_references(w.get_elems_by_name("nd"), &osm_xml.node_storage),
+            tags: collect_tags(&w, &mut all_strings),
+        })
+        .collect::<Vec<_>>();
 
-fn convert_to_message<A: Allocator>(
-    message: &mut Builder<A>,
-    osm_xml: &ParsedOsmXml,
-) -> Result<()> {
-    let mut geodata = message.init_root::<geodata::Builder>();
+    let relations = osm_xml
+        .relation_storage
+        .entities
+        .iter()
+        .map(|r| {
+            let members = r.get_elems_by_name("member")
+                .filter(|x| x.get_attr("type") == Some("way"));
+            RawRelation {
+                global_id: r.global_id,
+                way_ids: collect_references(members, &osm_xml.way_storage),
+                tags: collect_tags(&r, &mut all_strings),
+            }
+        })
+        .collect::<Vec<_>>();
 
-    fill_message_part!(
-        node_in,
-        node_out,
-        geodata,
-        init_nodes,
-        osm_xml.node_storage,
-        local_id,
-        {
-            let mut coords = node_out.borrow().init_coords();
-
-            coords.set_lat(parse_required_attr(&node_in.initial_elem, "lat")?);
-            coords.set_lon(parse_required_attr(&node_in.initial_elem, "lon")?);
-        }
-    );
-
-    fill_message_part!(
-        way_in,
-        way_out,
-        geodata,
-        init_ways,
-        osm_xml.way_storage,
-        local_id,
-        {
-            let nds_in = way_in.get_elems_by_name("nd");
-            collect_references!(nds_in, way_out, init_local_node_ids, osm_xml.node_storage);
-        }
-    );
-
-    fill_message_part!(
-        rel_in,
-        rel_out,
-        geodata,
-        init_relations,
-        osm_xml.relation_storage,
-        local_id,
-        {
-            let members = rel_in.get_elems_by_name("member");
-
-            let collect_members = |member_type| {
-                members
-                    .iter()
-                    .filter(|x| x.get_attr("type").map(|x| x.as_ref()) == Some(member_type))
-                    .collect::<Vec<_>>()
-            };
-
-            collect_references!(
-                collect_members("node"),
-                rel_out,
-                init_local_node_ids,
-                osm_xml.node_storage
-            );
-            collect_references!(
-                collect_members("way"),
-                rel_out,
-                init_local_way_ids,
-                osm_xml.way_storage
-            );
-        }
-    );
-
-    let tile_references = get_tile_references(geodata.borrow_as_reader());
-
-    let mut tiles = geodata.init_tiles(tile_references.refs.len() as u32);
-    for (i, (&(tx, ty), value)) in tile_references.refs.iter().enumerate() {
-        let mut tile = tiles.borrow().get(i as u32);
-
-        tile.set_tile_x(tx);
-        tile.set_tile_y(ty);
-
-        copy_vec_to_capnproto!(tile, init_local_node_ids, value.local_node_ids);
-        copy_vec_to_capnproto!(tile, init_local_way_ids, value.local_way_ids);
-        copy_vec_to_capnproto!(tile, init_local_relation_ids, value.local_relation_ids);
-    }
+    let tile_references = get_tile_references(&nodes, &ways, &relations);
 
     Ok(())
 }
 
-fn get_tile_references(geodata: geodata::Reader) -> TileIdToReferences {
-    fn insert_entity_id_to_tiles<'a, I>(
-        result: &mut TileIdToReferences,
-        nodes: NodeReader<'a>,
-        nodes_are_isolated: bool,
-        local_node_ids_iter: I,
-        get_refs: &Fn(&mut TileReferences) -> &mut BTreeSet<u32>,
-        entity_id: u32,
-    ) where
-        I: Iterator<Item = u32>,
-    {
-        let local_node_ids: Vec<_> = local_node_ids_iter.collect();
-        if local_node_ids.is_empty() {
-            return;
-        }
-        if nodes_are_isolated || local_node_ids.len() == 1 {
-            for node_ref in local_node_ids {
-                get_refs(result.tile_ref_by_node(nodes, node_ref)).insert(entity_id);
-            }
-            return;
-        }
-
-        let first_tile =
-            tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, local_node_ids[0]));
-        let mut tile_range = tile::TileRange {
-            min_x: first_tile.x,
-            max_x: first_tile.x,
-            min_y: first_tile.y,
-            max_y: first_tile.y,
-        };
-        for local_node in local_node_ids.iter().skip(1) {
-            let next_tile = tile::coords_to_max_zoom_tile(&get_coords_for_node(nodes, *local_node));
-            tile_range.min_x = min(tile_range.min_x, next_tile.x);
-            tile_range.max_x = max(tile_range.max_x, next_tile.x);
-            tile_range.min_y = min(tile_range.min_y, next_tile.y);
-            tile_range.max_y = max(tile_range.max_y, next_tile.y);
-        }
-        for x in tile_range.min_x..tile_range.max_x + 1 {
-            for y in tile_range.min_y..tile_range.max_y + 1 {
-                get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
-            }
-        }
-    }
-
+fn get_tile_references(
+    nodes: &[RawNode],
+    ways: &[RawWay],
+    relations: &[RawRelation],
+) -> TileIdToReferences {
     let mut result: TileIdToReferences = Default::default();
-    let all_nodes = geodata.get_nodes().unwrap();
 
-    for i in 0..all_nodes.len() {
-        result
-            .tile_ref_by_node(all_nodes, i)
-            .local_node_ids
-            .insert(i);
+    for (i, node) in nodes.iter().enumerate() {
+        result.tile_ref_by_node(node).local_node_ids.insert(i);
     }
 
-    let all_ways = geodata.get_ways().unwrap();
-    for i in 0..all_ways.len() {
-        let local_node_ids = all_ways.get(i).get_local_node_ids().unwrap().iter();
-        insert_entity_id_to_tiles(
-            &mut result,
-            all_nodes,
-            false,
-            local_node_ids,
-            &|x| &mut x.local_way_ids,
-            i,
-        );
+    for (i, way) in ways.iter().enumerate() {
+        let node_ids = way.node_ids.iter().map(|idx| &nodes[*idx]);
+
+        insert_entity_id_to_tiles(&mut result, node_ids, &|x| &mut x.local_way_ids, i);
     }
 
-    let all_relations = geodata.get_relations().unwrap();
-    for i in 0..all_relations.len() {
-        let local_node_ids = all_relations.get(i).get_local_node_ids().unwrap().iter();
-        insert_entity_id_to_tiles(
-            &mut result,
-            all_nodes,
-            true,
-            local_node_ids,
-            &|x| &mut x.local_relation_ids,
-            i,
-        );
-
-        let local_node_ids_from_ways = all_relations
-            .get(i)
-            .get_local_way_ids()
-            .unwrap()
+    for (i, relation) in relations.iter().enumerate() {
+        let node_ids = relation
+            .way_ids
             .iter()
-            .flat_map(|way_ref| all_ways.get(way_ref).get_local_node_ids().unwrap());
+            .flat_map(|way_id| ways[*way_id].node_ids.iter().map(|idx| &nodes[*idx]));
 
-        insert_entity_id_to_tiles(
-            &mut result,
-            all_nodes,
-            false,
-            local_node_ids_from_ways,
-            &|x| &mut x.local_relation_ids,
-            i,
-        );
+        insert_entity_id_to_tiles(&mut result, node_ids, &|x| &mut x.local_relation_ids, i);
     }
 
     result
+}
+
+fn insert_entity_id_to_tiles<'a, I>(
+    result: &mut TileIdToReferences,
+    mut nodes: I,
+    get_refs: &Fn(&mut TileReferences) -> &mut BTreeSet<usize>,
+    entity_id: usize,
+) where
+    I: Iterator<Item = &'a RawNode>,
+{
+    let first_node = match nodes.next() {
+        Some(n) => n,
+        _ => return,
+    };
+
+    let first_tile = tile::coords_to_max_zoom_tile(first_node);
+    let mut tile_range = tile::TileRange {
+        min_x: first_tile.x,
+        max_x: first_tile.x,
+        min_y: first_tile.y,
+        max_y: first_tile.y,
+    };
+    for node in nodes {
+        let next_tile = tile::coords_to_max_zoom_tile(node);
+        tile_range.min_x = min(tile_range.min_x, next_tile.x);
+        tile_range.max_x = max(tile_range.max_x, next_tile.x);
+        tile_range.min_y = min(tile_range.min_y, next_tile.y);
+        tile_range.max_y = max(tile_range.max_y, next_tile.y);
+    }
+    for x in tile_range.min_x..tile_range.max_x + 1 {
+        for y in tile_range.min_y..tile_range.max_y + 1 {
+            get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
+        }
+    }
 }
