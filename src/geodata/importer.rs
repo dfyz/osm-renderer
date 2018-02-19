@@ -331,14 +331,23 @@ impl TileIdToReferences {
     }
 }
 
-fn save_to_internal_format<W>(writer: &mut W, osm_xml: &ParsedOsmXml) -> Result<()>
-where
-    W: Write,
-{
-    let mut all_ints = Vec::new();
-    let mut string_to_offset = HashMap::new();
-    let mut all_strings = Vec::new();
+fn save_to_internal_format(writer: &mut Write, osm_xml: &ParsedOsmXml) -> Result<()> {
+    let mut buffered_data: BufferedData = Default::default();
 
+    let nodes = save_nodes(writer, osm_xml, &mut buffered_data)?;
+    let ways = save_ways(writer, osm_xml, &mut buffered_data)?;
+    let relations = save_relations(writer, osm_xml, &mut buffered_data)?;
+
+    let tile_references = get_tile_references(&nodes, &ways, &relations);
+
+    Ok(())
+}
+
+fn save_nodes(
+    writer: &mut Write,
+    osm_xml: &ParsedOsmXml,
+    data: &mut BufferedData,
+) -> Result<Vec<RawNode>> {
     let mut nodes = Vec::new();
     for n in osm_xml.node_storage.entities.iter() {
         nodes.push(RawNode {
@@ -354,9 +363,17 @@ where
         writer.write_u64::<LittleEndian>(node.global_id)?;
         writer.write_f64::<LittleEndian>(node.lat)?;
         writer.write_f64::<LittleEndian>(node.lon)?;
-        save_tags(writer, &node.tags, &mut string_to_offset, &mut all_strings);
+        save_tags(writer, &node.tags, data)?;
     }
 
+    Ok(nodes)
+}
+
+fn save_ways(
+    writer: &mut Write,
+    osm_xml: &ParsedOsmXml,
+    data: &mut BufferedData,
+) -> Result<Vec<RawWay>> {
     let ways = osm_xml
         .way_storage
         .entities
@@ -371,10 +388,18 @@ where
     writer.write_u64::<LittleEndian>(ways.len() as u64)?;
     for way in ways.iter() {
         writer.write_u64::<LittleEndian>(way.global_id)?;
-        save_refs(writer, &way.node_ids, &mut all_ints);
-        save_tags(writer, &way.tags, &mut string_to_offset, &mut all_strings);
+        save_refs(writer, &way.node_ids, data)?;
+        save_tags(writer, &way.tags, data)?;
     }
 
+    Ok(ways)
+}
+
+fn save_relations(
+    writer: &mut Write,
+    osm_xml: &ParsedOsmXml,
+    data: &mut BufferedData,
+) -> Result<Vec<RawRelation>> {
     let relations = osm_xml
         .relation_storage
         .entities
@@ -390,30 +415,56 @@ where
         })
         .collect::<Vec<_>>();
 
-    let tile_references = get_tile_references(&nodes, &ways, &relations);
+    writer.write_u64::<LittleEndian>(relations.len() as u64)?;
+    for relation in relations.iter() {
+        writer.write_u64::<LittleEndian>(relation.global_id)?;
+        save_refs(writer, &relation.way_ids, data)?;
+        save_tags(writer, &relation.tags, data)?;
+    }
 
-    Ok(())
+    Ok(relations)
 }
 
-fn save_refs<W>(writer: &mut W, refs: &RawRefs, all_ints: &mut Vec<u64>) -> Result<()>
-where
-    W: Write,
-{
-    let offset = all_ints.len() as u64;
-    all_ints.extend(refs.iter().map(|x| *x as u64));
+fn save_refs(writer: &mut Write, refs: &RawRefs, data: &mut BufferedData) -> Result<()> {
+    let offset = data.all_ints.len() as u64;
+    data.all_ints.extend(refs.iter().map(|x| *x as u64));
     writer.write_u64::<LittleEndian>(offset)?;
     writer.write_u64::<LittleEndian>(refs.len() as u64)?;
     Ok(())
 }
 
-fn save_tags<W>(
-    writer: &mut W,
-    tags: &RawTags,
-    string_to_offset: &HashMap<String, usize>,
-    all_strings: &mut Vec<u8>,
-) where
-    W: Write,
-{
+fn save_tags(writer: &mut Write, tags: &RawTags, data: &mut BufferedData) -> Result<()> {
+    let mut kv_refs = RawRefs::new();
+
+    for &(ref k, ref v) in tags.iter() {
+        let (k_offset, k_length) = data.save_string(k);
+        let (v_offset, v_length) = data.save_string(v);
+        kv_refs.extend([k_offset, k_length, v_offset, v_length].into_iter());
+    }
+
+    save_refs(writer, &kv_refs, data)?;
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct BufferedData {
+    all_ints: Vec<u64>,
+    string_to_offset: HashMap<String, usize>,
+    all_strings: Vec<u8>,
+}
+
+impl BufferedData {
+    fn save_string(&mut self, s: &String) -> (usize, usize) {
+        let bytes = s.as_bytes();
+        let all_strings = &mut self.all_strings;
+        let offset = self.string_to_offset.entry(s.clone()).or_insert_with(|| {
+            let offset = all_strings.len();
+            all_strings.extend_from_slice(bytes);
+            offset
+        });
+        (*offset, bytes.len())
+    }
 }
 
 fn get_tile_references(
