@@ -249,10 +249,7 @@ struct ObjectStorage<'a> {
 }
 
 impl<'a> ObjectStorage<'a> {
-    fn from_bytes(
-        bytes: &[u8],
-        object_size: usize,
-    ) -> Result<(ObjectStorage, &[u8])> {
+    fn from_bytes(bytes: &[u8], object_size: usize) -> Result<(ObjectStorage, &[u8])> {
         let object_count = LittleEndian::read_u64(bytes) as usize;
         let object_start_pos = mem::size_of::<u64>();
         let object_end_pos = object_start_pos + object_size * object_count;

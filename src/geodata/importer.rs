@@ -479,11 +479,13 @@ impl BufferedData {
     fn add_string(&mut self, s: &str) -> (usize, usize) {
         let bytes = s.as_bytes();
         let all_strings = &mut self.all_strings;
-        let offset = self.string_to_offset.entry(s.to_string()).or_insert_with(|| {
-            let offset = all_strings.len();
-            all_strings.extend_from_slice(bytes);
-            offset
-        });
+        let offset = self.string_to_offset
+            .entry(s.to_string())
+            .or_insert_with(|| {
+                let offset = all_strings.len();
+                all_strings.extend_from_slice(bytes);
+                offset
+            });
         (*offset, bytes.len())
     }
 
