@@ -322,7 +322,7 @@ const KV_REF_SIZE: usize = 4;
 
 impl<'a> Tags<'a> {
     pub fn get_by_key(&self, key: &str) -> Option<&'a str> {
-        let kv_count = self.kv_refs.len() * KV_REF_SIZE;
+        let kv_count = self.kv_refs.len() / KV_REF_SIZE;
         if kv_count == 0 {
             return None;
         }
@@ -427,7 +427,8 @@ impl<'a> Way<'a> {
     }
 
     pub fn get_node(&self, idx: usize) -> Node<'a> {
-        self.entity.reader.get_node(idx)
+        let node_id = self.node_ids[idx];
+        self.entity.reader.get_node(node_id as usize)
     }
 }
 
@@ -450,7 +451,8 @@ impl<'a> Relation<'a> {
     }
 
     pub fn get_way(&self, idx: usize) -> Way<'a> {
-        self.entity.reader.get_way(idx)
+        let way_id = self.way_ids[idx];
+        self.entity.reader.get_way(way_id as usize)
     }
 }
 
