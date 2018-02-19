@@ -448,7 +448,7 @@ fn save_tile_references(
 
 fn save_refs<'a, I>(writer: &mut Write, refs: I, data: &mut BufferedData) -> Result<()>
 where
-    I: Iterator<Item = &'a usize>
+    I: Iterator<Item = &'a usize>,
 {
     let offset = data.all_ints.len();
     data.all_ints.extend(refs.map(|x| *x as u64));
