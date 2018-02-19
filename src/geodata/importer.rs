@@ -331,23 +331,6 @@ impl TileIdToReferences {
 fn save_to_internal_format(writer: &mut Write, osm_xml: &ParsedOsmXml) -> Result<()> {
     let mut buffered_data: BufferedData = Default::default();
 
-    let nodes = save_nodes(writer, osm_xml, &mut buffered_data)?;
-    let ways = save_ways(writer, osm_xml, &mut buffered_data)?;
-    let relations = save_relations(writer, osm_xml, &mut buffered_data)?;
-
-    let tile_references = get_tile_references(&nodes, &ways, &relations);
-    save_tile_references(writer, &tile_references, &mut buffered_data)?;
-
-    buffered_data.save(writer)?;
-
-    Ok(())
-}
-
-fn save_nodes(
-    writer: &mut Write,
-    osm_xml: &ParsedOsmXml,
-    data: &mut BufferedData,
-) -> Result<Vec<RawNode>> {
     let mut nodes = Vec::new();
     for n in &osm_xml.node_storage.entities {
         nodes.push(RawNode {
@@ -357,23 +340,8 @@ fn save_nodes(
             tags: collect_tags(n),
         });
     }
+    save_nodes(writer, &nodes, &mut buffered_data)?;
 
-    writer.write_u64::<LittleEndian>(nodes.len() as u64)?;
-    for node in &nodes {
-        writer.write_u64::<LittleEndian>(node.global_id)?;
-        writer.write_f64::<LittleEndian>(node.lat)?;
-        writer.write_f64::<LittleEndian>(node.lon)?;
-        save_tags(writer, &node.tags, data)?;
-    }
-
-    Ok(nodes)
-}
-
-fn save_ways(
-    writer: &mut Write,
-    osm_xml: &ParsedOsmXml,
-    data: &mut BufferedData,
-) -> Result<Vec<RawWay>> {
     let ways = osm_xml
         .way_storage
         .entities
@@ -385,21 +353,8 @@ fn save_ways(
         })
         .collect::<Vec<_>>();
 
-    writer.write_u64::<LittleEndian>(ways.len() as u64)?;
-    for way in &ways {
-        writer.write_u64::<LittleEndian>(way.global_id)?;
-        save_refs(writer, way.node_ids.iter(), data)?;
-        save_tags(writer, &way.tags, data)?;
-    }
+    save_ways(writer, &ways, &mut buffered_data)?;
 
-    Ok(ways)
-}
-
-fn save_relations(
-    writer: &mut Write,
-    osm_xml: &ParsedOsmXml,
-    data: &mut BufferedData,
-) -> Result<Vec<RawRelation>> {
     let relations = osm_xml
         .relation_storage
         .entities
@@ -415,14 +370,49 @@ fn save_relations(
         })
         .collect::<Vec<_>>();
 
+    save_relations(writer, &relations, &mut buffered_data)?;
+
+    let tile_references = get_tile_references(&nodes, &ways, &relations);
+    save_tile_references(writer, &tile_references, &mut buffered_data)?;
+
+    buffered_data.save(writer)?;
+
+    Ok(())
+}
+
+fn save_nodes(writer: &mut Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
+    writer.write_u64::<LittleEndian>(nodes.len() as u64)?;
+    for node in nodes {
+        writer.write_u64::<LittleEndian>(node.global_id)?;
+        writer.write_f64::<LittleEndian>(node.lat)?;
+        writer.write_f64::<LittleEndian>(node.lon)?;
+        save_tags(writer, &node.tags, data)?;
+    }
+    Ok(())
+}
+
+fn save_ways(writer: &mut Write, ways: &[RawWay], data: &mut BufferedData) -> Result<()> {
+    writer.write_u64::<LittleEndian>(ways.len() as u64)?;
+    for way in ways {
+        writer.write_u64::<LittleEndian>(way.global_id)?;
+        save_refs(writer, way.node_ids.iter(), data)?;
+        save_tags(writer, &way.tags, data)?;
+    }
+    Ok(())
+}
+
+fn save_relations(
+    writer: &mut Write,
+    relations: &[RawRelation],
+    data: &mut BufferedData,
+) -> Result<()> {
     writer.write_u64::<LittleEndian>(relations.len() as u64)?;
-    for relation in &relations {
+    for relation in relations {
         writer.write_u64::<LittleEndian>(relation.global_id)?;
         save_refs(writer, relation.way_ids.iter(), data)?;
         save_tags(writer, &relation.tags, data)?;
     }
-
-    Ok(relations)
+    Ok(())
 }
 
 fn save_tile_references(
@@ -559,5 +549,102 @@ fn insert_entity_id_to_tiles<'a, I>(
         for y in tile_range.min_y..tile_range.max_y + 1 {
             get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_synthetic_data() {
+        let mut good_node_ids = BTreeSet::new();
+        let mut tile_ids = Vec::new();
+
+        {
+            let mut add_tile = |x, y, good| {
+                let node_idx = tile_ids.len();
+                tile_ids.push((x, y));
+                if good {
+                    good_node_ids.insert(node_idx as u64);
+                }
+            };
+
+            // y = {8, 9, 13} are in the range for x = 1
+            add_tile(1, 7, false);
+            add_tile(1, 8, true);
+            add_tile(1, 9, true);
+            add_tile(1, 13, true);
+            // y = {10, 11, 15} is in the range for x = 2
+            add_tile(2, 10, true);
+            add_tile(2, 11, true);
+            add_tile(2, 15, true);
+            add_tile(2, 16, false);
+            add_tile(2, 17, false);
+            // nothing is in the range for x = 4
+            add_tile(4, 1, false);
+            add_tile(4, 4, false);
+            // nothing is in the range for x = 5
+            add_tile(5, 20, false);
+            add_tile(5, 23, false);
+            add_tile(5, 200, false);
+            // y = {11, 12, 14} are in the range for x = 7
+            add_tile(7, 6, false);
+            add_tile(7, 11, true);
+            add_tile(7, 12, true);
+            add_tile(7, 14, true);
+            add_tile(7, 16, false);
+            add_tile(7, 17, false);
+        }
+
+        let mut nodes = Vec::new();
+        for idx in 0..tile_ids.len() {
+            nodes.push(RawNode {
+                global_id: idx as u64,
+                lat: 1.0,
+                lon: 1.0,
+                tags: Default::default(),
+            });
+        }
+
+        let mut tile_refs: TileIdToReferences = Default::default();
+        for (idx, &(x, y)) in tile_ids.iter().enumerate() {
+            tile_refs.refs.entry((x, y)).or_insert(TileReferences {
+                local_node_ids: [idx].iter().cloned().collect(),
+                local_way_ids: Default::default(),
+                local_relation_ids: Default::default(),
+            });
+        }
+
+        let mut tmp_path = env::temp_dir();
+        tmp_path.push("osm_renderer_synthetic_test.bin");
+
+        {
+            let tmp_file = File::create(&tmp_path).unwrap();
+            let mut writer = BufWriter::new(tmp_file);
+
+            let mut data: BufferedData = Default::default();
+            save_nodes(&mut writer, &nodes, &mut data).unwrap();
+            save_ways(&mut writer, &[], &mut data).unwrap();
+            save_relations(&mut writer, &[], &mut data).unwrap();
+            save_tile_references(&mut writer, &tile_refs, &mut data).unwrap();
+            data.save(&mut writer).unwrap();
+        }
+
+        let reader = ::geodata::reader::GeodataReader::new(tmp_path.to_str().unwrap()).unwrap();
+        let tile = ::tile::Tile {
+            zoom: 15,
+            x: 0,
+            y: 1,
+        };
+        use ::geodata::reader::OsmEntity;
+        let node_ids = reader
+            .get_entities_in_tile(&tile, &None)
+            .nodes
+            .iter()
+            .map(|x| x.global_id())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(good_node_ids, node_ids);
     }
 }
