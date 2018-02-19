@@ -249,10 +249,10 @@ struct ObjectStorage<'a> {
 }
 
 impl<'a> ObjectStorage<'a> {
-    fn from_bytes<'b>(
-        bytes: &'b [u8],
+    fn from_bytes(
+        bytes: &[u8],
         object_size: usize,
-    ) -> Result<(ObjectStorage<'b>, &'b [u8])> {
+    ) -> Result<(ObjectStorage, &[u8])> {
         let object_count = LittleEndian::read_u64(bytes) as usize;
         let object_start_pos = mem::size_of::<u64>();
         let object_end_pos = object_start_pos + object_size * object_count;
@@ -287,7 +287,7 @@ const WAY_OR_RELATION_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
 const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
 
 impl<'a> ObjectStorages<'a> {
-    fn from_bytes<'b>(bytes: &'b [u8]) -> Result<ObjectStorages<'b>> {
+    fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
         let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;
         let (relation_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;
