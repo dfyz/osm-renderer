@@ -381,7 +381,7 @@ fn save_to_internal_format(writer: &mut Write, osm_xml: &ParsedOsmXml) -> Result
 }
 
 fn save_nodes(writer: &mut Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(nodes.len() as u32)?;
+    writer.write_u32::<LittleEndian>(to_u32_safe(nodes.len())?)?;
     for node in nodes {
         writer.write_u64::<LittleEndian>(node.global_id)?;
         writer.write_f64::<LittleEndian>(node.lat)?;
@@ -392,7 +392,7 @@ fn save_nodes(writer: &mut Write, nodes: &[RawNode], data: &mut BufferedData) ->
 }
 
 fn save_ways(writer: &mut Write, ways: &[RawWay], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(ways.len() as u32)?;
+    writer.write_u32::<LittleEndian>(to_u32_safe(ways.len())?)?;
     for way in ways {
         writer.write_u64::<LittleEndian>(way.global_id)?;
         save_refs(writer, way.node_ids.iter(), data)?;
@@ -406,7 +406,7 @@ fn save_relations(
     relations: &[RawRelation],
     data: &mut BufferedData,
 ) -> Result<()> {
-    writer.write_u32::<LittleEndian>(relations.len() as u32)?;
+    writer.write_u32::<LittleEndian>(to_u32_safe(relations.len())?)?;
     for relation in relations {
         writer.write_u64::<LittleEndian>(relation.global_id)?;
         save_refs(writer, relation.way_ids.iter(), data)?;
@@ -420,7 +420,7 @@ fn save_tile_references(
     tile_references: &TileIdToReferences,
     data: &mut BufferedData,
 ) -> Result<()> {
-    writer.write_u32::<LittleEndian>(tile_references.refs.len() as u32)?;
+    writer.write_u32::<LittleEndian>(to_u32_safe(tile_references.refs.len())?)?;
     for (k, v) in &tile_references.refs {
         writer.write_u32::<LittleEndian>(k.0)?;
         writer.write_u32::<LittleEndian>(k.1)?;
@@ -438,9 +438,11 @@ where
     I: Iterator<Item = &'a usize>,
 {
     let offset = data.all_ints.len();
-    data.all_ints.extend(refs.map(|x| *x as u32));
-    writer.write_u32::<LittleEndian>(offset as u32)?;
-    writer.write_u32::<LittleEndian>((data.all_ints.len() - offset) as u32)?;
+    for r in refs {
+        data.all_ints.push(to_u32_safe(*r)?);
+    }
+    writer.write_u32::<LittleEndian>(to_u32_safe(offset)?)?;
+    writer.write_u32::<LittleEndian>(to_u32_safe(data.all_ints.len() - offset)?)?;
     Ok(())
 }
 
@@ -480,7 +482,7 @@ impl BufferedData {
     }
 
     fn save(&self, writer: &mut Write) -> Result<()> {
-        writer.write_u32::<LittleEndian>(self.all_ints.len() as u32)?;
+        writer.write_u32::<LittleEndian>(to_u32_safe(self.all_ints.len())?)?;
         for i in &self.all_ints {
             writer.write_u32::<LittleEndian>(*i)?;
         }
@@ -550,6 +552,13 @@ fn insert_entity_id_to_tiles<'a, I>(
             get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
         }
     }
+}
+
+fn to_u32_safe(num: usize) -> Result<u32> {
+    if num > (u32::max_value() as usize) {
+        bail!("{} doesn't fit into u32", num);
+    }
+    Ok(num as u32)
 }
 
 #[cfg(test)]
