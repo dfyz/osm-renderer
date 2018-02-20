@@ -3,3 +3,7 @@
 * try to integrate the maps.me stylesheet if their mapcss dialect is not too different from the official spec
 * draw labels (probably the hardest part; maybe look at font-rs for inspiration)
 * correctly render multipolygons with touching inner rings (e.g., https://www.openstreetmap.org/relation/4485484)
+
+* memory
+  + make the import process less memory-hungry;
+  + configurable drawing cache size.
