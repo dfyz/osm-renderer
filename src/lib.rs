@@ -1,4 +1,4 @@
-extern crate capnp;
+extern crate byteorder;
 #[macro_use]
 extern crate error_chain;
 extern crate memmap;
@@ -8,10 +8,14 @@ extern crate png;
 extern crate xml;
 
 pub mod errors {
-    error_chain!{}
-}
+    use std::io;
 
-pub mod geodata_capnp;
+    error_chain!{
+        foreign_links {
+            Io(io::Error);
+        }
+    }
+}
 
 pub mod geodata {
     pub mod importer;
