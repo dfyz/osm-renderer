@@ -647,7 +647,7 @@ mod tests {
             x: 0,
             y: 1,
         };
-        use ::geodata::reader::OsmEntity;
+        use geodata::reader::OsmEntity;
         let node_ids = reader
             .get_entities_in_tile(&tile, &None)
             .nodes
