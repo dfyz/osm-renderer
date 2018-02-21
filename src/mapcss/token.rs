@@ -9,6 +9,7 @@ pub type ZoomLevel = Option<u8>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {
+    Import(&'a str),
     Identifier(&'a str),
     String(&'a str),
     Number(f64),
@@ -16,6 +17,7 @@ pub enum Token<'a> {
         min_zoom: ZoomLevel,
         max_zoom: ZoomLevel,
     },
+    ColorRef(&'a str),
     Color(Color),
 
     LeftBracket,
@@ -133,12 +135,14 @@ impl<'a> Tokenizer<'a> {
 
         if let Some(token) = get_one_char_simple_token(ch) {
             Ok(token)
+        } else if ch == '@' {
+            self.read_at_directive()
         } else if ch == '*' {
             Ok(Token::Identifier(&self.text[idx..idx + 1]))
         } else if can_start_identifier(ch) {
-            Ok(self.read_identifier(idx, ch))
+            Ok(self.read_identifier(idx))
         } else if ch == '"' {
-            self.read_string(idx + ch.len_utf8())
+            self.read_string(idx + 1)
         } else if ch == '-' || ch.to_digit(10).is_some() {
             self.read_number(ch)
         } else if ch == '|' {
@@ -150,18 +154,52 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_identifier(&mut self, start_idx: usize, ch: char) -> Token<'a> {
-        let mut last_good_char_with_pos = (start_idx, ch);
+    fn read_at_directive(&mut self) -> Result<Token<'a>> {
+        let start_idx = match self.next_char_with_pos() {
+            Some((idx, ch)) if can_be_in_at_directive(ch) => idx,
+            _ => return self.lexer_error("Expected a letter or underscore after @"),
+        };
+
+        let mut end_idx = start_idx;
         while let Some(&(next_idx, next_ch)) = self.chars.peek() {
-            if can_continue_identifier(next_ch) {
+            if can_be_in_at_directive(next_ch) {
                 self.advance();
-                last_good_char_with_pos = (next_idx, next_ch);
+                end_idx = next_idx;
             } else {
                 break;
             }
         }
-        let (end_idx, last_char) = last_good_char_with_pos;
-        Token::Identifier(&self.text[start_idx..end_idx + last_char.len_utf8()])
+
+        let directive_text = &self.text[start_idx..end_idx + 1];
+        if directive_text == "import" {
+            self.expect_char('(')?;
+
+            let import_text = match self.next_char_with_pos() {
+                Some((idx, ch)) if ch == '"' => match self.read_string(idx + 1)? {
+                    Token::String(text) => Ok(text),
+                    _ => panic!("read_string() returned a non-string; this is a bug"),
+                },
+                _ => self.lexer_error("Expected a string"),
+            }?;
+
+            self.expect_char(')')?;
+            Ok(Token::Import(import_text))
+        } else {
+            Ok(Token::ColorRef(directive_text))
+        }
+    }
+
+    fn read_identifier(&mut self, start_idx: usize) -> Token<'a> {
+        let mut end_idx = start_idx;
+        while let Some(&(next_idx, next_ch)) = self.chars.peek() {
+            if can_continue_identifier(next_ch) {
+                self.advance();
+                end_idx = next_idx;
+            } else {
+                break;
+            }
+        }
+        Token::Identifier(&self.text[start_idx..end_idx + 1])
     }
 
     fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>> {
@@ -429,6 +467,13 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
         .next()
 }
 
+fn can_be_in_at_directive(ch: char) -> bool {
+    match ch {
+        '_' | 'a'...'z' => true,
+        _ => false,
+    }
+}
+
 fn can_start_identifier(ch: char) -> bool {
     match ch {
         '_' | 'a'...'z' | 'A'...'Z' => true,
@@ -494,13 +539,15 @@ mod tests {
             /* this is a comment */
             way|z14-[highway=byway][bridge?],
             *::* {
-                color: #ffcc00;
+                color: @black;
                 dashes: 3,4;
                 linejoin: round; // this is a comment, too
                 width: 1.5;
                 y-index: 4;
                 z-index: -999;
             }
+            @import("include.mapcss");
+            @black: #ffcc00;
             "#,
             vec![
                 (Token::Identifier("way"), 2, 1),
@@ -528,16 +575,8 @@ mod tests {
                 (Token::LeftBrace, 3, 6),
                 (Token::Identifier("color"), 4, 5),
                 (Token::Colon, 4, 10),
-                (
-                    Token::Color(Color {
-                        r: 255,
-                        g: 204,
-                        b: 0,
-                    }),
-                    4,
-                    12,
-                ),
-                (Token::SemiColon, 4, 19),
+                (Token::ColorRef("black"), 4, 12),
+                (Token::SemiColon, 4, 18),
                 (Token::Identifier("dashes"), 5, 5),
                 (Token::Colon, 5, 11),
                 (Token::Number(3.0), 5, 13),
@@ -561,6 +600,20 @@ mod tests {
                 (Token::Number(-999.0), 9, 14),
                 (Token::SemiColon, 9, 18),
                 (Token::RightBrace, 10, 1),
+                (Token::Import("include.mapcss"), 11, 1),
+                (Token::SemiColon, 11, 26),
+                (Token::ColorRef("black"), 12, 1),
+                (Token::Colon, 12, 7),
+                (
+                    Token::Color(Color {
+                        r: 255,
+                        g: 204,
+                        b: 0,
+                    }),
+                    12,
+                    9,
+                ),
+                (Token::SemiColon, 12, 16),
             ],
         );
     }
