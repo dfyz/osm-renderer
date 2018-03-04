@@ -219,7 +219,7 @@ where
     };
 
     let line_cap = match get_id("linecap") {
-        Some("none") => Some(LineCap::Butt),
+        Some("none") | Some("butt") => Some(LineCap::Butt),
         Some("round") => Some(LineCap::Round),
         Some("square") => Some(LineCap::Square),
         _ => {
