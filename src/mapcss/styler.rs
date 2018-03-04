@@ -256,12 +256,10 @@ where
 fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
     for r in rules {
         for selector in &r.selectors {
-            if let Selector::Single(ref single) = *selector {
-                if let ObjectType::Canvas = single.object_type {
-                    for prop in r.properties.iter().filter(|x| x.name == "fill-color") {
-                        if let PropertyValue::Color(ref color) = prop.value {
-                            return Some(color.clone());
-                        }
+            if let ObjectType::Canvas = selector.object_type {
+                for prop in r.properties.iter().filter(|x| x.name == "fill-color") {
+                    if let PropertyValue::Color(ref color) = prop.value {
+                        return Some(color.clone());
                     }
                 }
             }
@@ -327,7 +325,7 @@ where
     }
 }
 
-fn area_matches_single<'e, A>(area: &A, selector: &SingleSelector, zoom: u8) -> bool
+fn area_matches<'e, A>(area: &A, selector: &Selector, zoom: u8) -> bool
 where
     A: OsmArea + OsmEntity<'e>,
 {
@@ -356,22 +354,8 @@ where
     good_object_type && selector.tests.iter().all(|x| matches_by_tags(area, x))
 }
 
-fn area_matches<'e, A>(area: &A, selector: &Selector, zoom: u8) -> bool
-where
-    A: OsmArea + OsmEntity<'e>,
-{
-    match *selector {
-        Selector::Nested { .. } => false,
-        Selector::Single(ref sel) => area_matches_single(area, sel, zoom),
-    }
-}
-
 fn get_layer_id(selector: &Selector) -> &str {
-    let single = match *selector {
-        Selector::Single(ref single) => single,
-        Selector::Nested { ref child, .. } => child,
-    };
-    match single.layer_id {
+    match selector.layer_id {
         Some(ref id) => id,
         None => "default",
     }

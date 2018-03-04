@@ -1321,66 +1321,21 @@ color: #66cc33;
 width: 1;
 }
 
-way[highway=tertiary] > node|z15-16[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-tert-casing.18.png";
-z-index: -1;
-}
-
-way[highway=residential] > node|z15[highway=turning_circle]::turning_circle-casing,
-way[highway=unclassified] > node|z15[highway=turning_circle]::turning_circle-casing {
+node|z15[highway=turning_circle]::turning_circle-casing {
 allow_overlap: true;
 icon-image: "symbols/turning_circle-uncl-casing.16.png";
 z-index: -1;
 }
 
-way[highway=living_street] > node|z15[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-fill.16.png";
-z-index: -1;
-}
-
-way[highway=residential] > node|z16[highway=turning_circle]::turning_circle-casing,
-way[highway=unclassified] > node|z16[highway=turning_circle]::turning_circle-casing {
+node|z16[highway=turning_circle]::turning_circle-casing {
 allow_overlap: true;
 icon-image: "symbols/turning_circle-uncl-casing.18.png";
 z-index: -1;
 }
 
-way[highway=service] > node|z16[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-casing.14.png";
-z-index: -1;
-}
-
-way[highway=living_street] > node|z16[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-fill.18.png";
-z-index: -1;
-}
-
-way[highway=tertiary] > node|z17-[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-tert-casing.24.png";
-z-index: -1;
-}
-
-way[highway=residential] > node|z17-[highway=turning_circle]::turning_circle-casing,
-way[highway=unclassified] > node|z17-[highway=turning_circle]::turning_circle-casing {
+node|z17-[highway=turning_circle]::turning_circle-casing {
 allow_overlap: true;
 icon-image: "symbols/turning_circle-uncl-casing.24.png";
-z-index: -1;
-}
-
-way[highway=service] > node|z17-[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-casing.16.png";
-z-index: -1;
-}
-
-way[highway=living_street] > node|z17-[highway=turning_circle]::turning_circle-casing {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-fill.24.png";
 z-index: -1;
 }
 
@@ -2296,57 +2251,19 @@ width: 0.2;
 z-index: -900;
 }
 
-way[highway=tertiary] > node|z15-16[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-tert-fill.16.png";
-}
-
-way[highway=residential] > node|z15[highway=turning_circle],
-way[highway=unclassified] > node|z15[highway=turning_circle] {
+node|z15[highway=turning_circle] {
 allow_overlap: true;
 icon-image: "symbols/turning_circle-uncl-fill.14.png";
 }
 
-way[highway=living_street] > node|z15[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-livs-fill.14.png";
-}
-
-way[highway=residential] > node|z16[highway=turning_circle],
-way[highway=unclassified] > node|z16[highway=turning_circle] {
+node|z16[highway=turning_circle] {
 allow_overlap: true;
 icon-image: "symbols/turning_circle-uncl-fill.16.png";
 }
 
-way[highway=service] > node|z16[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-fill.12.png";
-}
-
-way[highway=living_street] > node|z16[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-livs-fill.16.png";
-}
-
-way[highway=tertiary] > node|z17-[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-tert-fill.22.png";
-}
-
-way[highway=residential] > node|z17-[highway=turning_circle],
-way[highway=unclassified] > node|z17-[highway=turning_circle] {
+node|z17-[highway=turning_circle] {
 allow_overlap: true;
 icon-image: "symbols/turning_circle-uncl-fill.22.png";
-}
-
-way[highway=service] > node|z17-[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-uncl-fill.14.png";
-}
-
-way[highway=living_street] > node|z17-[highway=turning_circle] {
-allow_overlap: true;
-icon-image: "symbols/turning_circle-livs-fill.22.png";
 }
 
 way|z14-[highway=track][tracktype=grade1][!bridge][!tunnel]::casing1,

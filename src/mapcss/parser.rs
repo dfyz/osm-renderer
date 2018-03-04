@@ -162,7 +162,7 @@ impl fmt::Display for Property {
 }
 
 #[derive(Debug)]
-pub struct SingleSelector {
+pub struct Selector {
     pub object_type: ObjectType,
     pub min_zoom: Option<u8>,
     pub max_zoom: Option<u8>,
@@ -170,7 +170,7 @@ pub struct SingleSelector {
     pub layer_id: Option<String>,
 }
 
-impl fmt::Display for SingleSelector {
+impl fmt::Display for Selector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let formatted_zoom_range = match (self.min_zoom, self.max_zoom) {
             (None, None) => String::new(),
@@ -205,27 +205,6 @@ impl fmt::Display for SingleSelector {
                 .join(""),
             formatted_layer_id
         )
-    }
-}
-
-#[derive(Debug)]
-pub enum Selector {
-    Single(SingleSelector),
-    Nested {
-        parent: SingleSelector,
-        child: SingleSelector,
-    },
-}
-
-impl fmt::Display for Selector {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Selector::Single(ref s) => write!(f, "{}", s),
-            Selector::Nested {
-                ref parent,
-                ref child,
-            } => write!(f, "{} > {}", parent, child),
-        }
     }
 }
 
@@ -278,15 +257,9 @@ fn fmt_item<T: fmt::Display>(item: &T) -> String {
     format!("{}", item)
 }
 
-enum ConsumedSelectorType {
-    Ordinary,
-    Parent,
-    Last,
-}
-
 struct ConsumedSelector {
-    selector: SingleSelector,
-    selector_type: ConsumedSelectorType,
+    selector: Selector,
+    expect_more_selectors: bool,
 }
 
 type ColorDefs = HashMap<String, Color>;
@@ -364,42 +337,8 @@ impl<'a> Parser<'a> {
             }
 
             let consumed_selector = self.read_selector(&selector_start)?;
-
-            let mut expect_more_selectors = match consumed_selector.selector_type {
-                ConsumedSelectorType::Last => false,
-                _ => true,
-            };
-
-            let selector_to_add = match consumed_selector.selector_type {
-                ConsumedSelectorType::Ordinary | ConsumedSelectorType::Last => {
-                    Selector::Single(consumed_selector.selector)
-                }
-                ConsumedSelectorType::Parent => {
-                    let next_token = self.read_mandatory_token()?;
-                    let child_selector = self.read_selector(&next_token)?;
-
-                    match child_selector.selector_type {
-                        ConsumedSelectorType::Parent => {
-                            return Err(self.parse_error(
-                                "A child selector can't be a parent to another selector",
-                                self.tokenizer.position(),
-                            ));
-                        }
-                        ConsumedSelectorType::Last => {
-                            expect_more_selectors = false;
-                        }
-                        _ => {}
-                    }
-
-                    Selector::Nested {
-                        parent: consumed_selector.selector,
-                        child: child_selector.selector,
-                    }
-                }
-            };
-
-            rule.selectors.push(selector_to_add);
-            if !expect_more_selectors {
+            rule.selectors.push(consumed_selector.selector);
+            if !consumed_selector.expect_more_selectors {
                 break;
             }
             selector_start = self.read_mandatory_token()?;
@@ -422,7 +361,7 @@ impl<'a> Parser<'a> {
                         selector_first_token.position,
                     )
                 })?;
-                SingleSelector {
+                Selector {
                     object_type,
                     min_zoom: None,
                     max_zoom: None,
@@ -435,17 +374,14 @@ impl<'a> Parser<'a> {
 
         loop {
             let current_token = self.read_mandatory_token()?;
-            let mut consumed_selector_type = None;
+            let mut expect_more_selectors = None;
 
             match current_token.token {
                 Token::LeftBrace => {
-                    consumed_selector_type = Some(ConsumedSelectorType::Last);
+                    expect_more_selectors = Some(false);
                 }
                 Token::Comma => {
-                    consumed_selector_type = Some(ConsumedSelectorType::Ordinary);
-                }
-                Token::Greater => {
-                    consumed_selector_type = Some(ConsumedSelectorType::Parent);
+                    expect_more_selectors = Some(true);
                 }
                 Token::ZoomRange { min_zoom, max_zoom } => {
                     selector.min_zoom = min_zoom;
@@ -465,10 +401,10 @@ impl<'a> Parser<'a> {
                 _ => return self.unexpected_token(&current_token),
             }
 
-            if let Some(selector_type) = consumed_selector_type {
+            if let Some(expect_more_selectors) = expect_more_selectors {
                 return Ok(ConsumedSelector {
                     selector,
-                    selector_type,
+                    expect_more_selectors,
                 });
             }
         }
