@@ -1,9 +1,13 @@
 use mapcss::errors::*;
 
 use mapcss::color::Color;
-use mapcss::token::{Token, TokenWithPosition, Tokenizer};
+use mapcss::token::{InputPosition, Token, TokenWithPosition, Tokenizer};
 
+use std::collections::HashMap;
 use std::fmt;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum ObjectType {
@@ -250,12 +254,28 @@ impl fmt::Display for Rule {
     }
 }
 
-fn fmt_item<T: fmt::Display>(item: &T) -> String {
-    format!("{}", item)
+pub fn parse_file(file_path: &str) -> Result<Vec<Rule>> {
+    let mut base_path = PathBuf::from(file_path);
+    let file_name = base_path
+        .file_name()
+        .and_then(|x| x.to_str().map(|y| y.to_string()))
+        .ok_or_else(|| {
+            ErrorKind::Msg(format!("Failed to extract the file name for {}", file_path))
+        })?;
+    base_path.pop();
+
+    let content = read_stylesheet(&base_path, &file_name)?;
+    let mut parser = Parser {
+        tokenizer: Tokenizer::new(&content),
+        base_path,
+        file_name,
+        color_defs: Default::default(),
+    };
+    parser.parse()
 }
 
-pub struct Parser<'a> {
-    tokenizer: Tokenizer<'a>,
+fn fmt_item<T: fmt::Display>(item: &T) -> String {
+    format!("{}", item)
 }
 
 enum ConsumedSelectorType {
@@ -269,27 +289,65 @@ struct ConsumedSelector {
     selector_type: ConsumedSelectorType,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(tokenizer: Tokenizer<'a>) -> Parser<'a> {
-        Parser {
-            tokenizer: tokenizer,
-        }
-    }
+type ColorDefs = HashMap<String, Color>;
 
+struct Parser<'a> {
+    tokenizer: Tokenizer<'a>,
+    base_path: PathBuf,
+    file_name: String,
+    color_defs: ColorDefs,
+}
+
+impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Vec<Rule>> {
         let mut result = Vec::new();
-        while let Some(rule) = self.read_rule()? {
-            result.push(rule);
+        loop {
+            match self.read_optional_token() {
+                None => break,
+                Some(token_or_err) => {
+                    let token = token_or_err?;
+                    match token.token {
+                        Token::Import(ref imported_file) => {
+                            let (rules, color_defs) = self.import_file(imported_file)?;
+                            result.extend(rules);
+                            self.color_defs.extend(color_defs);
+                        }
+                        Token::ColorRef(ref color_name) => self.read_color_def(color_name)?,
+                        _ => result.push(self.read_rule(token)?),
+                    }
+                }
+            }
         }
         Ok(result)
     }
 
-    fn read_rule(&mut self) -> Result<Option<Rule>> {
-        let mut selector_start = match self.tokenizer.next() {
-            None => return Ok(None),
-            Some(token) => token?,
+    fn import_file(&mut self, file_name: &str) -> Result<(Vec<Rule>, ColorDefs)> {
+        let content = read_stylesheet(&self.base_path, file_name)?;
+        let mut parser = Parser {
+            tokenizer: Tokenizer::new(&content),
+            base_path: self.base_path.clone(),
+            file_name: file_name.to_string(),
+            color_defs: Default::default(),
         };
+        let imported_rules = parser.parse()?;
+        Ok((imported_rules, parser.color_defs))
+    }
 
+    fn read_color_def(&mut self, color_name: &str) -> Result<()> {
+        self.expect_simple_token(&Token::Colon)?;
+        let color_value = {
+            let color_value_token = self.read_mandatory_token()?;
+            match color_value_token.token {
+                Token::Color(color) => color,
+                _ => return self.unexpected_token(&color_value_token),
+            }
+        };
+        self.expect_simple_token(&Token::SemiColon)?;
+        self.color_defs.insert(color_name.to_string(), color_value);
+        Ok(())
+    }
+
+    fn read_rule(&mut self, mut selector_start: TokenWithPosition<'a>) -> Result<Rule> {
         let mut rule = Rule {
             selectors: Vec::new(),
             properties: Vec::new(),
@@ -312,16 +370,14 @@ impl<'a> Parser<'a> {
                     Selector::Single(consumed_selector.selector)
                 }
                 ConsumedSelectorType::Parent => {
-                    let next_token = self.read_token()?;
+                    let next_token = self.read_mandatory_token()?;
                     let child_selector = self.read_selector(&next_token)?;
 
                     match child_selector.selector_type {
                         ConsumedSelectorType::Parent => {
-                            bail!(ErrorKind::ParseError(
-                                String::from(
-                                    "A child selector can't be a parent to another selector"
-                                ),
-                                self.tokenizer.position()
+                            return Err(self.parse_error(
+                                "A child selector can't be a parent to another selector",
+                                self.tokenizer.position(),
                             ));
                         }
                         ConsumedSelectorType::Last => {
@@ -341,12 +397,12 @@ impl<'a> Parser<'a> {
             if !expect_more_selectors {
                 break;
             }
-            selector_start = self.read_token()?;
+            selector_start = self.read_mandatory_token()?;
         }
 
         rule.properties = self.read_properties()?;
 
-        Ok(Some(rule))
+        Ok(rule)
     }
 
     fn read_selector(
@@ -356,7 +412,7 @@ impl<'a> Parser<'a> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id).ok_or_else(|| {
-                    ErrorKind::ParseError(
+                    self.parse_error(
                         format!("Unknown object type: {}", id),
                         selector_first_token.position,
                     )
@@ -373,7 +429,7 @@ impl<'a> Parser<'a> {
         };
 
         loop {
-            let current_token = self.read_token()?;
+            let current_token = self.read_mandatory_token()?;
             let mut consumed_selector_type = None;
 
             match current_token.token {
@@ -416,7 +472,7 @@ impl<'a> Parser<'a> {
     fn read_test(&mut self) -> Result<Test> {
         let mut starts_with_bang = false;
 
-        let mut current_token = self.read_token()?;
+        let mut current_token = self.read_mandatory_token()?;
 
         let lhs = match current_token.token {
             Token::Identifier(id) => String::from(id),
@@ -428,11 +484,11 @@ impl<'a> Parser<'a> {
             _ => return self.unexpected_token(&current_token),
         };
 
-        current_token = self.read_token()?;
+        current_token = self.read_mandatory_token()?;
 
         if !starts_with_bang {
             if let Some(binary_op) = to_binary_string_test_type(&current_token.token) {
-                current_token = self.read_token()?;
+                current_token = self.read_mandatory_token()?;
 
                 let rhs = match current_token.token {
                     Token::Identifier(id) => String::from(id),
@@ -450,7 +506,7 @@ impl<'a> Parser<'a> {
             }
 
             if let Some(binary_op) = to_binary_numeric_test_type(&current_token.token) {
-                current_token = self.read_token()?;
+                current_token = self.read_mandatory_token()?;
 
                 let rhs = match current_token.token {
                     Token::Number(num) => num,
@@ -476,7 +532,7 @@ impl<'a> Parser<'a> {
                 }
             }
             Token::QuestionMark => {
-                current_token = self.read_token()?;
+                current_token = self.read_mandatory_token()?;
                 match current_token.token {
                     Token::RightBracket => if starts_with_bang {
                         UnaryTestType::False
@@ -502,7 +558,7 @@ impl<'a> Parser<'a> {
     fn read_properties(&mut self) -> Result<Vec<Property>> {
         let mut result = Vec::new();
         loop {
-            let token = self.read_token()?;
+            let token = self.read_mandatory_token()?;
             match token.token {
                 Token::Identifier(id) => {
                     self.expect_simple_token(&Token::Colon)?;
@@ -519,12 +575,21 @@ impl<'a> Parser<'a> {
     }
 
     fn read_property_value(&mut self) -> Result<PropertyValue> {
-        let token = self.read_token()?;
+        let token = self.read_mandatory_token()?;
         let mut expect_semicolon = true;
         let result = match token.token {
             Token::Identifier(id) => PropertyValue::Identifier(String::from(id)),
             Token::String(s) => PropertyValue::String(String::from(s)),
             Token::Color(color) => PropertyValue::Color(color),
+            Token::ColorRef(ref color_name) => match self.color_defs.get(*color_name) {
+                Some(color) => PropertyValue::Color(color.clone()),
+                None => {
+                    return Err(self.parse_error(
+                        format!("Unknown color reference: {}", color_name),
+                        self.tokenizer.position(),
+                    ));
+                }
+            },
             Token::Number(num) => {
                 expect_semicolon = false;
                 PropertyValue::Numbers(self.read_number_list(num)?)
@@ -541,7 +606,7 @@ impl<'a> Parser<'a> {
         let mut numbers = vec![first_num];
         let mut consumed_number = true;
         loop {
-            let next_token = self.read_token()?;
+            let next_token = self.read_mandatory_token()?;
             match next_token.token {
                 Token::Comma if consumed_number => {
                     consumed_number = false;
@@ -558,29 +623,32 @@ impl<'a> Parser<'a> {
     }
 
     fn read_identifier(&mut self) -> Result<String> {
-        let token = self.read_token()?;
+        let token = self.read_mandatory_token()?;
         match token.token {
             Token::Identifier(id) => Ok(String::from(id)),
             _ => self.unexpected_token(&token),
         }
     }
 
-    fn read_token(&mut self) -> Result<TokenWithPosition<'a>> {
-        match self.tokenizer.next() {
-            Some(token) => token.map_err(From::from),
-            None => bail!(ErrorKind::ParseError(
-                String::from("Unexpected end of file"),
-                self.tokenizer.position()
-            )),
+    fn read_mandatory_token(&mut self) -> Result<TokenWithPosition<'a>> {
+        match self.read_optional_token() {
+            Some(token) => token,
+            None => Err(self.parse_error("Unexpected end of file", self.tokenizer.position())),
         }
     }
 
+    fn read_optional_token(&mut self) -> Option<Result<TokenWithPosition<'a>>> {
+        self.tokenizer
+            .next()
+            .map(|x| x.chain_err(|| format!("Failed to tokenize {}", self.file_name)))
+    }
+
     fn expect_simple_token(&mut self, expected: &Token<'static>) -> Result<()> {
-        let token = self.read_token()?;
+        let token = self.read_mandatory_token()?;
         if token.token != *expected {
-            bail!(ErrorKind::ParseError(
+            Err(self.parse_error(
                 format!("Expected '{}', found '{}' instead", expected, token.token),
-                token.position
+                token.position,
             ))
         } else {
             Ok(())
@@ -588,11 +656,26 @@ impl<'a> Parser<'a> {
     }
 
     fn unexpected_token<T>(&self, token: &TokenWithPosition<'a>) -> Result<T> {
-        bail!(ErrorKind::ParseError(
+        Err(self.parse_error(
             format!("Unexpected token: '{}'", token.token),
-            token.position
+            token.position,
         ))
     }
+
+    fn parse_error<Msg: Into<String>>(&self, message: Msg, position: InputPosition) -> Error {
+        ErrorKind::ParseError(message.into(), position, self.file_name.clone()).into()
+    }
+}
+
+fn read_stylesheet(base_path: &Path, file_name: &str) -> Result<String> {
+    let file_path = base_path.join(file_name);
+    let mut stylesheet_reader =
+        File::open(file_path).chain_err(|| "Failed to open the stylesheet file")?;
+    let mut stylesheet = String::new();
+    stylesheet_reader
+        .read_to_string(&mut stylesheet)
+        .chain_err(|| "Failed to read the stylesheet file")?;
+    Ok(stylesheet)
 }
 
 fn id_to_object_type(id: &str) -> Option<ObjectType> {

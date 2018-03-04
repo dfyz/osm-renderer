@@ -3,11 +3,9 @@ use errors::*;
 use std::collections::HashSet;
 use draw::drawer::Drawer;
 use geodata::reader::GeodataReader;
-use mapcss::parser::{Parser, Rule};
+use mapcss::parser::parse_file;
 use mapcss::styler::Styler;
-use mapcss::token::Tokenizer;
 use num_cpus;
-use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
@@ -24,7 +22,7 @@ pub fn run_server(
     stylesheet_file: &str,
     osm_ids: Option<HashSet<u64>>,
 ) -> Result<()> {
-    let rules = read_style(stylesheet_file)?;
+    let rules = parse_file(stylesheet_file).chain_err(|| "Failed to parse the stylesheet file")?;
 
     let server = Arc::new(HttpServer {
         styler: Styler::new(rules),
@@ -150,18 +148,6 @@ fn extract_path_from_request(first_line: &str) -> Result<String> {
         bail!("Invalid HTTP version: {}", http_version);
     }
     Ok(tokens[1].to_string())
-}
-
-fn read_style(stylesheet_file: &str) -> Result<Vec<Rule>> {
-    let mut stylesheet_reader =
-        File::open(stylesheet_file).chain_err(|| "Failed to open the stylesheet file")?;
-    let mut stylesheet = String::new();
-    stylesheet_reader
-        .read_to_string(&mut stylesheet)
-        .chain_err(|| "Failed to read the stylesheet file")?;
-    Parser::new(Tokenizer::new(&stylesheet))
-        .parse()
-        .chain_err(|| "Failed to parse the stylesheet file")
 }
 
 fn extract_tile_from_path(path: &str) -> Option<Tile> {

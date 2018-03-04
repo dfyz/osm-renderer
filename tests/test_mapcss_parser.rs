@@ -4,7 +4,7 @@ mod common;
 
 use common::get_test_path;
 use renderer::mapcss::token::Tokenizer;
-use renderer::mapcss::parser::Parser;
+use renderer::mapcss::parser::parse_file;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -12,16 +12,7 @@ use std::path::PathBuf;
 #[test]
 fn test_mapnik_parse() {
     let mapnik_path = get_test_path(&["mapcss", "mapnik.mapcss"]);
-
-    let mut mapnik_content = String::new();
-    File::open(&mapnik_path)
-        .unwrap()
-        .read_to_string(&mut mapnik_content)
-        .unwrap();
-
-    let tokenizer = Tokenizer::new(&mapnik_content);
-    let mut parser = Parser::new(tokenizer);
-    let rules = parser.parse().unwrap();
+    let rules = parse_file(&mapnik_path).unwrap();
 
     let rules_str = rules
         .iter()
@@ -48,15 +39,13 @@ fn test_parsing_is_idempotent() {
     let mapnik_path = get_test_path(&["mapcss", "mapnik.parsed.canonical"]);
 
     let mut canonical = String::new();
-    File::open(mapnik_path)
+    File::open(&mapnik_path)
         .unwrap()
         .read_to_string(&mut canonical)
         .unwrap();
-    let mut parser = Parser::new(Tokenizer::new(&canonical));
+    let rules = parse_file(&mapnik_path).unwrap();
 
-    let rules_str = parser
-        .parse()
-        .unwrap()
+    let rules_str = rules
         .iter()
         .map(|x| format!("{}", x))
         .collect::<Vec<_>>()
