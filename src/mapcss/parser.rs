@@ -479,7 +479,7 @@ impl<'a> Parser<'a> {
 
         let mut current_token = self.read_mandatory_token()?;
 
-        let lhs = match current_token.token {
+        let mut lhs = match current_token.token {
             Token::Identifier(id) => String::from(id),
             Token::String(s) => String::from(s),
             Token::Bang => {
@@ -490,6 +490,12 @@ impl<'a> Parser<'a> {
         };
 
         current_token = self.read_mandatory_token()?;
+
+        if let Token::Colon = current_token.token {
+            lhs.push(':');
+            lhs.push_str(&self.read_identifier()?);
+            current_token = self.read_mandatory_token()?;
+        }
 
         if !starts_with_bang {
             if let Some(binary_op) = to_binary_string_test_type(&current_token.token) {
@@ -572,6 +578,7 @@ impl<'a> Parser<'a> {
                         value: self.read_property_value()?,
                     })
                 }
+                Token::SemiColon => continue,
                 Token::RightBrace => break,
                 _ => return self.unexpected_token(&token),
             }
@@ -581,7 +588,6 @@ impl<'a> Parser<'a> {
 
     fn read_property_value(&mut self) -> Result<PropertyValue> {
         let token = self.read_mandatory_token()?;
-        let mut expect_semicolon = true;
         let result = match token.token {
             Token::Identifier(id) => PropertyValue::Identifier(String::from(id)),
             Token::String(s) => PropertyValue::String(String::from(s)),
@@ -595,15 +601,9 @@ impl<'a> Parser<'a> {
                     ));
                 }
             },
-            Token::Number(num) => {
-                expect_semicolon = false;
-                PropertyValue::Numbers(self.read_number_list(num)?)
-            }
+            Token::Number(num) => PropertyValue::Numbers(self.read_number_list(num)?),
             _ => return self.unexpected_token(&token)?,
         };
-        if expect_semicolon {
-            self.expect_simple_token(&Token::SemiColon)?;
-        }
         Ok(result)
     }
 
