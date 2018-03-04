@@ -52,8 +52,8 @@ impl OsmXmlElement {
         attrs.sort();
         OsmXmlElement {
             name: name.local_name,
-            attrs: attrs,
-            input_position: input_position,
+            attrs,
+            input_position,
         }
     }
 

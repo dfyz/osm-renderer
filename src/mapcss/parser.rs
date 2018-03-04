@@ -307,12 +307,12 @@ impl<'a> Parser<'a> {
                 Some(token_or_err) => {
                     let token = token_or_err?;
                     match token.token {
-                        Token::Import(ref imported_file) => {
+                        Token::Import(imported_file) => {
                             let (rules, color_defs) = self.import_file(imported_file)?;
                             result.extend(rules);
                             self.color_defs.extend(color_defs);
                         }
-                        Token::ColorRef(ref color_name) => self.read_color_def(color_name)?,
+                        Token::ColorRef(color_name) => self.read_color_def(color_name)?,
                         _ => result.push(self.read_rule(token)?),
                     }
                 }
@@ -418,7 +418,7 @@ impl<'a> Parser<'a> {
                     )
                 })?;
                 SingleSelector {
-                    object_type: object_type,
+                    object_type,
                     min_zoom: None,
                     max_zoom: None,
                     tests: Vec::new(),
@@ -462,8 +462,8 @@ impl<'a> Parser<'a> {
 
             if let Some(selector_type) = consumed_selector_type {
                 return Ok(ConsumedSelector {
-                    selector: selector,
-                    selector_type: selector_type,
+                    selector,
+                    selector_type,
                 });
             }
         }
@@ -581,7 +581,7 @@ impl<'a> Parser<'a> {
             Token::Identifier(id) => PropertyValue::Identifier(String::from(id)),
             Token::String(s) => PropertyValue::String(String::from(s)),
             Token::Color(color) => PropertyValue::Color(color),
-            Token::ColorRef(ref color_name) => match self.color_defs.get(*color_name) {
+            Token::ColorRef(color_name) => match self.color_defs.get(color_name) {
                 Some(color) => PropertyValue::Color(color.clone()),
                 None => {
                     return Err(self.parse_error(

@@ -66,9 +66,9 @@ pub fn tile_to_max_zoom_tile_range(tile: &Tile) -> TileRange {
     let (min_x, min_y) = (blow_up(tile.x), blow_up(tile.y));
     let delta = blow_up(1) - 1;
     TileRange {
-        min_x: min_x,
+        min_x,
         max_x: min_x + delta,
-        min_y: min_y,
+        min_y,
         max_y: min_y + delta,
     }
 }

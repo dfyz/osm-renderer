@@ -306,7 +306,7 @@ impl<'a> Tokenizer<'a> {
             self.lexer_error("A zoom range should have either minumum or maximum level")
         } else {
             Ok(Token::ZoomRange {
-                min_zoom: min_zoom,
+                min_zoom,
                 max_zoom: if had_hyphen { max_zoom } else { min_zoom },
             })
         }
@@ -491,8 +491,8 @@ fn can_continue_identifier(ch: char) -> bool {
 
 fn with_pos(token: Token, position: InputPosition) -> TokenWithPosition {
     TokenWithPosition {
-        token: token,
-        position: position,
+        token,
+        position,
     }
 }
 
