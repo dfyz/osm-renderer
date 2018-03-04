@@ -469,7 +469,7 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
 
 fn can_be_in_at_directive(ch: char) -> bool {
     match ch {
-        '_' | 'a'...'z' => true,
+        '_' | 'a'...'z' | '0'...'9' => true,
         _ => false,
     }
 }
@@ -490,10 +490,7 @@ fn can_continue_identifier(ch: char) -> bool {
 }
 
 fn with_pos(token: Token, position: InputPosition) -> TokenWithPosition {
-    TokenWithPosition {
-        token,
-        position,
-    }
+    TokenWithPosition { token, position }
 }
 
 #[cfg(test)]

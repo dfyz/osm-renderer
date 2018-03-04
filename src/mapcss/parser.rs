@@ -308,6 +308,7 @@ impl<'a> Parser<'a> {
                     let token = token_or_err?;
                     match token.token {
                         Token::Import(imported_file) => {
+                            self.expect_simple_token(&Token::SemiColon)?;
                             let (rules, color_defs) = self.import_file(imported_file)?;
                             result.extend(rules);
                             self.color_defs.extend(color_defs);
@@ -327,7 +328,7 @@ impl<'a> Parser<'a> {
             tokenizer: Tokenizer::new(&content),
             base_path: self.base_path.clone(),
             file_name: file_name.to_string(),
-            color_defs: Default::default(),
+            color_defs: self.color_defs.clone(),
         };
         let imported_rules = parser.parse()?;
         Ok((imported_rules, parser.color_defs))
@@ -338,12 +339,16 @@ impl<'a> Parser<'a> {
         let color_value = {
             let color_value_token = self.read_mandatory_token()?;
             match color_value_token.token {
-                Token::Color(color) => color,
-                _ => return self.unexpected_token(&color_value_token),
+                Token::Color(color) => Some(color),
+                // Don't add unknown values to the color definitions,
+                // but don't fail the parsing process either.
+                _ => None,
             }
         };
         self.expect_simple_token(&Token::SemiColon)?;
-        self.color_defs.insert(color_name.to_string(), color_value);
+        if let Some(val) = color_value {
+            self.color_defs.insert(color_name.to_string(), val);
+        }
         Ok(())
     }
 
