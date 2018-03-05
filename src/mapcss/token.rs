@@ -235,11 +235,7 @@ impl<'a> Tokenizer<'a> {
         let sign = match first_ch {
             '+' | '-' => match self.next_char() {
                 Some(next_ch) => {
-                    let res = if first_ch == '-' {
-                        -1.0
-                    } else {
-                        1.0
-                    };
+                    let res = if first_ch == '-' { -1.0 } else { 1.0 };
                     first_ch = next_ch;
                     res
                 }

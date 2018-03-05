@@ -565,7 +565,7 @@ impl<'a> Parser<'a> {
                 let number_list_safeguard = self.read_number_list(num)?;
                 was_abruptly_terminated = number_list_safeguard.was_abruptly_terminated;
                 PropertyValue::Numbers(number_list_safeguard.value)
-            },
+            }
             _ => return self.unexpected_token(&token)?,
         };
         Ok(AbruptRuleTerminationGuard {
@@ -597,15 +597,14 @@ impl<'a> Parser<'a> {
             } else {
                 let suffix = &tokens[expected_prefix.len()..];
                 if !suffix.is_empty() && suffix.last().unwrap() == &Token::RightParen {
-                    let num = match suffix.len() {
+                    match suffix.len() {
                         1 => Some(0.0),
-                        2 => match &suffix[suffix.len() - 2] {
-                            &Token::Number(num) => Some(num),
+                        2 => match suffix[suffix.len() - 2] {
+                            Token::Number(num) => Some(num),
                             _ => None,
                         },
                         _ => None,
-                    };
-                    num
+                    }
                 } else {
                     None
                 }
