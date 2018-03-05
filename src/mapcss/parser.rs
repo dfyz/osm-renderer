@@ -257,9 +257,10 @@ fn fmt_item<T: fmt::Display>(item: &T) -> String {
     format!("{}", item)
 }
 
-struct ConsumedSelector {
+struct ConsumedSelector<'a> {
     selector: Selector,
     expect_more_selectors: bool,
+    next_selector_start: Option<TokenWithPosition<'a>>,
 }
 
 type ColorDefs = HashMap<String, Color>;
@@ -341,7 +342,10 @@ impl<'a> Parser<'a> {
             if !consumed_selector.expect_more_selectors {
                 break;
             }
-            selector_start = self.read_mandatory_token()?;
+            selector_start = match consumed_selector.next_selector_start {
+                Some(start) => start,
+                None => self.read_mandatory_token()?,
+            };
         }
 
         rule.properties = self.read_properties()?;
@@ -352,7 +356,7 @@ impl<'a> Parser<'a> {
     fn read_selector(
         &mut self,
         selector_first_token: &TokenWithPosition<'a>,
-    ) -> Result<ConsumedSelector> {
+    ) -> Result<ConsumedSelector<'a>> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id).ok_or_else(|| {
@@ -375,6 +379,7 @@ impl<'a> Parser<'a> {
         loop {
             let current_token = self.read_mandatory_token()?;
             let mut expect_more_selectors = None;
+            let mut next_selector_start = None;
 
             match current_token.token {
                 Token::LeftBrace => {
@@ -382,6 +387,10 @@ impl<'a> Parser<'a> {
                 }
                 Token::Comma => {
                     expect_more_selectors = Some(true);
+                }
+                Token::Identifier(_) => {
+                    expect_more_selectors = Some(true);
+                    next_selector_start = Some(current_token);
                 }
                 Token::ZoomRange { min_zoom, max_zoom } => {
                     selector.min_zoom = min_zoom;
@@ -405,6 +414,7 @@ impl<'a> Parser<'a> {
                 return Ok(ConsumedSelector {
                     selector,
                     expect_more_selectors,
+                    next_selector_start,
                 });
             }
         }

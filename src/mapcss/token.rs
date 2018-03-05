@@ -133,6 +133,8 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
+        let is_digit = |c: char| c.to_digit(10).is_some();
+
         if let Some(token) = get_one_char_simple_token(ch) {
             Ok(token)
         } else if ch == '@' {
@@ -143,8 +145,14 @@ impl<'a> Tokenizer<'a> {
             Ok(self.read_identifier(idx))
         } else if ch == '"' {
             self.read_string(idx + 1)
-        } else if ch == '-' || ch.to_digit(10).is_some() {
+        } else if is_digit(ch) {
             self.read_number(ch)
+        } else if ch == '-' {
+            match self.peek_char() {
+                Some(next_ch) if is_digit(next_ch) => self.read_number(ch),
+                Some(next_ch) if can_continue_identifier(next_ch) => Ok(self.read_identifier(idx)),
+                _ => self.lexer_error("Expected a valid number or identifier after '-'"),
+            }
         } else if ch == '|' {
             self.read_zoom_range()
         } else if ch == '#' {
@@ -483,7 +491,7 @@ fn can_start_identifier(ch: char) -> bool {
 
 fn can_continue_identifier(ch: char) -> bool {
     match ch {
-        '-' | '0'...'9' => true,
+        '-' | '0'...'9' | '.' => true,
         ch if can_start_identifier(ch) => true,
         _ => false,
     }
