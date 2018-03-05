@@ -329,6 +329,16 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            // Ignore the auxiliary section from Maps.ME MapCSS.
+            if let Token::Identifier("colors") = selector_start.token {
+                loop {
+                    if let Token::RightBrace = self.read_mandatory_token()?.token {
+                        break;
+                    }
+                }
+                return Ok(rule);
+            }
+
             let consumed_selector = self.read_selector(&selector_start)?;
             rule.selectors.push(consumed_selector.selector);
             if !consumed_selector.expect_more_selectors {
