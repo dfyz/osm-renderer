@@ -129,6 +129,7 @@ pub enum PropertyValue {
     String(String),
     Color(Color),
     Numbers(Vec<f64>),
+    WidthDelta(f64),
 }
 
 impl fmt::Display for PropertyValue {
@@ -145,6 +146,7 @@ impl fmt::Display for PropertyValue {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
+            PropertyValue::WidthDelta(ref delta) => write!(f, "eval(prop(\"width\")) + {}", delta),
         }
     }
 }
@@ -535,7 +537,10 @@ impl<'a> Parser<'a> {
     fn read_property_value(&mut self) -> Result<PropertyValue> {
         let token = self.read_mandatory_token()?;
         let result = match token.token {
-            Token::Identifier(id) => PropertyValue::Identifier(String::from(id)),
+            Token::Identifier(id) => match id {
+                "eval" => self.read_simple_eval(token.position)?,
+                _ => PropertyValue::Identifier(String::from(id)),
+            },
             Token::String(s) => PropertyValue::String(String::from(s)),
             Token::Color(color) => PropertyValue::Color(color),
             Token::ColorRef(color_name) => match self.color_defs.get(color_name) {
@@ -551,6 +556,50 @@ impl<'a> Parser<'a> {
             _ => return self.unexpected_token(&token)?,
         };
         Ok(result)
+    }
+
+    // Support the only form of eval() used in Maps.ME: eval(prop("width") + X);
+    fn read_simple_eval(&mut self, position: InputPosition) -> Result<PropertyValue> {
+        let mut tokens = Vec::new();
+        loop {
+            let token = self.read_mandatory_token()?;
+            match token.token {
+                Token::SemiColon => break,
+                token => tokens.push(token),
+            }
+        }
+        let expected_prefix = [
+            Token::LeftParen,
+            Token::Identifier("prop"),
+            Token::LeftParen,
+            Token::String("width"),
+            Token::RightParen,
+        ];
+        let width_increment = {
+            if !tokens.starts_with(&expected_prefix) {
+                None
+            } else {
+                let suffix = &tokens[expected_prefix.len()..];
+                if !suffix.is_empty() && suffix.last().unwrap() == &Token::RightParen {
+                    let num = match suffix.len() {
+                        1 => Some(0.0),
+                        2 => match &suffix[suffix.len() - 2] {
+                            &Token::Number(num) => Some(num),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    num
+                } else {
+                    None
+                }
+            }
+        };
+
+        match width_increment {
+            Some(num) => Ok(PropertyValue::WidthDelta(num)),
+            _ => Err(self.parse_error("Unknown eval(...) form", position)),
+        }
     }
 
     fn read_number_list(&mut self, first_num: f64) -> Result<Vec<f64>> {

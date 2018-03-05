@@ -20,6 +20,8 @@ pub enum Token<'a> {
     ColorRef(&'a str),
     Color(Color),
 
+    LeftParen,
+    RightParen,
     LeftBracket,
     RightBracket,
     LeftBrace,
@@ -50,6 +52,8 @@ const TWO_LETTER_MATCH_TABLE: &[((char, char), Token<'static>)] = &[
 ];
 
 const ONE_LETTER_MATCH_TABLE: &[(char, Token<'static>)] = &[
+    ('(', Token::LeftParen),
+    (')', Token::RightParen),
     ('[', Token::LeftBracket),
     (']', Token::RightBracket),
     ('{', Token::LeftBrace),
@@ -145,7 +149,7 @@ impl<'a> Tokenizer<'a> {
             Ok(self.read_identifier(idx))
         } else if ch == '"' {
             self.read_string(idx + 1)
-        } else if is_digit(ch) {
+        } else if is_digit(ch) || ch == '+' {
             self.read_number(ch)
         } else if ch == '-' {
             match self.peek_char() {
@@ -228,14 +232,20 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn read_number(&mut self, mut first_ch: char) -> Result<Token<'a>> {
-        let sign = if first_ch == '-' {
-            match self.next_char() {
-                Some(next_ch) => first_ch = next_ch,
-                None => return self.lexer_error("Expected a digit after '-'"),
-            }
-            -1.0_f64
-        } else {
-            1.0_f64
+        let sign = match first_ch {
+            '+' | '-' => match self.next_char() {
+                Some(next_ch) => {
+                    let res = if first_ch == '-' {
+                        -1.0
+                    } else {
+                        1.0
+                    };
+                    first_ch = next_ch;
+                    res
+                }
+                None => return self.lexer_error("Expected a digit after '-' or '+'"),
+            },
+            _ => 1.0,
         };
 
         let mut number = match first_ch.to_digit(10) {
