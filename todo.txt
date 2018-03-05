@@ -1,4 +1,3 @@
-* get rid of Cap'N'Proto
 * implement icon-image/fill-image (this will require loading external files when mapcss files are parsed)
 * try to integrate the maps.me stylesheet if their mapcss dialect is not too different from the official spec
 * draw labels (probably the hardest part; maybe look at font-rs for inspiration)
