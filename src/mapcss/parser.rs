@@ -255,16 +255,6 @@ pub fn parse_file(file_path: &str) -> Result<Vec<Rule>> {
     parser.parse()
 }
 
-fn fmt_item<T: fmt::Display>(item: &T) -> String {
-    format!("{}", item)
-}
-
-struct ConsumedSelector<'a> {
-    selector: Selector,
-    expect_more_selectors: bool,
-    next_selector_start: Option<TokenWithPosition<'a>>,
-}
-
 type ColorDefs = HashMap<String, Color>;
 
 struct Parser<'a> {
@@ -521,10 +511,14 @@ impl<'a> Parser<'a> {
             match token.token {
                 Token::Identifier(id) => {
                     self.expect_simple_token(&Token::Colon)?;
+                    let safeguard = self.read_property_value()?;
                     result.push(Property {
                         name: String::from(id),
-                        value: self.read_property_value()?,
-                    })
+                        value: safeguard.value,
+                    });
+                    if safeguard.was_abruptly_terminated {
+                        break;
+                    }
                 }
                 Token::SemiColon => continue,
                 Token::RightBrace => break,
@@ -534,9 +528,14 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn read_property_value(&mut self) -> Result<PropertyValue> {
+    fn read_property_value(&mut self) -> Result<AbruptRuleTerminationGuard<PropertyValue>> {
         let token = self.read_mandatory_token()?;
-        let result = match token.token {
+        let mut was_abruptly_terminated = false;
+        let value = match token.token {
+            Token::RightBrace => {
+                was_abruptly_terminated = true;
+                PropertyValue::String(String::new())
+            }
             Token::Identifier(id) => match id {
                 "eval" => self.read_simple_eval(token.position)?,
                 _ => PropertyValue::Identifier(String::from(id)),
@@ -552,10 +551,17 @@ impl<'a> Parser<'a> {
                     ));
                 }
             },
-            Token::Number(num) => PropertyValue::Numbers(self.read_number_list(num)?),
+            Token::Number(num) => {
+                let number_list_safeguard = self.read_number_list(num)?;
+                was_abruptly_terminated = number_list_safeguard.was_abruptly_terminated;
+                PropertyValue::Numbers(number_list_safeguard.value)
+            },
             _ => return self.unexpected_token(&token)?,
         };
-        Ok(result)
+        Ok(AbruptRuleTerminationGuard {
+            value,
+            was_abruptly_terminated,
+        })
     }
 
     // Support the only form of eval() used in Maps.ME: eval(prop("width") + X);
@@ -602,12 +608,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn read_number_list(&mut self, first_num: f64) -> Result<Vec<f64>> {
+    fn read_number_list(&mut self, first_num: f64) -> Result<AbruptRuleTerminationGuard<Vec<f64>>> {
         let mut numbers = vec![first_num];
         let mut consumed_number = true;
+        let mut was_abruptly_terminated = false;
         loop {
             let next_token = self.read_mandatory_token()?;
             match next_token.token {
+                Token::RightBrace => {
+                    was_abruptly_terminated = true;
+                    break;
+                }
                 Token::Comma if consumed_number => {
                     consumed_number = false;
                 }
@@ -619,7 +630,10 @@ impl<'a> Parser<'a> {
                 _ => return self.unexpected_token(&next_token),
             }
         }
-        Ok(numbers)
+        Ok(AbruptRuleTerminationGuard {
+            value: numbers,
+            was_abruptly_terminated,
+        })
     }
 
     fn read_identifier(&mut self) -> Result<String> {
@@ -697,6 +711,17 @@ fn id_to_object_type(id: &str) -> Option<ObjectType> {
     }
 }
 
+struct ConsumedSelector<'a> {
+    selector: Selector,
+    expect_more_selectors: bool,
+    next_selector_start: Option<TokenWithPosition<'a>>,
+}
+
+struct AbruptRuleTerminationGuard<T> {
+    value: T,
+    was_abruptly_terminated: bool,
+}
+
 fn to_binary_string_test_type(token: &Token) -> Option<BinaryStringTestType> {
     match *token {
         Token::Equal => Some(BinaryStringTestType::Equal),
@@ -713,4 +738,8 @@ fn to_binary_numeric_test_type(token: &Token) -> Option<BinaryNumericTestType> {
         Token::GreaterOrEqual => Some(BinaryNumericTestType::GreaterOrEqual),
         _ => None,
     }
+}
+
+fn fmt_item<T: fmt::Display>(item: &T) -> String {
+    format!("{}", item)
 }
