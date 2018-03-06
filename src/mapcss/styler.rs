@@ -31,6 +31,7 @@ pub struct Style {
 
     pub color: Option<Color>,
     pub fill_color: Option<Color>,
+    pub background_color: Option<Color>,
     pub opacity: Option<f64>,
     pub fill_opacity: Option<f64>,
 
@@ -42,6 +43,7 @@ pub struct Style {
 
 pub type StyleHashKey = (
     u64,
+    Option<Color>,
     Option<Color>,
     Option<Color>,
     Option<u64>,
@@ -59,6 +61,7 @@ impl Style {
             float_to_int(self.z_index),
             self.color.clone(),
             self.fill_color.clone(),
+            self.background_color.clone(),
             self.opacity.map(&float_to_int),
             self.fill_opacity.map(&float_to_int),
             self.width.map(&float_to_int),
@@ -243,6 +246,7 @@ where
 
         color: get_color("color"),
         fill_color: get_color("fill-color"),
+        background_color: get_color("background-color"),
         opacity: get_num("opacity"),
         fill_opacity: get_num("fill-opacity"),
 
@@ -257,9 +261,11 @@ fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
     for r in rules {
         for selector in &r.selectors {
             if let ObjectType::Canvas = selector.object_type {
-                for prop in r.properties.iter().filter(|x| x.name == "fill-color") {
-                    if let PropertyValue::Color(ref color) = prop.value {
-                        return Some(color.clone());
+                for color_prop in &["background-color", "fill-color"] {
+                    for prop in r.properties.iter().filter(|x| x.name == *color_prop) {
+                        if let PropertyValue::Color(ref color) = prop.value {
+                            return Some(color.clone());
+                        }
                     }
                 }
             }

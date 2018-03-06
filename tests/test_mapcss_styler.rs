@@ -125,6 +125,7 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
 
         color: parse_color("color"),
         fill_color: parse_color("fill-color"),
+        background_color: None,
         opacity: parse_num("opacity"),
         fill_opacity: parse_num("fill-opacity"),
 
