@@ -348,13 +348,9 @@ where
     }
 
     let good_object_type = match selector.object_type {
-        ObjectType::Way {
-            should_be_closed: None,
-        } => true,
-        ObjectType::Way {
-            should_be_closed: Some(expected),
-        } => expected == area.is_closed(),
-        _ => return false,
+        ObjectType::Way => true,
+        ObjectType::Area => area.is_closed(),
+        _ => false,
     };
 
     good_object_type && selector.tests.iter().all(|x| matches_by_tags(area, x))

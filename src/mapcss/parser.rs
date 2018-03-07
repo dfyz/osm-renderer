@@ -15,7 +15,8 @@ pub enum ObjectType {
     Canvas,
     Meta,
     Node,
-    Way { should_be_closed: Option<bool> },
+    Way,
+    Area,
 }
 
 impl fmt::Display for ObjectType {
@@ -25,11 +26,8 @@ impl fmt::Display for ObjectType {
             ObjectType::Canvas => "canvas",
             ObjectType::Meta => "meta",
             ObjectType::Node => "node",
-            ObjectType::Way { should_be_closed } => match should_be_closed {
-                None => "way",
-                Some(true) => "area",
-                Some(false) => "line",
-            },
+            ObjectType::Way => "way",
+            ObjectType::Area => "area",
         };
         write!(f, "{}", object_type)
     }
@@ -707,15 +705,8 @@ fn id_to_object_type(id: &str) -> Option<ObjectType> {
         "canvas" => Some(ObjectType::Canvas),
         "meta" => Some(ObjectType::Meta),
         "node" => Some(ObjectType::Node),
-        "way" => Some(ObjectType::Way {
-            should_be_closed: None,
-        }),
-        "area" => Some(ObjectType::Way {
-            should_be_closed: Some(true),
-        }),
-        "line" => Some(ObjectType::Way {
-            should_be_closed: Some(false),
-        }),
+        "way" | "line" => Some(ObjectType::Way),
+        "area" => Some(ObjectType::Area),
         _ => None,
     }
 }
