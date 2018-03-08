@@ -59,7 +59,7 @@ impl Drawer {
         self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
         for &(way, ref style) in &styled_ways {
-            self.draw_one_area(&mut pixels, way, style, false, tile);
+            self.draw_one_area(&mut pixels, way, style, false, styler.use_caps_for_dashes, tile);
         }
 
         pixels.to_rgb_triples()
@@ -94,11 +94,11 @@ impl Drawer {
             };
             if is_rel_better {
                 let r = rel.unwrap();
-                self.draw_one_area(pixels, r.0, &r.1, true, tile);
+                self.draw_one_area(pixels, r.0, &r.1, true, styler.use_caps_for_dashes, tile);
                 rel = rel_iter.next();
             } else {
                 let w = way.unwrap();
-                self.draw_one_area(pixels, w.0, &w.1, true, tile);
+                self.draw_one_area(pixels, w.0, &w.1, true, styler.use_caps_for_dashes, tile);
                 way = way_iter.next();
             }
         }
@@ -110,6 +110,7 @@ impl Drawer {
         area: &A,
         style: &Style,
         is_fill: bool,
+        use_caps_for_dashes: bool,
         tile: &t::Tile,
     ) where
         A: OsmEntity<'e> + NodePairCollection<'e>,
@@ -153,6 +154,7 @@ impl Drawer {
                     float_or_one(&style.opacity),
                     &style.dashes,
                     &style.line_cap,
+                    use_caps_for_dashes
                 )
             })
         };

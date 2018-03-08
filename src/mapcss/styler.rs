@@ -79,6 +79,7 @@ impl Style {
 
 pub struct Styler {
     pub canvas_fill_color: Option<Color>,
+    pub use_caps_for_dashes: bool,
 
     rules: Vec<Rule>,
 }
@@ -86,10 +87,12 @@ pub struct Styler {
 impl Styler {
     pub fn new(rules: Vec<Rule>) -> Styler {
         let canvas_fill_color = extract_canvas_fill_color(&rules);
+        let use_caps_for_dashes = is_josm_style(&rules);
 
         Styler {
             rules,
             canvas_fill_color,
+            use_caps_for_dashes,
         }
     }
 
@@ -245,7 +248,7 @@ where
     let z_index = get_num("z-index").unwrap_or(default_z_index);
 
     let is_foreground_fill = match property_map.get("fill-position") {
-        Some(&&PropertyValue::Identifier(ref id)) if id.as_str() == "background" => false,
+        Some(&&PropertyValue::Identifier(ref id)) if *id == "background" => false,
         _ => true,
     };
 
@@ -281,6 +284,19 @@ fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
         }
     }
     None
+}
+
+fn is_josm_style(rules: &[Rule]) -> bool {
+    for r in rules {
+        if r.selectors.len() == 1 {
+            if let ObjectType::Meta = r.selectors[0].object_type {
+                if r.properties.iter().any(|x| x.name == "min-josm-version") {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 fn matches_by_tags<'e, E>(entity: &E, test: &Test) -> bool

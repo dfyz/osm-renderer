@@ -3,6 +3,7 @@ title: "Mapnik (true)";
 version: "0.1";
 description: "MapCSS variant of the OSM Mapnik style (as close as possible to the original). It is not very suitable for real mapping in an editor because nodes and lines without a style are hidden and opaque areas may cover each other. This file is optimized for JOSM and may need some minor changes to work properly with other MapCSS implementations.";
 acknowledgement: "Derived from the OpenStreetMap Mapnik style (various authors): http://trac.openstreetmap.org/browser/applications/rendering/mapnik";
+min-josm-version: 1;
 }
 
 canvas {
