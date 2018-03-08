@@ -59,7 +59,14 @@ impl Drawer {
         self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
         for &(way, ref style) in &styled_ways {
-            self.draw_one_area(&mut pixels, way, style, false, styler.use_caps_for_dashes, tile);
+            self.draw_one_area(
+                &mut pixels,
+                way,
+                style,
+                false,
+                styler.use_caps_for_dashes,
+                tile,
+            );
         }
 
         pixels.to_rgb_triples()
@@ -154,7 +161,7 @@ impl Drawer {
                     float_or_one(&style.opacity),
                     &style.dashes,
                     &style.line_cap,
-                    use_caps_for_dashes
+                    use_caps_for_dashes,
                 )
             })
         };

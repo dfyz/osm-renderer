@@ -12,18 +12,14 @@ pub fn draw_lines<I>(
     opacity: f64,
     dashes: &Option<Vec<f64>>,
     line_cap: &Option<LineCap>,
-    use_caps_for_dashes: bool
+    use_caps_for_dashes: bool,
 ) -> Figure
 where
     I: Iterator<Item = (Point, Point)>,
 {
     let half_width = width / 2.0;
     let mut figure = Default::default();
-    let line_cap_for_dashes = if use_caps_for_dashes {
-        line_cap
-    } else {
-        &None
-    };
+    let line_cap_for_dashes = if use_caps_for_dashes { line_cap } else { &None };
     let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap_for_dashes);
     let opacity_calculator_for_outer_caps =
         OpacityCalculator::new(half_width, &Some(vec![0.0]), line_cap);
