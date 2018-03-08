@@ -6,7 +6,7 @@ use common::get_test_path;
 use renderer::geodata::reader::OsmEntity;
 use renderer::mapcss::color::{from_color_name, Color};
 use renderer::mapcss::parser::parse_file;
-use renderer::mapcss::styler::{LineCap, LineJoin, Style, Styler};
+use renderer::mapcss::styler::{LineCap, Style, Styler};
 use renderer::tile::Tile;
 use std::collections::HashMap;
 
@@ -87,7 +87,6 @@ fn assert_styles_eq(our_style: &Style, josm_style: &Style) {
     assert_eq!(our_style.fill_opacity, josm_style.fill_opacity);
     assert_eq!(our_style.width, josm_style.width);
     assert_eq!(our_style.dashes, josm_style.dashes);
-    assert_eq!(our_style.line_join, josm_style.line_join);
     assert_eq!(our_style.line_cap, josm_style.line_cap);
 }
 
@@ -137,12 +136,6 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
                 .split(", ")
                 .map(|x| x.parse().unwrap())
                 .collect::<Vec<_>>()
-        }),
-        line_join: props.get("linejoin").map(|x| match *x {
-            "Keyword{round}" => LineJoin::Round,
-            "Keyword{miter}" => LineJoin::Miter,
-            "Keyword{bevel}" => LineJoin::Bevel,
-            _ => unreachable!(),
         }),
         line_cap: Some(
             props

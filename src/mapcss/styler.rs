@@ -5,13 +5,6 @@ use geodata::reader::{OsmArea, OsmEntity};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum LineJoin {
-    Round,
-    Miter,
-    Bevel,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineCap {
     Butt,
     Round,
@@ -38,7 +31,6 @@ pub struct Style {
 
     pub width: Option<f64>,
     pub dashes: Option<Vec<f64>>,
-    pub line_join: Option<LineJoin>,
     pub line_cap: Option<LineCap>,
 }
 
@@ -52,7 +44,6 @@ pub type StyleHashKey = (
     Option<u64>,
     Option<u64>,
     Option<Vec<u64>>,
-    Option<LineJoin>,
     Option<LineCap>,
 );
 
@@ -71,7 +62,6 @@ impl Style {
             self.dashes
                 .as_ref()
                 .map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()),
-            self.line_join.clone(),
             self.line_cap.clone(),
         )
     }
@@ -217,16 +207,6 @@ where
         }
     };
 
-    let line_join = match get_id("linejoin") {
-        Some("round") => Some(LineJoin::Round),
-        Some("miter") => Some(LineJoin::Miter),
-        Some("bevel") => Some(LineJoin::Bevel),
-        _ => {
-            warn("linejoin", "unknown line join value");
-            None
-        }
-    };
-
     let line_cap = match get_id("linecap") {
         Some("none") | Some("butt") => Some(LineCap::Butt),
         Some("round") => Some(LineCap::Round),
@@ -264,7 +244,6 @@ where
 
         width: get_num("width"),
         dashes,
-        line_join,
         line_cap,
     }
 }
