@@ -31,6 +31,7 @@ pub struct Style {
 
     pub color: Option<Color>,
     pub fill_color: Option<Color>,
+    pub is_foreground_fill: bool,
     pub background_color: Option<Color>,
     pub opacity: Option<f64>,
     pub fill_opacity: Option<f64>,
@@ -45,6 +46,7 @@ pub type StyleHashKey = (
     u64,
     Option<Color>,
     Option<Color>,
+    bool,
     Option<Color>,
     Option<u64>,
     Option<u64>,
@@ -61,6 +63,7 @@ impl Style {
             float_to_int(self.z_index),
             self.color.clone(),
             self.fill_color.clone(),
+            self.is_foreground_fill,
             self.background_color.clone(),
             self.opacity.map(&float_to_int),
             self.fill_opacity.map(&float_to_int),
@@ -106,8 +109,8 @@ impl Styler {
             .collect::<Vec<_>>();
 
         styled_areas.sort_by(|&(w1, ref s1), &(w2, ref s2)| {
-            let cmp1 = (s1.z_index, w1.global_id());
-            let cmp2 = (s2.z_index, w2.global_id());
+            let cmp1 = (s1.is_foreground_fill, s1.z_index, w1.global_id());
+            let cmp2 = (s2.is_foreground_fill, s2.z_index, w2.global_id());
             cmp1.partial_cmp(&cmp2).unwrap()
         });
 
@@ -241,11 +244,17 @@ where
 
     let z_index = get_num("z-index").unwrap_or(default_z_index);
 
+    let is_foreground_fill = match property_map.get("fill-position") {
+        Some(&&PropertyValue::Identifier(ref id)) if id.as_str() == "background" => false,
+        _ => true,
+    };
+
     Style {
         z_index,
 
         color: get_color("color"),
         fill_color: get_color("fill-color"),
+        is_foreground_fill,
         background_color: get_color("background-color"),
         opacity: get_num("opacity"),
         fill_opacity: get_num("fill-opacity"),
