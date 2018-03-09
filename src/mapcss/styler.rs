@@ -67,6 +67,11 @@ impl Style {
     }
 }
 
+pub enum StyleType {
+    Josm,
+    MapsMe,
+}
+
 pub struct Styler {
     pub canvas_fill_color: Option<Color>,
     pub use_caps_for_dashes: bool,
@@ -75,14 +80,17 @@ pub struct Styler {
 }
 
 impl Styler {
-    pub fn new(rules: Vec<Rule>) -> Styler {
-        let canvas_fill_color = extract_canvas_fill_color(&rules);
-        let use_caps_for_dashes = is_josm_style(&rules);
+    pub fn new(rules: Vec<Rule>, style_type: &StyleType) -> Styler {
+        let canvas_fill_color = extract_canvas_fill_color(&rules, &style_type);
+        let use_caps_for_dashes = match *style_type {
+            StyleType::Josm => true,
+            _ => false,
+        };
 
         Styler {
-            rules,
-            canvas_fill_color,
             use_caps_for_dashes,
+            canvas_fill_color,
+            rules,
         }
     }
 
@@ -248,34 +256,23 @@ where
     }
 }
 
-fn extract_canvas_fill_color(rules: &[Rule]) -> Option<Color> {
+fn extract_canvas_fill_color(rules: &[Rule], style_type: &StyleType) -> Option<Color> {
+    let color_prop = match *style_type {
+        StyleType::Josm => "fill-color",
+        StyleType::MapsMe => "background-color",
+    };
     for r in rules {
         for selector in &r.selectors {
             if let ObjectType::Canvas = selector.object_type {
-                for color_prop in &["background-color", "fill-color"] {
-                    for prop in r.properties.iter().filter(|x| x.name == *color_prop) {
-                        if let PropertyValue::Color(ref color) = prop.value {
-                            return Some(color.clone());
-                        }
+                for prop in r.properties.iter().filter(|x| x.name == *color_prop) {
+                    if let PropertyValue::Color(ref color) = prop.value {
+                        return Some(color.clone());
                     }
                 }
             }
         }
     }
     None
-}
-
-fn is_josm_style(rules: &[Rule]) -> bool {
-    for r in rules {
-        if r.selectors.len() == 1 {
-            if let ObjectType::Meta = r.selectors[0].object_type {
-                if r.properties.iter().any(|x| x.name == "min-josm-version") {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
 }
 
 fn matches_by_tags<'e, E>(entity: &E, test: &Test) -> bool

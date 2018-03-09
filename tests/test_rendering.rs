@@ -9,7 +9,7 @@ use std::io::Write;
 use renderer::draw::tile_pixels::{dimension, RgbTriples};
 use renderer::draw::png_writer::rgb_triples_to_png;
 use renderer::mapcss::parser::parse_file;
-use renderer::mapcss::styler::Styler;
+use renderer::mapcss::styler::{StyleType, Styler};
 
 const RED_PIXEL: (u8, u8, u8) = (255, 0, 0);
 
@@ -90,8 +90,10 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32)
         &bin_file,
     ).unwrap();
     let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
-    let styler =
-        Styler::new(parse_file(&common::get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap());
+    let styler = Styler::new(
+        parse_file(&common::get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap(),
+        &StyleType::Josm,
+    );
     let drawer = renderer::draw::drawer::Drawer::new();
 
     let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> =

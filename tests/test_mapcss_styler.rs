@@ -6,7 +6,7 @@ use common::get_test_path;
 use renderer::geodata::reader::OsmEntity;
 use renderer::mapcss::color::{from_color_name, Color};
 use renderer::mapcss::parser::parse_file;
-use renderer::mapcss::styler::{LineCap, Style, Styler};
+use renderer::mapcss::styler::{LineCap, Style, StyleType, Styler};
 use renderer::tile::Tile;
 use std::collections::HashMap;
 
@@ -16,7 +16,10 @@ fn test_styling() {
     renderer::geodata::importer::import(&get_test_path(&["osm", "nano_moscow.osm"]), &bin_file)
         .unwrap();
     let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
-    let styler = Styler::new(parse_file(&get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap());
+    let styler = Styler::new(
+        parse_file(&get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap(),
+        &StyleType::Josm,
+    );
 
     let entities = reader.get_entities_in_tile(
         &Tile {
