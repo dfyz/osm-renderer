@@ -20,13 +20,13 @@ pub fn run_server(
     address: &str,
     geodata_file: &str,
     stylesheet_file: &str,
-    stylesheet_type: StyleType,
+    stylesheet_type: &StyleType,
     osm_ids: Option<HashSet<u64>>,
 ) -> Result<()> {
     let rules = parse_file(stylesheet_file).chain_err(|| "Failed to parse the stylesheet file")?;
 
     let server = Arc::new(HttpServer {
-        styler: Styler::new(rules, &stylesheet_type),
+        styler: Styler::new(rules, stylesheet_type),
         reader: GeodataReader::new(geodata_file).chain_err(|| "Failed to load the geodata file")?,
         drawer: Drawer::new(),
         osm_ids,

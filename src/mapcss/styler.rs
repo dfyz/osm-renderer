@@ -34,11 +34,11 @@ pub struct Styler {
 
 impl Styler {
     pub fn new(rules: Vec<Rule>, style_type: &StyleType) -> Styler {
-        let canvas_fill_color = extract_canvas_fill_color(&rules, &style_type);
         let use_caps_for_dashes = match *style_type {
             StyleType::Josm => true,
             _ => false,
         };
+        let canvas_fill_color = extract_canvas_fill_color(&rules, style_type);
 
         Styler {
             use_caps_for_dashes,

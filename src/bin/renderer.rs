@@ -44,7 +44,7 @@ fn main() {
         server_address,
         geodata_file,
         stylesheet_file,
-        stylesheet_type,
+        &stylesheet_type,
         osm_ids,
     );
 
