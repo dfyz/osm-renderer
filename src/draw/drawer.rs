@@ -1,7 +1,7 @@
 use errors::*;
 
 use geodata::reader::{Node, OsmEntities, OsmEntity, Relation, Way};
-use mapcss::styler::{Style, StyleHashKey, Styler};
+use mapcss::styler::{Style, Styler};
 use tile as t;
 
 use draw::TILE_SIZE;
@@ -23,7 +23,7 @@ pub struct Drawer {
 #[derive(Eq, PartialEq, Hash)]
 struct CacheKey {
     entity_id: u64,
-    style: StyleHashKey,
+    style: Style,
     zoom_level: u8,
     is_fill: bool,
 }
@@ -124,7 +124,7 @@ impl Drawer {
     {
         let cache_key = CacheKey {
             entity_id: area.global_id(),
-            style: style.to_hash_key(),
+            style: style.clone(),
             zoom_level: tile.zoom,
             is_fill,
         };

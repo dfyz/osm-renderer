@@ -1,3 +1,5 @@
+pub use mapcss::style::Style;
+
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
@@ -15,55 +17,6 @@ pub fn is_non_trivial_cap(line_cap: &Option<LineCap>) -> bool {
     match *line_cap {
         Some(LineCap::Square) | Some(LineCap::Round) => true,
         _ => false,
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Style {
-    pub z_index: f64,
-
-    pub color: Option<Color>,
-    pub fill_color: Option<Color>,
-    pub is_foreground_fill: bool,
-    pub background_color: Option<Color>,
-    pub opacity: Option<f64>,
-    pub fill_opacity: Option<f64>,
-
-    pub width: Option<f64>,
-    pub dashes: Option<Vec<f64>>,
-    pub line_cap: Option<LineCap>,
-}
-
-pub type StyleHashKey = (
-    u64,
-    Option<Color>,
-    Option<Color>,
-    bool,
-    Option<Color>,
-    Option<u64>,
-    Option<u64>,
-    Option<u64>,
-    Option<Vec<u64>>,
-    Option<LineCap>,
-);
-
-impl Style {
-    pub fn to_hash_key(&self) -> StyleHashKey {
-        let float_to_int = |x: f64| x.to_bits();
-        (
-            float_to_int(self.z_index),
-            self.color.clone(),
-            self.fill_color.clone(),
-            self.is_foreground_fill,
-            self.background_color.clone(),
-            self.opacity.map(&float_to_int),
-            self.fill_opacity.map(&float_to_int),
-            self.width.map(&float_to_int),
-            self.dashes
-                .as_ref()
-                .map(|x| x.iter().map(|y| float_to_int(*y)).collect::<Vec<_>>()),
-            self.line_cap.clone(),
-        )
     }
 }
 

@@ -2,6 +2,7 @@ pub mod ast;
 pub mod color;
 pub mod parser;
 pub mod styler;
+mod style;
 pub mod token;
 
 mod errors {
