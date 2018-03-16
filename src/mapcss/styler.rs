@@ -70,7 +70,7 @@ impl Styler {
                 .find(|kvp| *kvp.0 == BASE_LAYER_NAME)
                 .map(|kvp| kvp.1);
 
-            for (layer, prop_map) in all_property_maps.iter() {
+            for (layer, prop_map) in &all_property_maps {
                 if *layer != "*" {
                     styled_areas.push((
                         area,
