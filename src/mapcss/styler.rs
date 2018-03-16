@@ -29,6 +29,7 @@ pub struct Styler {
     pub canvas_fill_color: Option<Color>,
     pub use_caps_for_dashes: bool,
 
+    casing_width_multiplier: f64,
     rules: Vec<Rule>,
 }
 
@@ -40,9 +41,15 @@ impl Styler {
         };
         let canvas_fill_color = extract_canvas_fill_color(&rules, style_type);
 
+        let casing_width_multiplier = match *style_type {
+            StyleType::MapsMe => 1.0,
+            _ => 2.0,
+        };
+
         Styler {
             use_caps_for_dashes,
             canvas_fill_color,
+            casing_width_multiplier,
             rules,
         }
     }
@@ -52,15 +59,32 @@ impl Styler {
         A: OsmArea + OsmEntity<'e>,
         I: Iterator<Item = &'wp A>,
     {
-        let mut styled_areas = areas
-            .flat_map(|x| {
-                let default_z_index = if x.is_closed() { 1.0 } else { 3.0 };
-                self.style_area(x, zoom)
-                    .into_iter()
-                    .filter(|&(k, _)| k != "*")
-                    .map(move |(_, v)| (x, property_map_to_style(&v, default_z_index, x)))
-            })
-            .collect::<Vec<_>>();
+        let mut styled_areas = Vec::new();
+        for area in areas {
+            let default_z_index = if area.is_closed() { 1.0 } else { 3.0 };
+
+            let all_property_maps = self.style_area(area, zoom);
+
+            let base_layer = all_property_maps
+                .iter()
+                .find(|kvp| *kvp.0 == BASE_LAYER_NAME)
+                .map(|kvp| kvp.1);
+
+            for (layer, prop_map) in all_property_maps.iter() {
+                if *layer != "*" {
+                    styled_areas.push((
+                        area,
+                        property_map_to_style(
+                            prop_map,
+                            &base_layer,
+                            default_z_index,
+                            self.casing_width_multiplier,
+                            area,
+                        ),
+                    ))
+                }
+            }
+        }
 
         styled_areas.sort_by(|&(w1, ref s1), &(w2, ref s2)| {
             let cmp1 = (s1.is_foreground_fill, s1.z_index, w1.global_id());
@@ -118,15 +142,17 @@ type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
 type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
 fn property_map_to_style<'r, 'e, E>(
-    property_map: &PropertyMap<'r>,
+    current_layer_map: &'r PropertyMap<'r>,
+    base_layer_map: &Option<&'r PropertyMap<'r>>,
     default_z_index: f64,
+    casing_width_multiplier: f64,
     osm_entity: &E,
 ) -> Style
 where
     E: OsmEntity<'e>,
 {
-    let warn = |prop_name, msg| {
-        if let Some(val) = property_map.get(prop_name) {
+    let warn = |prop_map: &'r PropertyMap<'r>, prop_name, msg| {
+        if let Some(val) = prop_map.get(prop_name) {
             eprintln!(
                 "Entity #{}, property \"{}\" (value {:?}): {}",
                 osm_entity.global_id(),
@@ -137,61 +163,85 @@ where
         }
     };
 
-    let get_color = |prop_name| match property_map.get(prop_name) {
+    let get_color = |prop_name| match current_layer_map.get(prop_name) {
         Some(&&PropertyValue::Color(ref color)) => Some(color.clone()),
         Some(&&PropertyValue::Identifier(ref id)) => {
             let color = from_color_name(id.as_str());
             if color.is_none() {
-                warn(prop_name, "unknown color");
+                warn(current_layer_map, prop_name, "unknown color");
             }
             color
         }
         _ => {
-            warn(prop_name, "expected a valid color");
+            warn(current_layer_map, prop_name, "expected a valid color");
             None
         }
     };
 
-    let get_num = |prop_name| match property_map.get(prop_name) {
+    let get_num = |prop_map: &'r PropertyMap<'r>, prop_name| match prop_map.get(prop_name) {
         Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
         _ => {
-            warn(prop_name, "expected a number");
+            warn(prop_map, prop_name, "expected a number");
             None
         }
     };
 
-    let get_id = |prop_name| match property_map.get(prop_name) {
+    let get_id = |prop_name| match current_layer_map.get(prop_name) {
         Some(&&PropertyValue::Identifier(ref id)) => Some(id.as_str()),
         _ => {
-            warn(prop_name, "expected an identifier");
+            warn(current_layer_map, prop_name, "expected an identifier");
             None
         }
     };
 
-    let line_cap = match get_id("linecap") {
+    let get_line_cap = |prop_name| match get_id(prop_name) {
         Some("none") | Some("butt") => Some(LineCap::Butt),
         Some("round") => Some(LineCap::Round),
         Some("square") => Some(LineCap::Square),
         _ => {
-            warn("linecap", "unknown line cap value");
+            warn(current_layer_map, prop_name, "unknown line cap value");
             None
         }
     };
 
-    let dashes = match property_map.get("dashes") {
+    let get_dashes = |prop_name| match current_layer_map.get(prop_name) {
         Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
         _ => {
-            warn("dashes", "expected a sequence of numbers");
+            warn(
+                current_layer_map,
+                prop_name,
+                "expected a sequence of numbers",
+            );
             None
         }
     };
 
-    let z_index = get_num("z-index").unwrap_or(default_z_index);
+    let z_index = get_num(current_layer_map, "z-index").unwrap_or(default_z_index);
 
-    let is_foreground_fill = match property_map.get("fill-position") {
+    let is_foreground_fill = match current_layer_map.get("fill-position") {
         Some(&&PropertyValue::Identifier(ref id)) if *id == "background" => false,
         _ => true,
     };
+
+    let width = get_num(current_layer_map, "width");
+
+    let base_width_for_casing = width
+        .or_else(|| base_layer_map.and_then(|prop_map| get_num(prop_map, "width")))
+        .unwrap_or_default();
+    let casing_only_width = match current_layer_map.get("casing-width") {
+        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
+        Some(&&PropertyValue::WidthDelta(num)) => Some(base_width_for_casing + num),
+        _ => {
+            warn(
+                current_layer_map,
+                "casing-width",
+                "expected a number or an eval(...) statement",
+            );
+            None
+        }
+    };
+    let full_casing_width =
+        casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
 
     Style {
         z_index,
@@ -200,12 +250,17 @@ where
         fill_color: get_color("fill-color"),
         is_foreground_fill,
         background_color: get_color("background-color"),
-        opacity: get_num("opacity"),
-        fill_opacity: get_num("fill-opacity"),
+        opacity: get_num(current_layer_map, "opacity"),
+        fill_opacity: get_num(current_layer_map, "fill-opacity"),
 
-        width: get_num("width"),
-        dashes,
-        line_cap,
+        width,
+        dashes: get_dashes("dashes"),
+        line_cap: get_line_cap("linecap"),
+
+        casing_color: get_color("casing-color"),
+        casing_width: full_casing_width,
+        casing_dashes: get_dashes("casing-dashes"),
+        casing_line_cap: get_line_cap("casing-linecap"),
     }
 }
 
@@ -313,6 +368,8 @@ where
 fn get_layer_id(selector: &Selector) -> &str {
     match selector.layer_id {
         Some(ref id) => id,
-        None => "default",
+        None => BASE_LAYER_NAME,
     }
 }
+
+const BASE_LAYER_NAME: &str = "default";

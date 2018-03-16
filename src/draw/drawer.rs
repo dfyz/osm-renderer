@@ -25,7 +25,14 @@ struct CacheKey {
     entity_id: u64,
     style: Style,
     zoom_level: u8,
-    is_fill: bool,
+    draw_type: DrawType,
+}
+
+#[derive(Clone, Eq, PartialEq, Hash)]
+enum DrawType {
+    Fill,
+    Stroke,
+    Casing,
 }
 
 impl Drawer {
@@ -58,16 +65,21 @@ impl Drawer {
 
         self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
-        for &(way, ref style) in &styled_ways {
-            self.draw_one_area(
-                &mut pixels,
-                way,
-                style,
-                false,
-                styler.use_caps_for_dashes,
-                tile,
-            );
-        }
+        let draw_strokes = |draw_type, pixels: &mut TilePixels| {
+            for &(way, ref style) in &styled_ways {
+                self.draw_one_area(
+                    pixels,
+                    way,
+                    style,
+                    draw_type,
+                    styler.use_caps_for_dashes,
+                    tile,
+                );
+            }
+        };
+
+        draw_strokes(&DrawType::Casing, &mut pixels);
+        draw_strokes(&DrawType::Stroke, &mut pixels);
 
         pixels.to_rgb_triples()
     }
@@ -101,11 +113,25 @@ impl Drawer {
             };
             if is_rel_better {
                 let r = rel.unwrap();
-                self.draw_one_area(pixels, r.0, &r.1, true, styler.use_caps_for_dashes, tile);
+                self.draw_one_area(
+                    pixels,
+                    r.0,
+                    &r.1,
+                    &DrawType::Fill,
+                    styler.use_caps_for_dashes,
+                    tile,
+                );
                 rel = rel_iter.next();
             } else {
                 let w = way.unwrap();
-                self.draw_one_area(pixels, w.0, &w.1, true, styler.use_caps_for_dashes, tile);
+                self.draw_one_area(
+                    pixels,
+                    w.0,
+                    &w.1,
+                    &DrawType::Fill,
+                    styler.use_caps_for_dashes,
+                    tile,
+                );
                 way = way_iter.next();
             }
         }
@@ -116,7 +142,7 @@ impl Drawer {
         image: &mut TilePixels,
         area: &A,
         style: &Style,
-        is_fill: bool,
+        draw_type: &DrawType,
         use_caps_for_dashes: bool,
         tile: &t::Tile,
     ) where
@@ -126,7 +152,7 @@ impl Drawer {
             entity_id: area.global_id(),
             style: style.clone(),
             zoom_level: tile.zoom,
-            is_fill,
+            draw_type: draw_type.clone(),
         };
 
         {
@@ -148,12 +174,24 @@ impl Drawer {
             seen_node_pairs.insert(np);
         }
 
-        let figure = if is_fill {
-            style.fill_color.as_ref().map(|color| {
+        let figure = match *draw_type {
+            DrawType::Fill => style.fill_color.as_ref().map(|color| {
                 fill_contour(points.into_iter(), color, float_or_one(&style.fill_opacity))
-            })
-        } else {
-            style.color.as_ref().map(|color| {
+            }),
+            DrawType::Casing => style.casing_color.as_ref().and_then(|color| {
+                style.casing_width.map(|casing_width| {
+                    draw_lines(
+                        points.into_iter(),
+                        casing_width,
+                        color,
+                        1.0,
+                        &style.casing_dashes,
+                        &style.casing_line_cap,
+                        use_caps_for_dashes,
+                    )
+                })
+            }),
+            DrawType::Stroke => style.color.as_ref().map(|color| {
                 draw_lines(
                     points.into_iter(),
                     float_or_one(&style.width),
@@ -163,7 +201,7 @@ impl Drawer {
                     &style.line_cap,
                     use_caps_for_dashes,
                 )
-            })
+            }),
         };
 
         if let Some(ref figure) = figure {

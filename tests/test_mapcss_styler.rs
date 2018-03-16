@@ -149,5 +149,10 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
                 })
                 .unwrap_or(LineCap::Butt),
         ),
+
+        casing_color: None,
+        casing_width: None,
+        casing_dashes: None,
+        casing_line_cap: None,
     }
 }

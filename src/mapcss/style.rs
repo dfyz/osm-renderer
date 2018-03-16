@@ -111,4 +111,9 @@ define_style! {
     width: Option<f64>,
     dashes: Option<Vec<f64>>,
     line_cap: Option<LineCap>,
+
+    casing_color: Option<Color>,
+    casing_width: Option<f64>,
+    casing_dashes: Option<Vec<f64>>,
+    casing_line_cap: Option<LineCap>,
 }
