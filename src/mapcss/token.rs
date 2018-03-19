@@ -137,8 +137,6 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
-        let is_digit = |c: char| c.to_digit(10).is_some();
-
         if let Some(token) = get_one_char_simple_token(ch) {
             Ok(token)
         } else if ch == '@' {
@@ -149,7 +147,7 @@ impl<'a> Tokenizer<'a> {
             Ok(self.read_identifier(idx))
         } else if ch == '"' {
             self.read_string(idx + 1)
-        } else if is_digit(ch) || ch == '+' {
+        } else if is_digit(ch) || ch == '+' || ch == '.' {
             self.read_number(ch)
         } else if ch == '-' {
             match self.peek_char() {
@@ -244,13 +242,20 @@ impl<'a> Tokenizer<'a> {
             _ => 1.0,
         };
 
+        let mut had_dot = false;
+
         let mut number = match first_ch.to_digit(10) {
             Some(digit) => f64::from(digit),
-            None => return self.lexer_error(format!("Expected a digit instead of '{}'", first_ch)),
+            None => match first_ch {
+                '.' => {
+                    had_dot = true;
+                    0.0
+                },
+                _ => return self.lexer_error(format!("Expected a digit or '.' instead of '{}'", first_ch)),
+            }
         };
 
         let mut number_after_dot = 0.0f64;
-        let mut had_dot = false;
         let mut digits_after_dot = 0;
 
         let add_digit =
@@ -284,23 +289,30 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn read_color(&mut self) -> Result<Token<'a>> {
-        Ok(Token::Color(Color {
-            r: self.read_color_component()?,
-            g: self.read_color_component()?,
-            b: self.read_color_component()?,
-        }))
-    }
+        let mut color_digits = Vec::new();
+        while let Some(hex_digit) = self.read_digit(16) {
+            color_digits.push(hex_digit);
+        }
 
-    fn read_color_component(&mut self) -> Result<u8> {
-        let mut read_hex_digit = || -> Result<u8> {
-            match self.read_digit(16) {
-                Some(digit) => Ok(digit),
-                None => self.lexer_error("Expected a hexadecimal digit"),
-            }
+        let read_component = |idx1, idx2| {
+            color_digits[idx1] * 16 + color_digits[idx2]
         };
-        let digit1 = read_hex_digit()?;
-        let digit2 = read_hex_digit()?;
-        Ok(16 * digit1 + digit2)
+
+        let color = match color_digits.len() {
+            6 => Color {
+                r: read_component(0, 1),
+                g: read_component(2, 3),
+                b: read_component(4, 5),
+            },
+            3 => Color {
+                r: read_component(0, 0),
+                g: read_component(1, 1),
+                b: read_component(2, 2),
+            },
+            _ => return self.lexer_error("Invalid hex color (expected #RGB or #RRGGBB)"),
+        };
+
+        Ok(Token::Color(color))
     }
 
     fn read_zoom_range(&mut self) -> Result<Token<'a>> {
@@ -497,10 +509,14 @@ fn can_start_identifier(ch: char) -> bool {
 
 fn can_continue_identifier(ch: char) -> bool {
     match ch {
-        '-' | '0'...'9' | '.' => true,
+        '-' | '0'...'9' | '.' | '/' => true,
         ch if can_start_identifier(ch) => true,
         _ => false,
     }
+}
+
+fn is_digit(ch: char) -> bool {
+    ch.to_digit(10).is_some()
 }
 
 fn with_pos(token: Token, position: InputPosition) -> TokenWithPosition {

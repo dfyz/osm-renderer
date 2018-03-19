@@ -546,7 +546,19 @@ impl<'a> Parser<'a> {
             }
             Token::Identifier(id) => match id {
                 "eval" => self.read_simple_eval(token.position)?,
-                _ => PropertyValue::Identifier(String::from(id)),
+                _ => {
+                    let mut full_id = id.to_string();
+                    let token = self.read_mandatory_token()?;
+                    match token.token {
+                        Token::Colon => {
+                            full_id.push(':');
+                            full_id.push_str(&self.read_identifier()?);
+                        }
+                        Token::SemiColon => {},
+                        _ => return self.unexpected_token(&token),
+                    }
+                    PropertyValue::Identifier(String::from(full_id))
+                },
             },
             Token::String(s) => PropertyValue::String(String::from(s)),
             Token::Color(color) => PropertyValue::Color(color),
