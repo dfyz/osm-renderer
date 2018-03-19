@@ -250,9 +250,14 @@ impl<'a> Tokenizer<'a> {
                 '.' => {
                     had_dot = true;
                     0.0
-                },
-                _ => return self.lexer_error(format!("Expected a digit or '.' instead of '{}'", first_ch)),
-            }
+                }
+                _ => {
+                    return self.lexer_error(format!(
+                        "Expected a digit or '.' instead of '{}'",
+                        first_ch
+                    ))
+                }
+            },
         };
 
         let mut number_after_dot = 0.0f64;
@@ -294,9 +299,7 @@ impl<'a> Tokenizer<'a> {
             color_digits.push(hex_digit);
         }
 
-        let read_component = |idx1, idx2| {
-            color_digits[idx1] * 16 + color_digits[idx2]
-        };
+        let read_component = |idx1, idx2| color_digits[idx1] * 16 + color_digits[idx2];
 
         let color = match color_digits.len() {
             6 => Color {

@@ -554,11 +554,12 @@ impl<'a> Parser<'a> {
                             full_id.push(':');
                             full_id.push_str(&self.read_identifier()?);
                         }
-                        Token::SemiColon => {},
+                        Token::SemiColon => {}
+                        Token::RightBrace => was_abruptly_terminated = true,
                         _ => return self.unexpected_token(&token),
                     }
-                    PropertyValue::Identifier(String::from(full_id))
-                },
+                    PropertyValue::Identifier(full_id)
+                }
             },
             Token::String(s) => PropertyValue::String(String::from(s)),
             Token::Color(color) => PropertyValue::Color(color),
