@@ -342,10 +342,7 @@ impl<'a> Parser<'a> {
             if !consumed_selector.expect_more_selectors {
                 break;
             }
-            selector_start = match consumed_selector.next_selector_start {
-                Some(start) => start,
-                None => self.read_mandatory_token()?,
-            };
+            selector_start = self.read_mandatory_token()?;
         }
 
         rule.properties = self.read_properties()?;
@@ -356,7 +353,7 @@ impl<'a> Parser<'a> {
     fn read_selector(
         &mut self,
         selector_first_token: &TokenWithPosition<'a>,
-    ) -> Result<ConsumedSelector<'a>> {
+    ) -> Result<ConsumedSelector> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id).ok_or_else(|| {
@@ -379,7 +376,6 @@ impl<'a> Parser<'a> {
         loop {
             let current_token = self.read_mandatory_token()?;
             let mut expect_more_selectors = None;
-            let mut next_selector_start = None;
 
             match current_token.token {
                 Token::LeftBrace => {
@@ -387,10 +383,6 @@ impl<'a> Parser<'a> {
                 }
                 Token::Comma => {
                     expect_more_selectors = Some(true);
-                }
-                Token::Identifier(_) => {
-                    expect_more_selectors = Some(true);
-                    next_selector_start = Some(current_token);
                 }
                 Token::ZoomRange { min_zoom, max_zoom } => {
                     selector.min_zoom = min_zoom;
@@ -414,7 +406,6 @@ impl<'a> Parser<'a> {
                 return Ok(ConsumedSelector {
                     selector,
                     expect_more_selectors,
-                    next_selector_start,
                 });
             }
         }
@@ -519,16 +510,11 @@ impl<'a> Parser<'a> {
             match token.token {
                 Token::Identifier(id) => {
                     self.expect_simple_token(&Token::Colon)?;
-                    let safeguard = self.read_property_value()?;
                     result.push(Property {
                         name: String::from(id),
-                        value: safeguard.value,
+                        value: self.read_property_value()?,
                     });
-                    if safeguard.was_abruptly_terminated {
-                        break;
-                    }
                 }
-                Token::SemiColon => continue,
                 Token::RightBrace => break,
                 _ => return self.unexpected_token(&token),
             }
@@ -536,31 +522,30 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn read_property_value(&mut self) -> Result<AbruptRuleTerminationGuard<PropertyValue>> {
+    fn read_property_value(&mut self) -> Result<PropertyValue> {
         let token = self.read_mandatory_token()?;
-        let mut was_abruptly_terminated = false;
-        let value = match token.token {
-            Token::RightBrace => {
-                was_abruptly_terminated = true;
-                PropertyValue::String(String::new())
-            }
-            Token::Identifier(id) => match id {
-                "eval" => self.read_simple_eval(token.position)?,
-                _ => {
-                    let mut full_id = id.to_string();
-                    let token = self.read_mandatory_token()?;
-                    match token.token {
-                        Token::Colon => {
-                            full_id.push(':');
-                            full_id.push_str(&self.read_identifier()?);
+        let mut expect_semicolon = true;
+        let result = match token.token {
+            Token::Identifier(id) => {
+                expect_semicolon = false;
+                match id {
+                    "eval" => self.read_simple_eval(token.position)?,
+                    _ => {
+                        let mut full_id = id.to_string();
+                        let token = self.read_mandatory_token()?;
+                        match token.token {
+                            Token::Colon => {
+                                full_id.push(':');
+                                full_id.push_str(&self.read_identifier()?);
+                                self.expect_simple_token(&Token::SemiColon)?;
+                            }
+                            Token::SemiColon => {}
+                            _ => return self.unexpected_token(&token),
                         }
-                        Token::SemiColon => {}
-                        Token::RightBrace => was_abruptly_terminated = true,
-                        _ => return self.unexpected_token(&token),
+                        PropertyValue::Identifier(full_id)
                     }
-                    PropertyValue::Identifier(full_id)
                 }
-            },
+            }
             Token::String(s) => PropertyValue::String(String::from(s)),
             Token::Color(color) => PropertyValue::Color(color),
             Token::ColorRef(color_name) => match self.color_defs.get(color_name) {
@@ -573,16 +558,15 @@ impl<'a> Parser<'a> {
                 }
             },
             Token::Number(num) => {
-                let number_list_safeguard = self.read_number_list(num)?;
-                was_abruptly_terminated = number_list_safeguard.was_abruptly_terminated;
-                PropertyValue::Numbers(number_list_safeguard.value)
+                expect_semicolon = false;
+                PropertyValue::Numbers(self.read_number_list(num)?)
             }
             _ => return self.unexpected_token(&token)?,
         };
-        Ok(AbruptRuleTerminationGuard {
-            value,
-            was_abruptly_terminated,
-        })
+        if expect_semicolon {
+            self.expect_simple_token(&Token::SemiColon)?;
+        }
+        Ok(result)
     }
 
     // Support the only form of eval() used in Maps.ME: eval(prop("width") + X);
@@ -628,17 +612,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn read_number_list(&mut self, first_num: f64) -> Result<AbruptRuleTerminationGuard<Vec<f64>>> {
+    fn read_number_list(&mut self, first_num: f64) -> Result<Vec<f64>> {
         let mut numbers = vec![first_num];
         let mut consumed_number = true;
-        let mut was_abruptly_terminated = false;
         loop {
             let next_token = self.read_mandatory_token()?;
             match next_token.token {
-                Token::RightBrace => {
-                    was_abruptly_terminated = true;
-                    break;
-                }
                 Token::Comma if consumed_number => {
                     consumed_number = false;
                 }
@@ -650,10 +629,7 @@ impl<'a> Parser<'a> {
                 _ => return self.unexpected_token(&next_token),
             }
         }
-        Ok(AbruptRuleTerminationGuard {
-            value: numbers,
-            was_abruptly_terminated,
-        })
+        Ok(numbers)
     }
 
     fn read_identifier(&mut self) -> Result<String> {
@@ -724,15 +700,9 @@ fn id_to_object_type(id: &str) -> Option<ObjectType> {
     }
 }
 
-struct ConsumedSelector<'a> {
+struct ConsumedSelector {
     selector: Selector,
     expect_more_selectors: bool,
-    next_selector_start: Option<TokenWithPosition<'a>>,
-}
-
-struct AbruptRuleTerminationGuard<T> {
-    value: T,
-    was_abruptly_terminated: bool,
 }
 
 fn to_binary_string_test_type(token: &Token) -> Option<BinaryStringTestType> {
