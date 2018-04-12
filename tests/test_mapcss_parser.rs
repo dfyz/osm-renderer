@@ -6,12 +6,13 @@ use common::get_test_path;
 use renderer::mapcss::parser::parse_file;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[test]
 fn test_mapnik_parse() {
+    let mapnik_base_path = get_test_path(&["mapcss"]);
     let mapnik_path = get_test_path(&["mapcss", "mapnik.mapcss"]);
-    let rules = parse_file(&mapnik_path).unwrap();
+    let rules = parse_file(Path::new(&mapnik_base_path), "mapnik.mapcss").unwrap();
 
     let rules_str = rules
         .iter()
@@ -35,6 +36,7 @@ fn test_mapnik_parse() {
 
 #[test]
 fn test_parsing_is_idempotent() {
+    let mapnik_base_path = get_test_path(&["mapcss"]);
     let mapnik_path = get_test_path(&["mapcss", "mapnik.parsed.canonical"]);
 
     let mut canonical = String::new();
@@ -42,7 +44,7 @@ fn test_parsing_is_idempotent() {
         .unwrap()
         .read_to_string(&mut canonical)
         .unwrap();
-    let rules = parse_file(&mapnik_path).unwrap();
+    let rules = parse_file(Path::new(&mapnik_base_path), "mapnik.parsed.canonical").unwrap();
 
     let rules_str = rules
         .iter()

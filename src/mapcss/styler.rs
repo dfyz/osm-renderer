@@ -194,6 +194,15 @@ where
         }
     };
 
+    let get_string = |prop_name| match current_layer_map.get(prop_name) {
+        Some(&&PropertyValue::Identifier(ref id)) => Some(id.to_string()),
+        Some(&&PropertyValue::String(ref str)) => Some(str.to_string()),
+        _ => {
+            warn(current_layer_map, prop_name, "expected a string");
+            None
+        }
+    };
+
     let get_line_cap = |prop_name| match get_id(prop_name) {
         Some("none") | Some("butt") => Some(LineCap::Butt),
         Some("round") => Some(LineCap::Round),
@@ -261,6 +270,8 @@ where
         casing_width: full_casing_width,
         casing_dashes: get_dashes("casing-dashes"),
         casing_line_cap: get_line_cap("casing-linecap"),
+
+        icon_image: get_string("icon-image"),
     }
 }
 

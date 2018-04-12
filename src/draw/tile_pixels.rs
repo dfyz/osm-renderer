@@ -12,7 +12,7 @@ pub struct RgbaColor {
 
 impl RgbaColor {
     pub fn from_color(color: &Color, opacity: f64) -> RgbaColor {
-        let premultiply = |c| opacity * (f64::from(c) / f64::from(u8::max_value()));
+        let premultiply = |c| opacity * component_to_opacity(c);
 
         RgbaColor {
             r: premultiply(color.r),
@@ -20,6 +20,10 @@ impl RgbaColor {
             b: premultiply(color.b),
             a: opacity,
         }
+    }
+
+    pub fn from_components(r: u8, g: u8, b: u8, a: u8) -> RgbaColor {
+        RgbaColor::from_color(&Color { r, g, b }, component_to_opacity(a))
     }
 }
 
@@ -85,4 +89,8 @@ impl TilePixels {
 
 fn to_idx(x: usize, y: usize) -> usize {
     (y * TILE_SIZE) + x
+}
+
+fn component_to_opacity(comp: u8) -> f64 {
+    f64::from(comp) / f64::from(u8::max_value())
 }

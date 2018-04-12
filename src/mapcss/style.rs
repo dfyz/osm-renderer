@@ -116,4 +116,6 @@ define_style! {
     casing_width: Option<f64>,
     casing_dashes: Option<Vec<f64>>,
     casing_line_cap: Option<LineCap>,
+
+    icon_image: Option<String>,
 }
