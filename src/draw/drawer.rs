@@ -219,7 +219,7 @@ impl Drawer {
         write_cache.insert(cache_key, figure.unwrap_or_default());
     }
 
-    fn draw_icons<'a>(
+    fn draw_icons(
         &self,
         image: &mut TilePixels,
         tile: &t::Tile,

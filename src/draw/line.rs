@@ -46,7 +46,7 @@ where
                 );
             }
 
-            if !peekable_points.peek().is_some() {
+            if peekable_points.peek().is_none() {
                 let cap_end = p2.push_away_from(&p1, half_width);
                 draw_line(
                     &p2,
