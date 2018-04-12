@@ -9,6 +9,7 @@ use renderer::mapcss::parser::parse_file;
 use renderer::mapcss::styler::{LineCap, Style, StyleType, Styler};
 use renderer::tile::Tile;
 use std::collections::HashMap;
+use std::path::Path;
 
 #[test]
 fn test_styling() {
@@ -17,7 +18,7 @@ fn test_styling() {
         .unwrap();
     let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
     let styler = Styler::new(
-        parse_file(&get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap(),
+        parse_file(Path::new(&get_test_path(&["mapcss"])), "mapnik.mapcss").unwrap(),
         &StyleType::Josm,
     );
 
@@ -34,7 +35,7 @@ fn test_styling() {
         .ways
         .iter()
         .filter(|x| x.tags().get_by_key("name").is_some());
-    let styles = styler.style_areas(named_ways, 18);
+    let styles = styler.style_entities(named_ways, 18);
 
     let get_styles = |id, name| {
         styles
@@ -154,5 +155,7 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
         casing_width: None,
         casing_dashes: None,
         casing_line_cap: None,
+
+        icon_image: None,
     }
 }

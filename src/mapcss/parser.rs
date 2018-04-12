@@ -233,21 +233,12 @@ impl fmt::Display for Rule {
     }
 }
 
-pub fn parse_file(file_path: &str) -> Result<Vec<Rule>> {
-    let mut base_path = PathBuf::from(file_path);
-    let file_name = base_path
-        .file_name()
-        .and_then(|x| x.to_str().map(|y| y.to_string()))
-        .ok_or_else(|| {
-            ErrorKind::Msg(format!("Failed to extract the file name for {}", file_path))
-        })?;
-    base_path.pop();
-
-    let content = read_stylesheet(&base_path, &file_name)?;
+pub fn parse_file(base_path: &Path, file_name: &str) -> Result<Vec<Rule>> {
+    let content = read_stylesheet(base_path, &file_name)?;
     let mut parser = Parser {
         tokenizer: Tokenizer::new(&content),
-        base_path,
-        file_name,
+        base_path: base_path.to_owned(),
+        file_name: file_name.to_string(),
         color_defs: Default::default(),
     };
     parser.parse()

@@ -6,6 +6,7 @@ mod common;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 use renderer::draw::tile_pixels::{dimension, RgbTriples};
 use renderer::draw::png_writer::rgb_triples_to_png;
 use renderer::mapcss::parser::parse_file;
@@ -34,14 +35,12 @@ fn compare_png_outputs(zoom: u8) {
     ]));
 
     assert_eq!(
-        expected_info.width,
-        actual_info.width,
+        expected_info.width, actual_info.width,
         "different widths for zoom level {}",
         zoom
     );
     assert_eq!(
-        expected_info.height,
-        actual_info.height,
+        expected_info.height, actual_info.height,
         "different heights for zoom level {}",
         zoom
     );
@@ -90,11 +89,12 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32)
         &bin_file,
     ).unwrap();
     let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
+    let base_path = common::get_test_path(&["mapcss"]);
     let styler = Styler::new(
-        parse_file(&common::get_test_path(&["mapcss", "mapnik.mapcss"])).unwrap(),
+        parse_file(Path::new(&base_path), "mapnik.mapcss").unwrap(),
         &StyleType::Josm,
     );
-    let drawer = renderer::draw::drawer::Drawer::new();
+    let drawer = renderer::draw::drawer::Drawer::new(Path::new(&base_path));
 
     let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> =
         BTreeMap::new();

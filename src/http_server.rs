@@ -9,6 +9,7 @@ use num_cpus;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
@@ -23,12 +24,14 @@ pub fn run_server(
     stylesheet_type: &StyleType,
     osm_ids: Option<HashSet<u64>>,
 ) -> Result<()> {
-    let rules = parse_file(stylesheet_file).chain_err(|| "Failed to parse the stylesheet file")?;
+    let (base_path, file_name) = split_stylesheet_path(stylesheet_file)?;
+    let rules =
+        parse_file(&base_path, &file_name).chain_err(|| "Failed to parse the stylesheet file")?;
 
     let server = Arc::new(HttpServer {
         styler: Styler::new(rules, stylesheet_type),
         reader: GeodataReader::new(geodata_file).chain_err(|| "Failed to load the geodata file")?,
-        drawer: Drawer::new(),
+        drawer: Drawer::new(&base_path),
         osm_ids,
     });
 
@@ -170,4 +173,16 @@ fn extract_tile_from_path(path: &str) -> Option<Tile> {
         (Ok(z), Ok(x), Ok(y)) => Some(Tile { zoom: z, x, y }),
         _ => None,
     }
+}
+
+fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String)> {
+    let mut result = PathBuf::from(file_path);
+    let file_name = result
+        .file_name()
+        .and_then(|x| x.to_str().map(|y| y.to_string()))
+        .ok_or_else(|| {
+            ErrorKind::Msg(format!("Failed to extract the file name for {}", file_path))
+        })?;
+    result.pop();
+    Ok((result, file_name))
 }

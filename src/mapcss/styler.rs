@@ -3,7 +3,7 @@ pub use mapcss::style::Style;
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
-use geodata::reader::{OsmArea, OsmEntity};
+use geodata::reader::{Node, OsmArea, OsmEntity};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -23,6 +23,11 @@ pub fn is_non_trivial_cap(line_cap: &Option<LineCap>) -> bool {
 pub enum StyleType {
     Josm,
     MapsMe,
+}
+
+pub trait StyleableEntity {
+    fn default_z_index(&self) -> f64;
+    fn matches_object_type(&self, object_type: &ObjectType) -> bool;
 }
 
 pub struct Styler {
@@ -54,14 +59,14 @@ impl Styler {
         }
     }
 
-    pub fn style_areas<'e, 'wp, I, A>(&self, areas: I, zoom: u8) -> Vec<(&'wp A, Style)>
+    pub fn style_entities<'e, 'wp, I, A>(&self, areas: I, zoom: u8) -> Vec<(&'wp A, Style)>
     where
-        A: OsmArea + OsmEntity<'e>,
+        A: StyleableEntity + OsmEntity<'e>,
         I: Iterator<Item = &'wp A>,
     {
         let mut styled_areas = Vec::new();
         for area in areas {
-            let default_z_index = if area.is_closed() { 1.0 } else { 3.0 };
+            let default_z_index = area.default_z_index();
 
             let all_property_maps = self.style_area(area, zoom);
 
@@ -97,7 +102,7 @@ impl Styler {
 
     fn style_area<'r, 'e, A>(&'r self, area: &A, zoom: u8) -> LayerToPropertyMap<'r>
     where
-        A: OsmArea + OsmEntity<'e>,
+        A: StyleableEntity + OsmEntity<'e>,
     {
         let mut result: LayerToPropertyMap<'r> = HashMap::new();
 
@@ -194,6 +199,15 @@ where
         }
     };
 
+    let get_string = |prop_name| match current_layer_map.get(prop_name) {
+        Some(&&PropertyValue::Identifier(ref id)) => Some(id.to_string()),
+        Some(&&PropertyValue::String(ref str)) => Some(str.to_string()),
+        _ => {
+            warn(current_layer_map, prop_name, "expected a string");
+            None
+        }
+    };
+
     let get_line_cap = |prop_name| match get_id(prop_name) {
         Some("none") | Some("butt") => Some(LineCap::Butt),
         Some("round") => Some(LineCap::Round),
@@ -261,6 +275,8 @@ where
         casing_width: full_casing_width,
         casing_dashes: get_dashes("casing-dashes"),
         casing_line_cap: get_line_cap("casing-linecap"),
+
+        icon_image: get_string("icon-image"),
     }
 }
 
@@ -342,7 +358,7 @@ where
 
 fn area_matches<'e, A>(area: &A, selector: &Selector, zoom: u8) -> bool
 where
-    A: OsmArea + OsmEntity<'e>,
+    A: StyleableEntity + OsmEntity<'e>,
 {
     if let Some(min_zoom) = selector.min_zoom {
         if zoom < min_zoom {
@@ -356,11 +372,7 @@ where
         }
     }
 
-    let good_object_type = match selector.object_type {
-        ObjectType::Way => true,
-        ObjectType::Area => area.is_closed(),
-        _ => false,
-    };
+    let good_object_type = area.matches_object_type(&selector.object_type);
 
     good_object_type && selector.tests.iter().all(|x| matches_by_tags(area, x))
 }
@@ -373,3 +385,34 @@ fn get_layer_id(selector: &Selector) -> &str {
 }
 
 const BASE_LAYER_NAME: &str = "default";
+
+impl<'a> StyleableEntity for Node<'a> {
+    fn default_z_index(&self) -> f64 {
+        4.0
+    }
+
+    fn matches_object_type(&self, object_type: &ObjectType) -> bool {
+        match *object_type {
+            ObjectType::Node => true,
+            _ => false,
+        }
+    }
+}
+
+impl<A: OsmArea> StyleableEntity for A {
+    fn default_z_index(&self) -> f64 {
+        if self.is_closed() {
+            1.0
+        } else {
+            3.0
+        }
+    }
+
+    fn matches_object_type(&self, object_type: &ObjectType) -> bool {
+        match *object_type {
+            ObjectType::Way => true,
+            ObjectType::Area => self.is_closed(),
+            _ => false,
+        }
+    }
+}

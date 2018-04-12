@@ -7,17 +7,20 @@ use tile as t;
 use draw::TILE_SIZE;
 use draw::figure::Figure;
 use draw::fill::fill_contour;
+use draw::icon::Icon;
 use draw::line::draw_lines;
 use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-#[derive(Default)]
 pub struct Drawer {
-    cache: RwLock<HashMap<CacheKey, Figure>>,
+    figure_cache: RwLock<HashMap<CacheKey, Figure>>,
+    icon_cache: RwLock<HashMap<String, Option<Icon>>>,
+    base_path: PathBuf,
 }
 
 #[derive(Eq, PartialEq, Hash)]
@@ -36,9 +39,11 @@ enum DrawType {
 }
 
 impl Drawer {
-    pub fn new() -> Drawer {
+    pub fn new(base_path: &Path) -> Drawer {
         Drawer {
-            cache: Default::default(),
+            figure_cache: Default::default(),
+            icon_cache: Default::default(),
+            base_path: base_path.to_owned(),
         }
     }
 
@@ -61,7 +66,7 @@ impl Drawer {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
-        let styled_ways = styler.style_areas(entities.ways.iter(), tile.zoom);
+        let styled_ways = styler.style_entities(entities.ways.iter(), tile.zoom);
 
         self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
@@ -81,6 +86,9 @@ impl Drawer {
         draw_strokes(&DrawType::Casing, &mut pixels);
         draw_strokes(&DrawType::Stroke, &mut pixels);
 
+        let styled_nodes = styler.style_entities(entities.nodes.iter(), tile.zoom);
+        self.draw_icons(&mut pixels, tile, &styled_ways, &styled_nodes);
+
         pixels.to_rgb_triples()
     }
 
@@ -96,7 +104,7 @@ impl Drawer {
             .relations
             .iter()
             .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
-        let styled_relations = styler.style_areas(multipolygons, tile.zoom);
+        let styled_relations = styler.style_entities(multipolygons, tile.zoom);
 
         let mut rel_iter = styled_relations.iter();
         let mut way_iter = ways.iter();
@@ -156,7 +164,7 @@ impl Drawer {
         };
 
         {
-            let read_cache = self.cache.read().unwrap();
+            let read_cache = self.figure_cache.read().unwrap();
             if let Some(figure) = read_cache.get(&cache_key) {
                 draw_figure(figure, image, tile);
                 return;
@@ -207,8 +215,66 @@ impl Drawer {
         if let Some(ref figure) = figure {
             draw_figure(figure, image, tile);
         }
-        let mut write_cache = self.cache.write().unwrap();
+        let mut write_cache = self.figure_cache.write().unwrap();
         write_cache.insert(cache_key, figure.unwrap_or_default());
+    }
+
+    fn draw_icons<'a>(
+        &self,
+        image: &mut TilePixels,
+        tile: &t::Tile,
+        ways: &[(&Way, Style)],
+        nodes: &[(&Node, Style)],
+    ) {
+        for &(way, ref style) in ways {
+            if let Some(ref icon_image) = style.icon_image {
+                if let Some((center_x, center_y)) = get_way_center(way, tile.zoom) {
+                    self.draw_icon(image, tile, icon_image, center_x, center_y);
+                }
+            }
+        }
+
+        for &(node, ref style) in nodes {
+            if let Some(ref icon_image) = style.icon_image {
+                let point = Point::from_node(node, tile.zoom);
+                self.draw_icon(image, tile, icon_image, f64::from(point.x), f64::from(point.y));
+            }
+        }
+    }
+
+    fn draw_icon(
+        &self,
+        image: &mut TilePixels,
+        tile: &t::Tile,
+        icon_image: &str,
+        center_x: f64,
+        center_y: f64,
+    ) {
+        {
+            let read_icon_cache = self.icon_cache.read().unwrap();
+            if let Some(icon) = read_icon_cache.get(icon_image) {
+                if let Some(ref icon) = *icon {
+                    draw_icon(image, tile, icon, center_x, center_y);
+                }
+                return;
+            }
+        }
+
+        let full_icon_path = self.base_path.join(icon_image);
+        let mut write_icon_cache = self.icon_cache.write().unwrap();
+        let icon = write_icon_cache
+            .entry(icon_image.to_string())
+            .or_insert(match Icon::load(&full_icon_path) {
+                Ok(icon) => Some(icon),
+                Err(error) => {
+                    let full_icon_path_str = full_icon_path.to_str().unwrap_or("N/A");
+                    eprintln!("Failed to load icon from {}: {}", full_icon_path_str, error);
+                    None
+                }
+            });
+        if let Some(ref icon) = *icon {
+            draw_icon(image, tile, icon, center_x, center_y);
+        }
     }
 }
 
@@ -237,6 +303,21 @@ fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
             image.set_pixel(real_x, real_y, color);
         }
     }
+}
+
+fn draw_icon(image: &mut TilePixels, tile: &t::Tile, icon: &Icon, center_x: f64, center_y: f64) {
+    let get_start_coord = |coord, dimension| (coord - (dimension as f64 / 2.0)) as usize;
+
+    let start_x = get_start_coord(center_x, icon.width);
+    let start_y = get_start_coord(center_y, icon.height);
+
+    let mut figure: Figure = Default::default();
+    for x in 0..icon.width {
+        for y in 0..icon.height {
+            figure.add(start_x + x, start_y + y, icon.get(x, y));
+        }
+    }
+    draw_figure(&figure, image, tile);
 }
 
 fn float_or_one(num: &Option<f64>) -> f64 {
@@ -286,4 +367,25 @@ impl<'r> NodePairCollection<'r> for Relation<'r> {
             .flat_map(|idx| self.get_way(idx).to_node_pairs())
             .collect()
     }
+}
+
+fn get_way_center(way: &Way, zoom: u8) -> Option<(f64, f64)> {
+    if way.node_count() == 0 {
+        return None;
+    }
+
+    let mut x = 0.0;
+    let mut y = 0.0;
+
+    for node_idx in 0..way.node_count() {
+        let point = Point::from_node(&way.get_node(node_idx), zoom);
+        x += f64::from(point.x);
+        y += f64::from(point.y);
+    }
+
+    let norm = way.node_count() as f64;
+    x /= norm;
+    y /= norm;
+
+    Some((x, y))
 }
