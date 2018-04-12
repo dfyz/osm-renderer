@@ -66,7 +66,7 @@ impl Drawer {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
-        let styled_ways = styler.style_areas(entities.ways.iter(), tile.zoom);
+        let styled_ways = styler.style_entities(entities.ways.iter(), tile.zoom);
 
         self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
 
@@ -86,13 +86,8 @@ impl Drawer {
         draw_strokes(&DrawType::Casing, &mut pixels);
         draw_strokes(&DrawType::Stroke, &mut pixels);
 
-        for &(way, ref style) in &styled_ways {
-            if let Some(ref icon_image) = style.icon_image {
-                if let Some((center_x, center_y)) = get_way_center(way, tile.zoom) {
-                    self.draw_icon(&mut pixels, tile, icon_image, center_x, center_y);
-                }
-            }
-        }
+        let styled_nodes = styler.style_entities(entities.nodes.iter(), tile.zoom);
+        self.draw_icons(&mut pixels, tile, &styled_ways, &styled_nodes);
 
         pixels.to_rgb_triples()
     }
@@ -109,7 +104,7 @@ impl Drawer {
             .relations
             .iter()
             .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
-        let styled_relations = styler.style_areas(multipolygons, tile.zoom);
+        let styled_relations = styler.style_entities(multipolygons, tile.zoom);
 
         let mut rel_iter = styled_relations.iter();
         let mut way_iter = ways.iter();
@@ -222,6 +217,29 @@ impl Drawer {
         }
         let mut write_cache = self.figure_cache.write().unwrap();
         write_cache.insert(cache_key, figure.unwrap_or_default());
+    }
+
+    fn draw_icons<'a>(
+        &self,
+        image: &mut TilePixels,
+        tile: &t::Tile,
+        ways: &[(&Way, Style)],
+        nodes: &[(&Node, Style)],
+    ) {
+        for &(way, ref style) in ways {
+            if let Some(ref icon_image) = style.icon_image {
+                if let Some((center_x, center_y)) = get_way_center(way, tile.zoom) {
+                    self.draw_icon(image, tile, icon_image, center_x, center_y);
+                }
+            }
+        }
+
+        for &(node, ref style) in nodes {
+            if let Some(ref icon_image) = style.icon_image {
+                let point = Point::from_node(node, tile.zoom);
+                self.draw_icon(image, tile, icon_image, f64::from(point.x), f64::from(point.y));
+            }
+        }
     }
 
     fn draw_icon(
