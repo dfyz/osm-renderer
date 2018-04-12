@@ -237,7 +237,13 @@ impl Drawer {
         for &(node, ref style) in nodes {
             if let Some(ref icon_image) = style.icon_image {
                 let point = Point::from_node(node, tile.zoom);
-                self.draw_icon(image, tile, icon_image, f64::from(point.x), f64::from(point.y));
+                self.draw_icon(
+                    image,
+                    tile,
+                    icon_image,
+                    f64::from(point.x),
+                    f64::from(point.y),
+                );
             }
         }
     }
