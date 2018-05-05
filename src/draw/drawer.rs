@@ -22,14 +22,6 @@ pub struct Drawer {
     base_path: PathBuf,
 }
 
-#[derive(Eq, PartialEq, Hash)]
-struct CacheKey {
-    entity_id: u64,
-    style: Style,
-    zoom_level: u8,
-    draw_type: DrawType,
-}
-
 #[derive(Clone, Eq, PartialEq, Hash)]
 enum DrawType {
     Fill,

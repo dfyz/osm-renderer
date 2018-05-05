@@ -1,5 +1,3 @@
-pub use mapcss::style::Style;
-
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
@@ -28,6 +26,28 @@ pub enum StyleType {
 pub trait StyleableEntity {
     fn default_z_index(&self) -> f64;
     fn matches_object_type(&self, object_type: &ObjectType) -> bool;
+}
+
+pub struct Style {
+    pub z_index: f64,
+
+    pub color: Option<Color>,
+    pub fill_color: Option<Color>,
+    pub is_foreground_fill: bool,
+    pub background_color: Option<Color>,
+    pub opacity: Option<f64>,
+    pub fill_opacity: Option<f64>,
+
+    pub width: Option<f64>,
+    pub dashes: Option<Vec<f64>>,
+    pub line_cap: Option<LineCap>,
+
+    pub casing_color: Option<Color>,
+    pub casing_width: Option<f64>,
+    pub casing_dashes: Option<Vec<f64>>,
+    pub casing_line_cap: Option<LineCap>,
+
+    pub icon_image: Option<String>,
 }
 
 pub struct Styler {
