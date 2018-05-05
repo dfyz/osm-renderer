@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
 use std::thread;
-use tile::Tile;
+use tile::{MAX_ZOOM, Tile};
 
 #[cfg_attr(feature = "cargo-clippy", allow(implicit_hasher))]
 pub fn run_server(
@@ -170,7 +170,7 @@ fn extract_tile_from_path(path: &str) -> Option<Tile> {
     let (z_str, x_str, y_str) = (tokens[0], tokens[1], tokens[2]);
 
     match (z_str.parse(), x_str.parse(), y_str.parse()) {
-        (Ok(z), Ok(x), Ok(y)) => Some(Tile { zoom: z, x, y }),
+        (Ok(z), Ok(x), Ok(y)) if z <= MAX_ZOOM => Some(Tile { zoom: z, x, y }),
         _ => None,
     }
 }

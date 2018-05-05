@@ -13,12 +13,11 @@ pub fn draw_lines<I>(
     dashes: &Option<Vec<f64>>,
     line_cap: &Option<LineCap>,
     use_caps_for_dashes: bool,
-) -> Figure
-where
+    figure: &mut Figure,
+) where
     I: Iterator<Item = (Point, Point)>,
 {
     let half_width = width / 2.0;
-    let mut figure = Default::default();
     let line_cap_for_dashes = if use_caps_for_dashes { line_cap } else { &None };
     let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap_for_dashes);
     let opacity_calculator_for_outer_caps =
@@ -30,7 +29,7 @@ where
     let mut first = true;
 
     while let Some((p1, p2)) = peekable_points.next() {
-        draw_line(&p1, &p2, color, opacity, &opacity_calculator, &mut figure);
+        draw_line(&p1, &p2, color, opacity, &opacity_calculator, figure);
         opacity_calculator.add_traveled_distance(p1.dist(&p2));
 
         if p1 != p2 && has_caps {
@@ -42,7 +41,7 @@ where
                     color,
                     opacity,
                     &opacity_calculator_for_outer_caps,
-                    &mut figure,
+                    figure,
                 );
             }
 
@@ -54,15 +53,13 @@ where
                     color,
                     opacity,
                     &opacity_calculator_for_outer_caps,
-                    &mut figure,
+                    figure,
                 );
             }
         }
 
         first = false;
     }
-
-    figure
 }
 
 // Full-blown Bresenham with anti-aliasing and thick line support.

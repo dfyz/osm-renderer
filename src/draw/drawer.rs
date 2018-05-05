@@ -5,7 +5,7 @@ use mapcss::styler::{Style, Styler};
 use tile as t;
 
 use draw::TILE_SIZE;
-use draw::figure::Figure;
+use draw::figure::{BoundingBox, Figure};
 use draw::fill::fill_contour;
 use draw::icon::Icon;
 use draw::line::draw_lines;
@@ -18,7 +18,6 @@ use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 pub struct Drawer {
-    figure_cache: RwLock<HashMap<CacheKey, Figure>>,
     icon_cache: RwLock<HashMap<String, Option<Icon>>>,
     base_path: PathBuf,
 }
@@ -41,7 +40,6 @@ enum DrawType {
 impl Drawer {
     pub fn new(base_path: &Path) -> Drawer {
         Drawer {
-            figure_cache: Default::default(),
             icon_cache: Default::default(),
             base_path: base_path.to_owned(),
         }
@@ -156,21 +154,6 @@ impl Drawer {
     ) where
         A: OsmEntity<'e> + NodePairCollection<'e>,
     {
-        let cache_key = CacheKey {
-            entity_id: area.global_id(),
-            style: style.clone(),
-            zoom_level: tile.zoom,
-            draw_type: draw_type.clone(),
-        };
-
-        {
-            let read_cache = self.figure_cache.read().unwrap();
-            if let Some(figure) = read_cache.get(&cache_key) {
-                draw_figure(figure, image, tile);
-                return;
-            }
-        }
-
         let mut seen_node_pairs = HashSet::new();
         let mut points = Vec::new();
 
@@ -182,11 +165,21 @@ impl Drawer {
             seen_node_pairs.insert(np);
         }
 
+        let create_figure = || create_figure_from_tile(tile);
+
         let figure = match *draw_type {
             DrawType::Fill => style.fill_color.as_ref().map(|color| {
-                fill_contour(points.into_iter(), color, float_or_one(&style.fill_opacity))
+                let mut figure = create_figure();
+                fill_contour(
+                    points.into_iter(),
+                    color,
+                    float_or_one(&style.fill_opacity),
+                    &mut figure,
+                );
+                figure
             }),
             DrawType::Casing => style.casing_color.as_ref().and_then(|color| {
+                let mut figure = create_figure();
                 style.casing_width.map(|casing_width| {
                     draw_lines(
                         points.into_iter(),
@@ -196,10 +189,13 @@ impl Drawer {
                         &style.casing_dashes,
                         &style.casing_line_cap,
                         use_caps_for_dashes,
-                    )
+                        &mut figure,
+                    );
+                    figure
                 })
             }),
             DrawType::Stroke => style.color.as_ref().map(|color| {
+                let mut figure = create_figure();
                 draw_lines(
                     points.into_iter(),
                     float_or_one(&style.width),
@@ -208,15 +204,15 @@ impl Drawer {
                     &style.dashes,
                     &style.line_cap,
                     use_caps_for_dashes,
-                )
+                    &mut figure,
+                );
+                figure
             }),
         };
 
         if let Some(ref figure) = figure {
             draw_figure(figure, image, tile);
         }
-        let mut write_cache = self.figure_cache.write().unwrap();
-        write_cache.insert(cache_key, figure.unwrap_or_default());
     }
 
     fn draw_icons(
@@ -317,7 +313,7 @@ fn draw_icon(image: &mut TilePixels, tile: &t::Tile, icon: &Icon, center_x: f64,
     let start_x = get_start_coord(center_x, icon.width);
     let start_y = get_start_coord(center_y, icon.height);
 
-    let mut figure: Figure = Default::default();
+    let mut figure = create_figure_from_tile(tile);
     for x in 0..icon.width {
         for y in 0..icon.height {
             figure.add(start_x + x, start_y + y, icon.get(x, y));
@@ -394,4 +390,17 @@ fn get_way_center(way: &Way, zoom: u8) -> Option<(f64, f64)> {
     y /= norm;
 
     Some((x, y))
+}
+
+fn create_figure_from_tile(tile: &t::Tile) -> Figure {
+    let to_tile_start = |c| (c as usize) * TILE_SIZE;
+    let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
+    let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
+    let bounding_box = BoundingBox {
+        min_x: tile_start_x,
+        max_x: to_tile_end(tile_start_x),
+        min_y: tile_start_y,
+        max_y: to_tile_end(tile_start_y),
+    };
+    Figure::new(bounding_box)
 }

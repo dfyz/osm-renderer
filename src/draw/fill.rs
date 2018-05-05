@@ -5,12 +5,12 @@ use mapcss::color::Color;
 
 use std::cmp::{max, min};
 use std::collections::BTreeMap;
+use std::collections::Bound::Included;
 
-pub fn fill_contour<I>(points: I, color: &Color, opacity: f64) -> Figure
+pub fn fill_contour<I>(points: I, color: &Color, opacity: f64, figure: &mut Figure)
 where
     I: Iterator<Item = (Point, Point)>,
 {
-    let mut figure: Figure = Default::default();
     let mut y_to_edges = Default::default();
     let fill_color = RgbaColor::from_color(color, opacity);
 
@@ -18,7 +18,9 @@ where
         draw_line(idx, &p1, &p2, &mut y_to_edges);
     }
 
-    for (y, edges) in &y_to_edges {
+    let from_y = Included(figure.bounding_box.min_y as i32);
+    let to_y = Included(figure.bounding_box.max_y as i32);
+    for (y, edges) in y_to_edges.range((from_y, to_y)) {
         let mut good_edges = edges
             .values()
             .filter(|e| !e.is_poisoned)
@@ -29,14 +31,14 @@ where
         while idx + 1 < good_edges.len() {
             let e1 = good_edges[idx];
             let e2 = good_edges[idx + 1];
-            for x in e1.x_min..(e2.x_max + 1) {
+            let from_x = e1.x_min.max(figure.bounding_box.min_x as i32);
+            let to_x = e2.x_max.min(figure.bounding_box.max_x as i32) + 1;
+            for x in from_x..to_x {
                 figure.add(x as usize, *y as usize, fill_color.clone());
             }
             idx += 2;
         }
     }
-
-    figure
 }
 
 // Stripped-down version of Bresenham which is extremely easy to implement.
