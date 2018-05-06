@@ -2,6 +2,7 @@ use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
 use geodata::reader::{Node, OsmArea, OsmEntity};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -111,11 +112,7 @@ impl Styler {
             }
         }
 
-        styled_areas.sort_by(|&(w1, ref s1), &(w2, ref s2)| {
-            let cmp1 = (s1.is_foreground_fill, s1.z_index, w1.global_id());
-            let cmp2 = (s2.is_foreground_fill, s2.z_index, w2.global_id());
-            cmp1.partial_cmp(&cmp2).unwrap()
-        });
+        styled_areas.sort_by(compare_styled_entities);
 
         styled_areas
     }
@@ -161,6 +158,16 @@ impl Styler {
 
         result
     }
+}
+
+pub fn compare_styled_entities<'a, E1, E2>(a: &(&E1, Style), b: &(&E2, Style)) -> Ordering
+where
+    E1: OsmEntity<'a>,
+    E2: OsmEntity<'a>,
+{
+    let cmp_a = (a.1.is_foreground_fill, a.1.z_index, a.0.global_id());
+    let cmp_b = (b.1.is_foreground_fill, b.1.z_index, b.0.global_id());
+    cmp_a.partial_cmp(&cmp_b).unwrap()
 }
 
 type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;

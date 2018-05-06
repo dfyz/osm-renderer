@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
 use std::thread;
-use tile::{MAX_ZOOM, Tile};
+use tile::{Tile, MAX_ZOOM};
 
 #[cfg_attr(feature = "cargo-clippy", allow(implicit_hasher))]
 pub fn run_server(

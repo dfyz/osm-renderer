@@ -1,7 +1,7 @@
 use errors::*;
 
 use geodata::reader::{Node, OsmEntities, OsmEntity, Relation, Way};
-use mapcss::styler::{Style, Styler};
+use mapcss::styler::{compare_styled_entities, Style, Styler};
 use tile as t;
 
 use draw::TILE_SIZE;
@@ -13,6 +13,7 @@ use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -106,7 +107,7 @@ impl Drawer {
                     (None, None) => break,
                     (Some(_), None) => true,
                     (None, Some(_)) => false,
-                    (Some(r), Some(w)) => r.1.z_index <= w.1.z_index,
+                    (Some(r), Some(w)) => compare_styled_entities(r, w) != Ordering::Greater,
                 }
             };
             if is_rel_better {
