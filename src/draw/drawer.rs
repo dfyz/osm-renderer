@@ -4,7 +4,7 @@ use geodata::reader::{Node, OsmEntities, OsmEntity, Way};
 use mapcss::styler::{compare_styled_entities, Style, Styler};
 use tile as t;
 
-use draw::figure::{BoundingBox, Figure};
+use draw::figure::Figure;
 use draw::fill::fill_contour;
 use draw::icon::Icon;
 use draw::line::draw_lines;
@@ -159,7 +159,8 @@ impl Drawer {
             seen_node_pairs.insert(np);
         }
 
-        let create_figure = || create_figure_from_tile(tile);
+        let create_figure = || Figure::new(tile);
+        let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
 
         let figure = match *draw_type {
             DrawType::Fill => style.fill_color.as_ref().map(|color| {
@@ -307,17 +308,13 @@ fn draw_icon(image: &mut TilePixels, tile: &t::Tile, icon: &Icon, center_x: f64,
     let start_x = get_start_coord(center_x, icon.width);
     let start_y = get_start_coord(center_y, icon.height);
 
-    let mut figure = create_figure_from_tile(tile);
+    let mut figure = Figure::new(tile);
     for x in 0..icon.width {
         for y in 0..icon.height {
             figure.add(start_x + x, start_y + y, icon.get(x, y));
         }
     }
     draw_figure(&figure, image, tile);
-}
-
-fn float_or_one(num: &Option<f64>) -> f64 {
-    num.unwrap_or(1.0)
 }
 
 fn get_way_center(way: &Way, zoom: u8) -> Option<(f64, f64)> {
@@ -339,17 +336,4 @@ fn get_way_center(way: &Way, zoom: u8) -> Option<(f64, f64)> {
     y /= norm;
 
     Some((x, y))
-}
-
-fn create_figure_from_tile(tile: &t::Tile) -> Figure {
-    let to_tile_start = |c| (c as usize) * TILE_SIZE;
-    let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
-    let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
-    let bounding_box = BoundingBox {
-        min_x: tile_start_x,
-        max_x: to_tile_end(tile_start_x),
-        min_y: tile_start_y,
-        max_y: to_tile_end(tile_start_y),
-    };
-    Figure::new(bounding_box)
 }

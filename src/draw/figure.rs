@@ -1,7 +1,8 @@
 use draw::tile_pixels::RgbaColor;
-
+use draw::TILE_SIZE;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
+use tile::Tile;
 
 pub struct BoundingBox {
     pub min_x: usize,
@@ -16,7 +17,17 @@ pub struct Figure {
 }
 
 impl Figure {
-    pub fn new(bounding_box: BoundingBox) -> Figure {
+    pub fn new(tile: &Tile) -> Figure {
+        let to_tile_start = |c| (c as usize) * TILE_SIZE;
+        let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
+        let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
+        let bounding_box = BoundingBox {
+            min_x: tile_start_x,
+            max_x: to_tile_end(tile_start_x),
+            min_y: tile_start_y,
+            max_y: to_tile_end(tile_start_y),
+        };
+
         Figure {
             pixels: Default::default(),
             bounding_box,
