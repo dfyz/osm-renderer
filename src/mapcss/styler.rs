@@ -102,7 +102,7 @@ impl Styler {
                         area,
                         property_map_to_style(
                             prop_map,
-                            &base_layer,
+                            base_layer,
                             default_z_index,
                             self.casing_width_multiplier,
                             area,
@@ -175,7 +175,7 @@ type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
 
 fn property_map_to_style<'r, 'e, E>(
     current_layer_map: &'r PropertyMap<'r>,
-    base_layer_map: &Option<&'r PropertyMap<'r>>,
+    base_layer_map: Option<&'r PropertyMap<'r>>,
     default_z_index: f64,
     casing_width_multiplier: f64,
     osm_entity: &E,
