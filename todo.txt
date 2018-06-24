@@ -1,8 +1,8 @@
-* implement icon-image/fill-image (this will require loading external files when mapcss files are parsed)
-* try to integrate the maps.me stylesheet if their mapcss dialect is not too different from the official spec
-* draw labels (probably the hardest part; maybe look at font-rs for inspiration)
-* correctly render multipolygons with touching inner rings (e.g., https://www.openstreetmap.org/relation/4485484)
+Must have:
+  * draw labels (probably the hardest part; maybe look at font-rs for inspiration)
+  * implement the algo from https://blog.mapbox.com/a-new-algorithm-for-finding-a-visual-center-of-a-polygon-7c77e6492fbc
+  * render meta-tiles to avoid text/icon clipping
 
-* memory
-  + make the import process less memory-hungry;
-  + configurable drawing cache size.
+Nice to have:
+  * correctly render multipolygons with touching inner rings (e.g., https://www.openstreetmap.org/relation/4485484)
+  * make the import process less memory-hungry
