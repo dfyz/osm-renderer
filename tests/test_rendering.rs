@@ -3,14 +3,14 @@ extern crate renderer;
 
 mod common;
 
+use renderer::draw::png_writer::rgb_triples_to_png;
+use renderer::draw::tile_pixels::{dimension, RgbTriples};
+use renderer::mapcss::parser::parse_file;
+use renderer::mapcss::styler::{StyleType, Styler};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use renderer::draw::tile_pixels::{dimension, RgbTriples};
-use renderer::draw::png_writer::rgb_triples_to_png;
-use renderer::mapcss::parser::parse_file;
-use renderer::mapcss::styler::{StyleType, Styler};
 
 const RED_PIXEL: (u8, u8, u8) = (255, 0, 0);
 

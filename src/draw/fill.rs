@@ -1,6 +1,6 @@
 use draw::figure::Figure;
-use draw::tile_pixels::RgbaColor;
 use draw::point::Point;
+use draw::tile_pixels::RgbaColor;
 use mapcss::color::Color;
 
 use std::cmp::{max, min};

@@ -1,7 +1,7 @@
 use draw::tile_pixels::RgbaColor;
 
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 
 pub struct BoundingBox {
     pub min_x: usize,

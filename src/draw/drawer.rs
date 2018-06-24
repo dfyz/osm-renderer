@@ -4,14 +4,14 @@ use geodata::reader::{Node, OsmEntities, OsmEntity, Relation, Way};
 use mapcss::styler::{compare_styled_entities, Style, Styler};
 use tile as t;
 
-use draw::TILE_SIZE;
 use draw::figure::{BoundingBox, Figure};
 use draw::fill::fill_contour;
 use draw::icon::Icon;
 use draw::line::draw_lines;
-use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
+use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
+use draw::TILE_SIZE;
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};

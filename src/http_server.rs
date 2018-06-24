@@ -1,18 +1,18 @@
 use errors::*;
 
-use std::collections::HashSet;
 use draw::drawer::Drawer;
 use geodata::reader::GeodataReader;
 use mapcss::parser::parse_file;
 use mapcss::styler::{StyleType, Styler};
 use num_cpus;
+use std::collections::HashSet;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
 use std::thread;
 use tile::{Tile, MAX_ZOOM};
 

@@ -2,8 +2,8 @@ extern crate error_chain;
 extern crate renderer;
 
 use error_chain::ChainedError;
-use renderer::mapcss::styler::StyleType;
 use renderer::http_server::run_server;
+use renderer::mapcss::styler::StyleType;
 use std::env;
 
 fn main() {

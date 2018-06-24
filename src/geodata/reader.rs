@@ -2,8 +2,8 @@ use errors::*;
 
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::hash::{Hash, Hasher};
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::mem;
 use std::slice;
@@ -389,10 +389,10 @@ macro_rules! implement_osm_entity {
             fn tags(&self) -> Tags<'a> {
                 let entity = &self.entity;
                 let start_pos = entity.bytes.len() - INT_REF_SIZE;
-                entity.reader.tags(&entity.bytes[start_pos ..])
+                entity.reader.tags(&entity.bytes[start_pos..])
             }
         }
-    }
+    };
 }
 
 #[derive(Clone)]

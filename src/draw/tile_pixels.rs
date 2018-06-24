@@ -73,11 +73,7 @@ impl TilePixels {
 
         for p in &self.pixels {
             let postdivide = |val| {
-                let mul = if p.a == 0.0 {
-                    0.0
-                } else {
-                    val / p.a
-                };
+                let mul = if p.a == 0.0 { 0.0 } else { val / p.a };
                 (f64::from(u8::max_value()) * mul) as u8
             };
             result.push((postdivide(p.r), postdivide(p.g), postdivide(p.b)));

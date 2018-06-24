@@ -1,5 +1,5 @@
-use mapcss::errors::*;
 use mapcss::color::Color;
+use mapcss::errors::*;
 
 use std::fmt;
 use std::iter::Peekable;
