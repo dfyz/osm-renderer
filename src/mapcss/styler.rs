@@ -1,7 +1,7 @@
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
-use geodata::reader::{Node, OsmArea, OsmEntity};
+use geodata::reader::{Node, OsmArea, OsmEntity, Relation, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -57,6 +57,14 @@ pub struct Styler {
 
     casing_width_multiplier: f64,
     rules: Vec<Rule>,
+}
+
+pub enum StyledArea<'a, 'wr>
+where
+    'a: 'wr,
+{
+    Way(&'wr Way<'a>),
+    Relation(&'wr Relation<'a>),
 }
 
 impl Styler {
@@ -117,6 +125,42 @@ impl Styler {
         styled_areas
     }
 
+    pub fn style_areas<'a, 'wr>(
+        &self,
+        ways: impl Iterator<Item = &'wr Way<'a>>,
+        relations: impl Iterator<Item = &'wr Relation<'a>>,
+        zoom: u8,
+    ) -> Vec<(StyledArea<'a, 'wr>, Style)> {
+        let styled_ways = self.style_entities(ways, zoom);
+        let styled_relations = self.style_entities(relations, zoom);
+
+        let mut rel_iter = styled_relations.into_iter();
+        let mut way_iter = styled_ways.into_iter();
+        let mut rel = rel_iter.next();
+        let mut way = way_iter.next();
+        let mut result = Vec::new();
+        loop {
+            let is_rel_better = {
+                match (&rel, &way) {
+                    (None, None) => break,
+                    (Some(_), None) => true,
+                    (None, Some(_)) => false,
+                    (Some(r), Some(w)) => compare_styled_entities(r, w) != Ordering::Greater,
+                }
+            };
+            if is_rel_better {
+                let (r, style) = rel.unwrap();
+                result.push((StyledArea::Relation(r), style));
+                rel = rel_iter.next();
+            } else {
+                let (w, style) = way.unwrap();
+                result.push((StyledArea::Way(w), style));
+                way = way_iter.next();
+            }
+        }
+        result
+    }
+
     fn style_area<'r, 'e, A>(&'r self, area: &A, zoom: u8) -> LayerToPropertyMap<'r>
     where
         A: StyleableEntity + OsmEntity<'e>,
@@ -160,7 +204,7 @@ impl Styler {
     }
 }
 
-pub fn compare_styled_entities<'a, E1, E2>(a: &(&E1, Style), b: &(&E2, Style)) -> Ordering
+fn compare_styled_entities<'a, E1, E2>(a: &(&E1, Style), b: &(&E2, Style)) -> Ordering
 where
     E1: OsmEntity<'a>,
     E2: OsmEntity<'a>,

@@ -1,9 +1,5 @@
 use errors::*;
 
-use geodata::reader::{Node, OsmEntities, OsmEntity, Way};
-use mapcss::styler::{compare_styled_entities, Style, Styler};
-use tile as t;
-
 use draw::figure::Figure;
 use draw::fill::fill_contour;
 use draw::icon::Icon;
@@ -13,11 +9,12 @@ use draw::png_writer::rgb_triples_to_png;
 use draw::point::Point;
 use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::TILE_SIZE;
-
-use std::cmp::Ordering;
+use geodata::reader::{Node, OsmEntities, OsmEntity, Way};
+use mapcss::styler::{Style, StyledArea, Styler};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+use tile as t;
 
 pub struct Drawer {
     icon_cache: RwLock<HashMap<String, Option<Icon>>>,
@@ -58,81 +55,51 @@ impl Drawer {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
-        let styled_ways = styler.style_entities(entities.ways.iter(), tile.zoom);
-
-        self.draw_fills(&mut pixels, entities, tile, styler, &styled_ways);
-
-        let draw_strokes = |draw_type, pixels: &mut TilePixels| {
-            for &(way, ref style) in &styled_ways {
-                self.draw_one_area(
-                    pixels,
-                    way,
-                    style,
-                    draw_type,
-                    styler.use_caps_for_dashes,
-                    tile,
-                );
-            }
-        };
-
-        draw_strokes(&DrawType::Casing, &mut pixels);
-        draw_strokes(&DrawType::Stroke, &mut pixels);
-
-        let styled_nodes = styler.style_entities(entities.nodes.iter(), tile.zoom);
-        self.draw_icons(&mut pixels, tile, &styled_ways, &styled_nodes);
-
-        pixels.to_rgb_triples()
-    }
-
-    fn draw_fills<'a>(
-        &self,
-        pixels: &mut TilePixels,
-        entities: &OsmEntities<'a>,
-        tile: &t::Tile,
-        styler: &Styler,
-        ways: &[(&Way<'a>, Style)],
-    ) {
         let multipolygons = entities
             .relations
             .iter()
             .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
-        let styled_relations = styler.style_entities(multipolygons, tile.zoom);
+        let styled_areas = styler.style_areas(entities.ways.iter(), multipolygons, tile.zoom);
 
-        let mut rel_iter = styled_relations.iter();
-        let mut way_iter = ways.iter();
-        let mut rel = rel_iter.next();
-        let mut way = way_iter.next();
-        loop {
-            let is_rel_better = {
-                match (rel, way) {
-                    (None, None) => break,
-                    (Some(_), None) => true,
-                    (None, Some(_)) => false,
-                    (Some(r), Some(w)) => compare_styled_entities(r, w) != Ordering::Greater,
+        let draw_areas_with_type = |draw_type, use_relations, pixels: &mut TilePixels| {
+            self.draw_areas(
+                pixels,
+                &styled_areas,
+                tile,
+                draw_type,
+                use_relations,
+                styler.use_caps_for_dashes,
+            );
+        };
+
+        draw_areas_with_type(&DrawType::Fill, true, &mut pixels);
+        draw_areas_with_type(&DrawType::Casing, false, &mut pixels);
+        draw_areas_with_type(&DrawType::Stroke, false, &mut pixels);
+
+        let styled_nodes = styler.style_entities(entities.nodes.iter(), tile.zoom);
+        self.draw_icons(&mut pixels, tile, &styled_areas, &styled_nodes);
+
+        pixels.to_rgb_triples()
+    }
+
+    fn draw_areas(
+        &self,
+        pixels: &mut TilePixels,
+        areas: &[(StyledArea, Style)],
+        tile: &t::Tile,
+        draw_type: &DrawType,
+        use_relations: bool,
+        use_caps_for_dashes: bool,
+    ) {
+        for (area, style) in areas {
+            match area {
+                StyledArea::Way(way) => {
+                    self.draw_one_area(pixels, tile, *way, style, draw_type, use_caps_for_dashes);
                 }
-            };
-            if is_rel_better {
-                let r = rel.unwrap();
-                self.draw_one_area(
-                    pixels,
-                    r.0,
-                    &r.1,
-                    &DrawType::Fill,
-                    styler.use_caps_for_dashes,
-                    tile,
-                );
-                rel = rel_iter.next();
-            } else {
-                let w = way.unwrap();
-                self.draw_one_area(
-                    pixels,
-                    w.0,
-                    &w.1,
-                    &DrawType::Fill,
-                    styler.use_caps_for_dashes,
-                    tile,
-                );
-                way = way_iter.next();
+                StyledArea::Relation(rel) if use_relations => {
+                    self.draw_one_area(pixels, tile, *rel, style, draw_type, use_caps_for_dashes);
+                }
+                _ => {}
             }
         }
     }
@@ -140,11 +107,11 @@ impl Drawer {
     fn draw_one_area<'e, A>(
         &self,
         image: &mut TilePixels,
+        tile: &t::Tile,
         area: &A,
         style: &Style,
         draw_type: &DrawType,
         use_caps_for_dashes: bool,
-        tile: &t::Tile,
     ) where
         A: OsmEntity<'e> + NodePairCollection<'e>,
     {
@@ -214,13 +181,15 @@ impl Drawer {
         &self,
         image: &mut TilePixels,
         tile: &t::Tile,
-        ways: &[(&Way, Style)],
+        areas: &[(StyledArea, Style)],
         nodes: &[(&Node, Style)],
     ) {
-        for &(way, ref style) in ways {
-            if let Some(ref icon_image) = style.icon_image {
-                if let Some((center_x, center_y)) = get_way_center(way, tile.zoom) {
-                    self.draw_icon(image, tile, icon_image, center_x, center_y);
+        for &(ref area, ref style) in areas {
+            if let StyledArea::Way(way) = area {
+                if let Some(ref icon_image) = style.icon_image {
+                    if let Some((center_x, center_y)) = get_way_center(way, tile.zoom) {
+                        self.draw_icon(image, tile, icon_image, center_x, center_y);
+                    }
                 }
             }
         }
