@@ -5,6 +5,7 @@ pub mod figure;
 pub mod fill;
 pub mod icon;
 pub mod line;
+pub mod node_pairs;
 pub mod opacity_calculator;
 pub mod png_writer;
 pub mod point;
