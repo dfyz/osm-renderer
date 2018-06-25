@@ -4,6 +4,7 @@ use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use tile::Tile;
 
+#[derive(Clone)]
 pub struct BoundingBox {
     pub min_x: usize,
     pub max_x: usize,
@@ -34,6 +35,13 @@ impl Figure {
         }
     }
 
+    pub fn clean_copy(&self) -> Figure {
+        Figure {
+            pixels: Default::default(),
+            bounding_box: self.bounding_box.clone(),
+        }
+    }
+
     pub fn add(&mut self, x: usize, y: usize, color: RgbaColor) {
         let bb = &self.bounding_box;
         if x < bb.min_x || x > bb.max_x || y < bb.min_y || y > bb.max_y {
@@ -51,6 +59,34 @@ impl Figure {
             }
             Entry::Vacant(v) => {
                 v.insert(color);
+            }
+        }
+    }
+
+    pub fn update_from(&mut self, other: &Figure) {
+        let mut is_good = true;
+        for (other_y, other_x_to_color) in other.pixels.iter() {
+            if let Some(our_x_to_color) = self.pixels.get(other_y) {
+                if !our_x_to_color.is_empty() {
+                    if our_x_to_color
+                        .range(
+                            other_x_to_color.keys().min().unwrap()
+                                ..=other_x_to_color.keys().max().unwrap(),
+                        )
+                        .next()
+                        .is_some()
+                    {
+                        is_good = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if is_good {
+            for (other_y, other_x_to_color) in other.pixels.iter() {
+                for (other_x, other_color) in other_x_to_color.iter() {
+                    self.add(*other_x, *other_y, other_color.clone());
+                }
             }
         }
     }
