@@ -173,9 +173,11 @@ impl Drawer {
         let mut all_labels_figure = Figure::new(tile);
 
         for &(ref area, ref style) in areas {
-            if let StyledArea::Way(way) = area {
-                self.labeler
-                    .label_entity(*way, style, tile.zoom, &mut all_labels_figure);
+            match area {
+                StyledArea::Way(way) => self.labeler
+                    .label_entity(*way, style, tile.zoom, &mut all_labels_figure),
+                StyledArea::Relation(rel) => self.labeler
+                    .label_entity(*rel, style, tile.zoom, &mut all_labels_figure),
             }
         }
 
