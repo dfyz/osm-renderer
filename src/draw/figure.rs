@@ -60,7 +60,7 @@ impl Figure {
     }
 
     pub fn update_from(&mut self, other: &Figure) {
-        for (other_y, other_x_to_color) in other.pixels.iter() {
+        for (other_y, other_x_to_color) in &other.pixels {
             if other_x_to_color.is_empty() {
                 continue;
             }
@@ -74,7 +74,7 @@ impl Figure {
                 }
             }
         }
-        for (other_y, other_x_to_color) in other.pixels.iter() {
+        for (other_y, other_x_to_color) in &other.pixels {
             for (other_x, other_color) in other_x_to_color.iter() {
                 self.add(*other_x, *other_y, other_color.clone());
             }

@@ -44,7 +44,7 @@ fn get_centroid<'n>(nodes: impl Iterator<Item = Node<'n>>, zoom: u8) -> Center {
     if node_count == 0 {
         None
     } else {
-        let norm = node_count as f64;
+        let norm = f64::from(node_count);
         x /= norm;
         y /= norm;
         Some((x, y))

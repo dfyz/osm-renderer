@@ -271,6 +271,9 @@ const WAY_OR_RELATION_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
 const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
 
 impl<'a> ObjectStorages<'a> {
+    // All geodata members have sizes divisible by 4, so the u8* -> u32* cast should be safe,
+    // provided that `bytes` is aligned to 4 bytes (if it's not, we're in trouble anyway).
+    #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
     fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
         let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;

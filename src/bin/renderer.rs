@@ -33,7 +33,7 @@ fn main() {
         Some(
             args[5..]
                 .iter()
-                .map(|x| x.parse().expect(&format!("Invalid OSM ID: {}", x)))
+                .map(|x| x.parse().unwrap_or_else(|_| panic!("Invalid OSM ID: {}", x)))
                 .collect(),
         )
     } else {
