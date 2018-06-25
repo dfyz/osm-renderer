@@ -40,13 +40,7 @@ fn main() {
         None
     };
 
-    let res = run_server(
-        server_address,
-        geodata_file,
-        stylesheet_file,
-        &stylesheet_type,
-        osm_ids,
-    );
+    let res = run_server(server_address, geodata_file, stylesheet_file, &stylesheet_type, osm_ids);
 
     if let Err(e) = res {
         eprintln!("{}", e.display_chain());

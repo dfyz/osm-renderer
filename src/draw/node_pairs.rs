@@ -9,10 +9,7 @@ pub struct NodePair<'n> {
 
 impl<'n> NodePair<'n> {
     pub fn to_points(&self, zoom: u8) -> (Point, Point) {
-        (
-            Point::from_node(&self.n1, zoom),
-            Point::from_node(&self.n2, zoom),
-        )
+        (Point::from_node(&self.n1, zoom), Point::from_node(&self.n2, zoom))
     }
 
     pub fn reverse(&self) -> NodePair<'n> {

@@ -32,22 +32,12 @@ impl Drawer {
         }
     }
 
-    pub fn draw_tile<'a>(
-        &self,
-        entities: &OsmEntities<'a>,
-        tile: &t::Tile,
-        styler: &Styler,
-    ) -> Result<Vec<u8>> {
+    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
         let pixels = self.draw_to_pixels(entities, tile, styler);
         rgb_triples_to_png(&pixels, dimension(), dimension())
     }
 
-    pub fn draw_to_pixels<'a>(
-        &self,
-        entities: &OsmEntities<'a>,
-        tile: &t::Tile,
-        styler: &Styler,
-    ) -> RgbTriples {
+    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> RgbTriples {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
@@ -173,7 +163,13 @@ impl Drawer {
         }
     }
 
-    fn draw_labels(&self, image: &mut TilePixels, tile: &t::Tile, areas: &[(StyledArea, Style)], nodes: &[(&Node, Style)]) {
+    fn draw_labels(
+        &self,
+        image: &mut TilePixels,
+        tile: &t::Tile,
+        areas: &[(StyledArea, Style)],
+        nodes: &[(&Node, Style)],
+    ) {
         let mut all_labels_figure = Figure::new(tile);
 
         for &(ref area, ref style) in areas {
@@ -207,10 +203,7 @@ fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
     let to_tile_start = |c| (c as usize) * TILE_SIZE;
     let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
 
-    for (y, x_to_color) in figure
-        .pixels
-        .range(tile_start_y..(tile_start_y + TILE_SIZE))
-    {
+    for (y, x_to_color) in figure.pixels.range(tile_start_y..(tile_start_y + TILE_SIZE)) {
         let real_y = *y - tile_start_y;
         for (x, color) in x_to_color.range(tile_start_x..(tile_start_x + TILE_SIZE)) {
             let real_x = *x - tile_start_x;

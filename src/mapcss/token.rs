@@ -13,10 +13,7 @@ pub enum Token<'a> {
     Identifier(&'a str),
     String(&'a str),
     Number(f64),
-    ZoomRange {
-        min_zoom: ZoomLevel,
-        max_zoom: ZoomLevel,
-    },
+    ZoomRange { min_zoom: ZoomLevel, max_zoom: ZoomLevel },
     ColorRef(&'a str),
     Color(Color),
 
@@ -117,10 +114,7 @@ impl<'a> Tokenizer<'a> {
         Tokenizer {
             text: input,
             chars: input.char_indices().peekable(),
-            current_position: InputPosition {
-                line: 1,
-                character: 0,
-            },
+            current_position: InputPosition { line: 1, character: 0 },
             had_newline: false,
         }
     }
@@ -251,20 +245,14 @@ impl<'a> Tokenizer<'a> {
                     had_dot = true;
                     0.0
                 }
-                _ => {
-                    return self.lexer_error(format!(
-                        "Expected a digit or '.' instead of '{}'",
-                        first_ch
-                    ))
-                }
+                _ => return self.lexer_error(format!("Expected a digit or '.' instead of '{}'", first_ch)),
             },
         };
 
         let mut number_after_dot = 0.0f64;
         let mut digits_after_dot = 0;
 
-        let add_digit =
-            |current: &mut f64, digit| *current = 10.0_f64 * (*current) + f64::from(digit);
+        let add_digit = |current: &mut f64, digit| *current = 10.0_f64 * (*current) + f64::from(digit);
 
         while let Some(next_ch) = self.peek_char() {
             if let Some(digit) = next_ch.to_digit(10) {
@@ -479,13 +467,7 @@ impl<'a> Iterator for Tokenizer<'a> {
 fn get_two_char_simple_token(fst: char, snd: char) -> Option<Token<'static>> {
     TWO_LETTER_MATCH_TABLE
         .iter()
-        .filter_map(|&(x, ref token)| {
-            if x == (fst, snd) {
-                Some(token.clone())
-            } else {
-                None
-            }
-        })
+        .filter_map(|&(x, ref token)| if x == (fst, snd) { Some(token.clone()) } else { None })
         .next()
 }
 
@@ -539,11 +521,7 @@ mod tests {
     fn unindent(s: &str) -> String {
         let lines = s.trim_matches('\n').split('\n').collect::<Vec<_>>();
         let space_count = lines[0].chars().take_while(|x| *x == ' ').count();
-        lines
-            .iter()
-            .map(|x| &x[space_count..])
-            .collect::<Vec<_>>()
-            .join("\n")
+        lines.iter().map(|x| &x[space_count..]).collect::<Vec<_>>().join("\n")
     }
 
     fn tok(s: &str, expected: Vec<(Token, usize, usize)>) {
@@ -555,7 +533,7 @@ mod tests {
                     token: token.clone(),
                     position: InputPosition {
                         line: line,
-                        character: ch,
+                        character: ch
                     },
                 })
                 .collect::<Vec<_>>()
@@ -634,15 +612,7 @@ mod tests {
                 (Token::SemiColon, 11, 26),
                 (Token::ColorRef("black"), 12, 1),
                 (Token::Colon, 12, 7),
-                (
-                    Token::Color(Color {
-                        r: 255,
-                        g: 204,
-                        b: 0,
-                    }),
-                    12,
-                    9,
-                ),
+                (Token::Color(Color { r: 255, g: 204, b: 0 }), 12, 9),
                 (Token::SemiColon, 12, 16),
             ],
         );
@@ -744,42 +714,51 @@ mod tests {
 
     #[test]
     fn test3() {
-        tok(r#"
+        tok(
+            r#"
             node|z14-[railway=signal]["railway:signal:direction"]["railway:signal:speed_limit_distant:deactivated"=yes]::deactivatedcross
             {
                 icon-image: "icons/light-signal-deactivated-18.png";
                 text-allow-overlap: true;
             }
             "#,
-        vec![
-            (Token::Identifier("node"), 1, 1),
-            (Token::ZoomRange { min_zoom: Some(14), max_zoom: None }, 1, 5),
-            (Token::LeftBracket, 1, 10),
-            (Token::Identifier("railway"), 1, 11),
-            (Token::Equal, 1, 18),
-            (Token::Identifier("signal"), 1, 19),
-            (Token::RightBracket, 1, 25),
-            (Token::LeftBracket, 1, 26),
-            (Token::String("railway:signal:direction"), 1, 27),
-            (Token::RightBracket, 1, 53),
-            (Token::LeftBracket, 1, 54),
-            (Token::String("railway:signal:speed_limit_distant:deactivated"), 1, 55),
-            (Token::Equal, 1, 103),
-            (Token::Identifier("yes"), 1, 104),
-            (Token::RightBracket, 1, 107),
-            (Token::DoubleColon, 1, 108),
-            (Token::Identifier("deactivatedcross"), 1, 110),
-            (Token::LeftBrace, 2, 1),
-            (Token::Identifier("icon-image"), 3, 5),
-            (Token::Colon, 3, 15),
-            (Token::String("icons/light-signal-deactivated-18.png"), 3, 17),
-            (Token::SemiColon, 3, 56),
-            (Token::Identifier("text-allow-overlap"), 4, 5),
-            (Token::Colon, 4, 23),
-            (Token::Identifier("true"), 4, 25),
-            (Token::SemiColon, 4, 29),
-            (Token::RightBrace, 5, 1),
-        ])
+            vec![
+                (Token::Identifier("node"), 1, 1),
+                (
+                    Token::ZoomRange {
+                        min_zoom: Some(14),
+                        max_zoom: None,
+                    },
+                    1,
+                    5,
+                ),
+                (Token::LeftBracket, 1, 10),
+                (Token::Identifier("railway"), 1, 11),
+                (Token::Equal, 1, 18),
+                (Token::Identifier("signal"), 1, 19),
+                (Token::RightBracket, 1, 25),
+                (Token::LeftBracket, 1, 26),
+                (Token::String("railway:signal:direction"), 1, 27),
+                (Token::RightBracket, 1, 53),
+                (Token::LeftBracket, 1, 54),
+                (Token::String("railway:signal:speed_limit_distant:deactivated"), 1, 55),
+                (Token::Equal, 1, 103),
+                (Token::Identifier("yes"), 1, 104),
+                (Token::RightBracket, 1, 107),
+                (Token::DoubleColon, 1, 108),
+                (Token::Identifier("deactivatedcross"), 1, 110),
+                (Token::LeftBrace, 2, 1),
+                (Token::Identifier("icon-image"), 3, 5),
+                (Token::Colon, 3, 15),
+                (Token::String("icons/light-signal-deactivated-18.png"), 3, 17),
+                (Token::SemiColon, 3, 56),
+                (Token::Identifier("text-allow-overlap"), 4, 5),
+                (Token::Colon, 4, 23),
+                (Token::Identifier("true"), 4, 25),
+                (Token::SemiColon, 4, 29),
+                (Token::RightBrace, 5, 1),
+            ],
+        )
     }
 
     #[test]

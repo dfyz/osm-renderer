@@ -21,10 +21,7 @@ where
     let from_y = Included(figure.bounding_box.min_y as i32);
     let to_y = Included(figure.bounding_box.max_y as i32);
     for (y, edges) in y_to_edges.range((from_y, to_y)) {
-        let mut good_edges = edges
-            .values()
-            .filter(|e| !e.is_poisoned)
-            .collect::<Vec<_>>();
+        let mut good_edges = edges.values().filter(|e| !e.is_poisoned).collect::<Vec<_>>();
         good_edges.sort_by_key(|e| e.x_min);
 
         let mut idx = 0;

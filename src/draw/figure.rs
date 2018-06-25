@@ -47,11 +47,7 @@ impl Figure {
         if x < bb.min_x || x > bb.max_x || y < bb.min_y || y > bb.max_y {
             return;
         }
-        match self.pixels
-            .entry(y)
-            .or_insert_with(Default::default)
-            .entry(x)
-        {
+        match self.pixels.entry(y).or_insert_with(Default::default).entry(x) {
             Entry::Occupied(o) => {
                 if color.a > o.get().a {
                     *o.into_mut() = color;
@@ -69,10 +65,7 @@ impl Figure {
             if let Some(our_x_to_color) = self.pixels.get(other_y) {
                 if !our_x_to_color.is_empty() {
                     if our_x_to_color
-                        .range(
-                            other_x_to_color.keys().min().unwrap()
-                                ..=other_x_to_color.keys().max().unwrap(),
-                        )
+                        .range(other_x_to_color.keys().min().unwrap()..=other_x_to_color.keys().max().unwrap())
                         .next()
                         .is_some()
                     {

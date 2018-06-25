@@ -14,11 +14,7 @@ fn test_mapnik_parse() {
     let mapnik_path = get_test_path(&["mapcss", "mapnik.mapcss"]);
     let rules = parse_file(Path::new(&mapnik_base_path), "mapnik.mapcss").unwrap();
 
-    let rules_str = rules
-        .iter()
-        .map(|x| format!("{}", x))
-        .collect::<Vec<_>>()
-        .join("\n\n");
+    let rules_str = rules.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join("\n\n");
     let mapnik_path_parsed = PathBuf::from(&mapnik_path).with_extension("parsed");
     File::create(&mapnik_path_parsed)
         .unwrap()
@@ -46,10 +42,6 @@ fn test_parsing_is_idempotent() {
         .unwrap();
     let rules = parse_file(Path::new(&mapnik_base_path), "mapnik.parsed.canonical").unwrap();
 
-    let rules_str = rules
-        .iter()
-        .map(|x| format!("{}", x))
-        .collect::<Vec<_>>()
-        .join("\n\n");
+    let rules_str = rules.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join("\n\n");
     assert_eq!(rules_str, canonical);
 }

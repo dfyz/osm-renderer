@@ -25,14 +25,8 @@ fn read_png(file_name: &str) -> (RgbTriples, png::OutputInfo) {
 }
 
 fn compare_png_outputs(zoom: u8) {
-    let (expected, expected_info) = read_png(&common::get_test_path(&[
-        "rendered",
-        &format!("{}_expected.png", zoom),
-    ]));
-    let (actual, actual_info) = read_png(&common::get_test_path(&[
-        "rendered",
-        &format!("{}.png", zoom),
-    ]));
+    let (expected, expected_info) = read_png(&common::get_test_path(&["rendered", &format!("{}_expected.png", zoom)]));
+    let (actual, actual_info) = read_png(&common::get_test_path(&["rendered", &format!("{}.png", zoom)]));
 
     assert_eq!(
         expected_info.width, actual_info.width,
@@ -48,13 +42,7 @@ fn compare_png_outputs(zoom: u8) {
     let diff = expected
         .iter()
         .zip(actual)
-        .map(|(e, a)| {
-            if *e != a {
-                RED_PIXEL
-            } else {
-                Default::default()
-            }
-        })
+        .map(|(e, a)| if *e != a { RED_PIXEL } else { Default::default() })
         .collect::<Vec<_>>();
     let has_diff = diff.contains(&RED_PIXEL);
 
@@ -64,30 +52,20 @@ fn compare_png_outputs(zoom: u8) {
 
         diff_output
             .unwrap()
-            .write_all(&rgb_triples_to_png(
-                &diff,
-                actual_info.width as usize,
-                actual_info.height as usize,
-            ).unwrap())
+            .write_all(&rgb_triples_to_png(&diff, actual_info.width as usize, actual_info.height as usize).unwrap())
             .unwrap();
         assert!(
             false,
             "the tiles for zoom level {} differ from the expected ones; see {} for more details",
             zoom,
-            std::fs::canonicalize(diff_output_path)
-                .unwrap()
-                .to_str()
-                .unwrap()
+            std::fs::canonicalize(diff_output_path).unwrap().to_str().unwrap()
         );
     }
 }
 
 fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32) {
     let bin_file = common::get_test_path(&["osm", &format!("nano_moscow_{}.bin", zoom)]);
-    renderer::geodata::importer::import(
-        &common::get_test_path(&["osm", "nano_moscow.osm"]),
-        &bin_file,
-    ).unwrap();
+    renderer::geodata::importer::import(&common::get_test_path(&["osm", "nano_moscow.osm"]), &bin_file).unwrap();
     let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
     let base_path = common::get_test_path(&["mapcss"]);
     let styler = Styler::new(
@@ -96,8 +74,7 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32)
     );
     let drawer = renderer::draw::drawer::Drawer::new(Path::new(&base_path));
 
-    let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> =
-        BTreeMap::new();
+    let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> = BTreeMap::new();
 
     for y in min_y..(max_y + 1) {
         for x in min_x..(max_x + 1) {
@@ -132,10 +109,7 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32)
         let width = y_x_rendered.values().nth(0).unwrap().len() * dimension();
         let png_bytes = rgb_triples_to_png(&rgb, width, height);
 
-        let png_output = File::create(common::get_test_path(&[
-            "rendered",
-            &format!("{}.png", zoom),
-        ]));
+        let png_output = File::create(common::get_test_path(&["rendered", &format!("{}.png", zoom)]));
 
         png_output.unwrap().write_all(&png_bytes.unwrap()).unwrap();
 

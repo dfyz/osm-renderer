@@ -19,18 +19,12 @@ impl Labeler {
         }
     }
 
-    pub fn label_entity(
-        &self,
-        entity: &impl WithCenter,
-        style: &Style,
-        zoom: u8,
-        figure: &mut Figure,
-    ) {
+    pub fn label_entity(&self, entity: &impl WithCenter, style: &Style, zoom: u8, figure: &mut Figure) {
         let icon_name = match style.icon_image {
             Some(ref icon_name) => {
                 self.load_icon(icon_name);
                 icon_name
-            },
+            }
             _ => return,
         };
 

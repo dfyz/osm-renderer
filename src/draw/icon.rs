@@ -18,15 +18,10 @@ impl Icon {
     {
         let icon_file = File::open(&icon_path).chain_err(|| "Failed to open icon file")?;
         let decoder = Decoder::new(icon_file);
-        let (info, mut reader) = decoder
-            .read_info()
-            .chain_err(|| "Icon is not a valid PNG file")?;
+        let (info, mut reader) = decoder.read_info().chain_err(|| "Icon is not a valid PNG file")?;
 
         let mut pixels: Vec<RgbaColor> = Default::default();
-        while let Some(row) = reader
-            .next_row()
-            .chain_err(|| "Failed to read a PNG pixel")?
-        {
+        while let Some(row) = reader.next_row().chain_err(|| "Failed to read a PNG pixel")? {
             let mut idx = 0;
             while idx < row.len() {
                 let (r, g, b, a, idx_delta) = match info.color_type {

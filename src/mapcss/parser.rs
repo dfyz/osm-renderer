@@ -136,14 +136,9 @@ impl fmt::Display for PropertyValue {
             PropertyValue::Color(Color { r, g, b }) => write!(f, "#{:02x}{:02x}{:02x}", r, g, b),
             PropertyValue::Identifier(ref id) => write!(f, "{}", id),
             PropertyValue::String(ref s) => write!(f, "\"{}\"", s),
-            PropertyValue::Numbers(ref nums) => write!(
-                f,
-                "{}",
-                nums.iter()
-                    .map(fmt_item::<f64>)
-                    .collect::<Vec<_>>()
-                    .join(",")
-            ),
+            PropertyValue::Numbers(ref nums) => {
+                write!(f, "{}", nums.iter().map(fmt_item::<f64>).collect::<Vec<_>>().join(","))
+            }
             PropertyValue::WidthDelta(ref delta) => write!(f, "eval(prop(\"width\")) + {}", delta),
         }
     }
@@ -192,17 +187,9 @@ impl fmt::Display for Selector {
             f,
             "{}{}{}{}{}",
             self.object_type,
-            if formatted_zoom_range.is_empty() {
-                ""
-            } else {
-                "|z"
-            },
+            if formatted_zoom_range.is_empty() { "" } else { "|z" },
             formatted_zoom_range,
-            self.tests
-                .iter()
-                .map(fmt_item::<Test>)
-                .collect::<Vec<_>>()
-                .join(""),
+            self.tests.iter().map(fmt_item::<Test>).collect::<Vec<_>>().join(""),
             formatted_layer_id
         )
     }
@@ -341,17 +328,11 @@ impl<'a> Parser<'a> {
         Ok(rule)
     }
 
-    fn read_selector(
-        &mut self,
-        selector_first_token: &TokenWithPosition<'a>,
-    ) -> Result<ConsumedSelector> {
+    fn read_selector(&mut self, selector_first_token: &TokenWithPosition<'a>) -> Result<ConsumedSelector> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id).ok_or_else(|| {
-                    self.parse_error(
-                        format!("Unknown object type: {}", id),
-                        selector_first_token.position,
-                    )
+                    self.parse_error(format!("Unknown object type: {}", id), selector_first_token.position)
                 })?;
                 Selector {
                     object_type,
@@ -657,10 +638,7 @@ impl<'a> Parser<'a> {
     }
 
     fn unexpected_token<T>(&self, token: &TokenWithPosition<'a>) -> Result<T> {
-        Err(self.parse_error(
-            format!("Unexpected token: '{}'", token.token),
-            token.position,
-        ))
+        Err(self.parse_error(format!("Unexpected token: '{}'", token.token), token.position))
     }
 
     fn parse_error<Msg: Into<String>>(&self, message: Msg, position: InputPosition) -> Error {
@@ -670,8 +648,7 @@ impl<'a> Parser<'a> {
 
 fn read_stylesheet(base_path: &Path, file_name: &str) -> Result<String> {
     let file_path = base_path.join(file_name);
-    let mut stylesheet_reader =
-        File::open(file_path).chain_err(|| "Failed to open the stylesheet file")?;
+    let mut stylesheet_reader = File::open(file_path).chain_err(|| "Failed to open the stylesheet file")?;
     let mut stylesheet = String::new();
     stylesheet_reader
         .read_to_string(&mut stylesheet)

@@ -168,10 +168,7 @@ impl Styler {
         let mut result: LayerToPropertyMap<'r> = HashMap::new();
 
         for rule in &self.rules {
-            for sel in rule.selectors
-                .iter()
-                .filter(|x| area_matches(area, x, zoom))
-            {
+            for sel in rule.selectors.iter().filter(|x| area_matches(area, x, zoom)) {
                 let layer_id = get_layer_id(sel);
 
                 let update_layer = |layer: &mut PropertyMap<'r>| {
@@ -292,11 +289,7 @@ where
     let get_dashes = |prop_name| match current_layer_map.get(prop_name) {
         Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
         _ => {
-            warn(
-                current_layer_map,
-                prop_name,
-                "expected a sequence of numbers",
-            );
+            warn(current_layer_map, prop_name, "expected a sequence of numbers");
             None
         }
     };
@@ -325,8 +318,7 @@ where
             None
         }
     };
-    let full_casing_width =
-        casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
+    let full_casing_width = casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
 
     Style {
         z_index,

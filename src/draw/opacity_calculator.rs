@@ -14,22 +14,12 @@ pub struct OpacityData {
 }
 
 impl OpacityCalculator {
-    pub fn new(
-        half_line_width: f64,
-        dashes: &Option<Vec<f64>>,
-        line_cap: &Option<LineCap>,
-    ) -> Self {
+    pub fn new(half_line_width: f64, dashes: &Option<Vec<f64>>, line_cap: &Option<LineCap>) -> Self {
         let mut dash_segments = Vec::new();
         let mut len_before = 0.0;
 
         if let Some(ref dashes) = *dashes {
-            compute_segments(
-                half_line_width,
-                dashes,
-                line_cap,
-                &mut dash_segments,
-                &mut len_before,
-            );
+            compute_segments(half_line_width, dashes, line_cap, &mut dash_segments, &mut len_before);
         }
 
         Self {
@@ -72,9 +62,7 @@ impl OpacityCalculator {
         let safe_cmp_floats = |x: &f64, y: &f64| x.partial_cmp(y).unwrap_or(Ordering::Equal);
         let opacities_with_cap_distances = self.dashes
             .iter()
-            .filter_map(|d| {
-                get_opacity_by_segment(dist_rem, d).map(|op| (op, get_distance_in_cap(dist_rem, d)))
-            })
+            .filter_map(|d| get_opacity_by_segment(dist_rem, d).map(|op| (op, get_distance_in_cap(dist_rem, d))))
             .collect::<Vec<_>>();
 
         StartDistanceOpacityData {

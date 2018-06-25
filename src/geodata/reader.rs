@@ -37,8 +37,8 @@ pub struct GeodataReader<'a> {
 
 impl<'a> GeodataReader<'a> {
     pub fn new(file_name: &str) -> Result<GeodataReader<'a>> {
-        let input_file = File::open(file_name)
-            .chain_err(|| format!("Failed to open {} for memory mapping", file_name))?;
+        let input_file =
+            File::open(file_name).chain_err(|| format!("Failed to open {} for memory mapping", file_name))?;
         let mmap = unsafe {
             MmapOptions::new()
                 .map(&input_file)
@@ -51,11 +51,7 @@ impl<'a> GeodataReader<'a> {
         Ok(GeodataReader { handle })
     }
 
-    pub fn get_entities_in_tile(
-        &'a self,
-        t: &tile::Tile,
-        osm_ids: &Option<HashSet<u64>>,
-    ) -> OsmEntities<'a> {
+    pub fn get_entities_in_tile(&'a self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities<'a> {
         let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
 
@@ -168,10 +164,7 @@ impl<'a> GeodataReader<'a> {
         let node_ids_start_pos = mem::size_of::<u64>();
         let node_ids = self.get_ints_by_ref(&bytes[node_ids_start_pos..]);
         Way {
-            entity: BaseOsmEntity {
-                bytes,
-                reader: self,
-            },
+            entity: BaseOsmEntity { bytes, reader: self },
             node_ids,
         }
     }
@@ -181,10 +174,7 @@ impl<'a> GeodataReader<'a> {
         let way_ids_start_pos = mem::size_of::<u64>();
         let way_ids = self.get_ints_by_ref(&bytes[way_ids_start_pos..]);
         Relation {
-            entity: BaseOsmEntity {
-                bytes,
-                reader: self,
-            },
+            entity: BaseOsmEntity { bytes, reader: self },
             way_ids,
         }
     }
@@ -226,11 +216,8 @@ impl<'a> GeodataReader<'a> {
     }
 }
 
-fn insert_entity_if_needed<'a, E>(
-    entity: E,
-    osm_ids: &Option<HashSet<u64>>,
-    result: &mut HashSet<E>,
-) where
+fn insert_entity_if_needed<'a, E>(entity: E, osm_ids: &Option<HashSet<u64>>, result: &mut HashSet<E>)
+where
     E: OsmEntity<'a> + Hash + Eq,
 {
     let should_insert = match *osm_ids {

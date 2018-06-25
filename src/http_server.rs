@@ -25,8 +25,7 @@ pub fn run_server(
     osm_ids: Option<HashSet<u64>>,
 ) -> Result<()> {
     let (base_path, file_name) = split_stylesheet_path(stylesheet_file)?;
-    let rules =
-        parse_file(&base_path, &file_name).chain_err(|| "Failed to parse the stylesheet file")?;
+    let rules = parse_file(&base_path, &file_name).chain_err(|| "Failed to parse the stylesheet file")?;
 
     let server = Arc::new(HttpServer {
         styler: Styler::new(rules, stylesheet_type),
@@ -57,8 +56,7 @@ pub fn run_server(
         }));
     }
 
-    let tcp_listener =
-        TcpListener::bind(address).chain_err(|| format!("Failed to bind to {}", address))?;
+    let tcp_listener = TcpListener::bind(address).chain_err(|| format!("Failed to bind to {}", address))?;
     let mut thread_id = 0;
 
     for tcp_stream in tcp_listener.incoming() {
@@ -112,9 +110,7 @@ impl<'a> HttpServer<'a> {
         };
 
         let entities = self.reader.get_entities_in_tile(&tile, &self.osm_ids);
-        let tile_png_bytes = self.drawer
-            .draw_tile(&entities, &tile, &self.styler)
-            .unwrap();
+        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
 
         let header = [
             "HTTP/1.1 200 OK",
@@ -180,9 +176,7 @@ fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String)> {
     let file_name = result
         .file_name()
         .and_then(|x| x.to_str().map(|y| y.to_string()))
-        .ok_or_else(|| {
-            ErrorKind::Msg(format!("Failed to extract the file name for {}", file_path))
-        })?;
+        .ok_or_else(|| ErrorKind::Msg(format!("Failed to extract the file name for {}", file_path)))?;
     result.pop();
     Ok((result, file_name))
 }

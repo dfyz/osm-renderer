@@ -20,8 +20,7 @@ pub fn draw_lines<I>(
     let half_width = width / 2.0;
     let line_cap_for_dashes = if use_caps_for_dashes { line_cap } else { &None };
     let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap_for_dashes);
-    let opacity_calculator_for_outer_caps =
-        OpacityCalculator::new(half_width, &Some(vec![0.0]), line_cap);
+    let opacity_calculator_for_outer_caps = OpacityCalculator::new(half_width, &Some(vec![0.0]), line_cap);
 
     let has_caps = is_non_trivial_cap(line_cap);
 
@@ -81,8 +80,7 @@ fn draw_line(
     let (mn, mx) = swap_x_y_if_needed(&mut x0, &mut y0, should_swap_x_y);
     let (mn_last, mx_last) = swap_x_y_if_needed(p2.x, p2.y, should_swap_x_y);
     let (mn_delta, mx_delta) = swap_x_y_if_needed(dx, dy, should_swap_x_y);
-    let (mn_inc, mx_inc) =
-        swap_x_y_if_needed(get_inc(p1.x, p2.x), get_inc(p1.y, p2.y), should_swap_x_y);
+    let (mn_inc, mx_inc) = swap_x_y_if_needed(get_inc(p1.x, p2.x), get_inc(p1.y, p2.y), should_swap_x_y);
 
     let mut error = 0;
     let mut p_error = 0;
@@ -98,12 +96,8 @@ fn draw_line(
         was_corrected
     };
 
-    let center_dist_numer_const =
-        (i64::from(p2.x) * i64::from(p1.y)) - (i64::from(p2.y) * i64::from(p1.x));
-    let (sdx, sdy) = (
-        i64::from(p2.x) - i64::from(p1.x),
-        i64::from(p2.y) - i64::from(p1.y),
-    );
+    let center_dist_numer_const = (i64::from(p2.x) * i64::from(p1.y)) - (i64::from(p2.y) * i64::from(p1.x));
+    let (sdx, sdy) = (i64::from(p2.x) - i64::from(p1.x), i64::from(p2.y) - i64::from(p1.y));
     let center_dist_denom = (f64::from(dy * dy + dx * dx)).sqrt();
 
     let mut draw_perpendiculars = |mn, mx, p_error| {
@@ -113,10 +107,7 @@ fn draw_line(
             let mut error = mul * p_error;
             loop {
                 let (perp_x, perp_y) = swap_x_y_if_needed(p_mx, p_mn, should_swap_x_y);
-                let current_point = Point {
-                    x: perp_x,
-                    y: perp_y,
-                };
+                let current_point = Point { x: perp_x, y: perp_y };
 
                 let center_dist_numer_non_const = sdy * i64::from(perp_x) - sdx * i64::from(perp_y);
                 let center_dist_raw = center_dist_numer_const + center_dist_numer_non_const;
@@ -131,13 +122,8 @@ fn draw_line(
                     break;
                 }
 
-                let current_color =
-                    RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
-                figure.add(
-                    current_point.x as usize,
-                    current_point.y as usize,
-                    current_color,
-                );
+                let current_color = RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
+                figure.add(current_point.x as usize, current_point.y as usize, current_color);
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;

@@ -14,8 +14,7 @@ use std::path::Path;
 #[test]
 fn test_styling() {
     let bin_file = get_test_path(&["osm", "nano_moscow.bin"]);
-    renderer::geodata::importer::import(&get_test_path(&["osm", "nano_moscow.osm"]), &bin_file)
-        .unwrap();
+    renderer::geodata::importer::import(&get_test_path(&["osm", "nano_moscow.osm"]), &bin_file).unwrap();
     let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
     let styler = Styler::new(
         parse_file(Path::new(&get_test_path(&["mapcss"])), "mapnik.mapcss").unwrap(),
@@ -31,10 +30,7 @@ fn test_styling() {
         &None,
     );
 
-    let named_ways = entities
-        .ways
-        .iter()
-        .filter(|x| x.tags().get_by_key("name").is_some());
+    let named_ways = entities.ways.iter().filter(|x| x.tags().get_by_key("name").is_some());
     let styles = styler.style_entities(named_ways, 18);
 
     let get_styles = |id, name| {
@@ -46,33 +42,56 @@ fn test_styling() {
     };
 
     let s1 = get_styles(23_369_934, "Романов переулок");
-    compare_with_josm_style(s1[0], false, "Cascade{ color:#bbbbbb; linecap:Keyword{round}; linejoin:Keyword{round}; width:16.0; z-index:-1.0; }");
-    compare_with_josm_style(s1[1], false, "Cascade{ color:Keyword{white}; dashes:[4.0, 2.0]; linecap:Keyword{round}; linejoin:Keyword{round}; width:13.0; }");
-    compare_with_josm_style(s1[2], false, "Cascade{ color:#6c70d5; dashes:[0.0, 12.0, 10.0, 152.0]; linejoin:Keyword{bevel}; width:1.0; z-index:15.0; }");
-    compare_with_josm_style(s1[3], false, "Cascade{ color:#6c70d5; dashes:[0.0, 12.0, 9.0, 153.0]; linejoin:Keyword{bevel}; width:2.0; z-index:15.1; }");
-    compare_with_josm_style(s1[4], false, "Cascade{ color:#6c70d5; dashes:[0.0, 18.0, 2.0, 154.0]; linejoin:Keyword{bevel}; width:3.0; z-index:15.2; }");
-    compare_with_josm_style(s1[5], false, "Cascade{ color:#6c70d5; dashes:[0.0, 18.0, 1.0, 155.0]; linejoin:Keyword{bevel}; width:4.0; z-index:15.3; }");
+    compare_with_josm_style(
+        s1[0],
+        false,
+        "Cascade{ color:#bbbbbb; linecap:Keyword{round}; linejoin:Keyword{round}; width:16.0; z-index:-1.0; }",
+    );
+    compare_with_josm_style(
+        s1[1],
+        false,
+        "Cascade{ color:Keyword{white}; dashes:[4.0, 2.0]; linecap:Keyword{round}; linejoin:Keyword{round}; width:13.0; }",
+    );
+    compare_with_josm_style(
+        s1[2],
+        false,
+        "Cascade{ color:#6c70d5; dashes:[0.0, 12.0, 10.0, 152.0]; linejoin:Keyword{bevel}; width:1.0; z-index:15.0; }",
+    );
+    compare_with_josm_style(
+        s1[3],
+        false,
+        "Cascade{ color:#6c70d5; dashes:[0.0, 12.0, 9.0, 153.0]; linejoin:Keyword{bevel}; width:2.0; z-index:15.1; }",
+    );
+    compare_with_josm_style(
+        s1[4],
+        false,
+        "Cascade{ color:#6c70d5; dashes:[0.0, 18.0, 2.0, 154.0]; linejoin:Keyword{bevel}; width:3.0; z-index:15.2; }",
+    );
+    compare_with_josm_style(
+        s1[5],
+        false,
+        "Cascade{ color:#6c70d5; dashes:[0.0, 18.0, 1.0, 155.0]; linejoin:Keyword{bevel}; width:4.0; z-index:15.3; }",
+    );
 
     let s2 = get_styles(373_569_473, "Аллея Романов");
-    compare_with_josm_style(s2[0], false, "Cascade{ color:Keyword{grey}; linecap:Keyword{round}; linejoin:Keyword{round}; width:9.0; z-index:-1.0; }");
+    compare_with_josm_style(
+        s2[0],
+        false,
+        "Cascade{ color:Keyword{grey}; linecap:Keyword{round}; linejoin:Keyword{round}; width:9.0; z-index:-1.0; }",
+    );
     compare_with_josm_style(
         s2[1],
         false,
         "Cascade{ color:#ededed; linecap:Keyword{round}; linejoin:Keyword{round}; width:8.0; }",
     );
 
-    let building_josm_style = "Cascade{ color:#330066; fill-color:#bca9a9; fill-opacity:0.9; linejoin:Keyword{miter}; width:0.2; z-index:-900.0;";
+    let building_josm_style =
+        "Cascade{ color:#330066; fill-color:#bca9a9; fill-opacity:0.9; linejoin:Keyword{miter}; width:0.2; z-index:-900.0;";
 
     for &(id, name) in &[
-        (
-            31_497_212,
-            "Бизнес-центр «Романов двор»",
-        ),
+        (31_497_212, "Бизнес-центр «Романов двор»"),
         (31_482_164, "Факультет искусств МГУ"),
-        (
-            44_642_919,
-            "Факультет журналистики МГУ",
-        ),
+        (44_642_919, "Факультет журналистики МГУ"),
     ] {
         compare_with_josm_style(get_styles(id, name)[0], true, building_josm_style);
     }

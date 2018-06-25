@@ -16,10 +16,8 @@ use xml::name::OwnedName;
 use xml::reader::{EventReader, XmlEvent};
 
 pub fn import(input: &str, output: &str) -> Result<()> {
-    let input_file =
-        File::open(input).chain_err(|| format!("Failed to open {} for reading", input))?;
-    let output_file =
-        File::create(output).chain_err(|| format!("Failed to open {} for writing", output))?;
+    let input_file = File::open(input).chain_err(|| format!("Failed to open {} for reading", input))?;
+    let output_file = File::create(output).chain_err(|| format!("Failed to open {} for writing", output))?;
 
     let parser = EventReader::new(BufReader::new(input_file));
     let mut writer = BufWriter::new(output_file);
@@ -40,11 +38,7 @@ struct OsmXmlElement {
 }
 
 impl OsmXmlElement {
-    fn new(
-        name: OwnedName,
-        attrs: Vec<OwnedAttribute>,
-        input_position: TextPosition,
-    ) -> OsmXmlElement {
+    fn new(name: OwnedName, attrs: Vec<OwnedAttribute>, input_position: TextPosition) -> OsmXmlElement {
         let mut attrs = attrs
             .into_iter()
             .map(|x| (x.name.local_name, x.value))
@@ -92,10 +86,7 @@ impl OsmEntity {
             })
     }
 
-    fn get_elems_by_name<'a>(
-        &'a self,
-        name: &'static str,
-    ) -> Box<Iterator<Item = &'a OsmXmlElement> + 'a> {
+    fn get_elems_by_name<'a>(&'a self, name: &'static str) -> Box<Iterator<Item = &'a OsmXmlElement> + 'a> {
         Box::new(self.additional_elems.iter().filter(move |x| x.name == name))
     }
 }
@@ -115,8 +106,7 @@ impl OsmEntityStorage {
 
     fn add(&mut self, entity: OsmEntity) {
         let old_size = self.entities.len();
-        self.global_id_to_local_id
-            .insert(entity.global_id, old_size);
+        self.global_id_to_local_id.insert(entity.global_id, old_size);
         self.entities.push(entity);
     }
 
@@ -143,14 +133,10 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
 
     let mut elem_count = 0;
     loop {
-        let e = parser
-            .next()
-            .chain_err(|| "Failed to parse the input file")?;
+        let e = parser.next().chain_err(|| "Failed to parse the input file")?;
         match e {
             XmlEvent::EndDocument => break,
-            XmlEvent::StartElement {
-                name, attributes, ..
-            } => {
+            XmlEvent::StartElement { name, attributes, .. } => {
                 process_start_element(name, attributes, parser.position(), &mut parsing_state);
                 elem_count += 1;
                 if elem_count % 100_000 == 0 {
@@ -215,11 +201,7 @@ fn process_end_element(name: &OwnedName, parsing_state: &mut ParsedOsmXml) {
 fn get_required_attr<'a>(osm_elem: &'a OsmXmlElement, attr_name: &'static str) -> Result<&'a str> {
     match osm_elem.get_attr(attr_name) {
         Some(value) => Ok(value),
-        None => bail!(
-            "Element {} doesn't have required attribute: {}",
-            osm_elem,
-            attr_name
-        ),
+        None => bail!("Element {} doesn't have required attribute: {}", osm_elem, attr_name),
     }
 }
 
@@ -260,12 +242,10 @@ type RawTags = Vec<(String, String)>;
 fn collect_tags(osm_entity: &OsmEntity) -> RawTags {
     let mut result = osm_entity
         .get_elems_by_name("tag")
-        .filter_map(
-            |x| match (get_required_attr(x, "k"), get_required_attr(x, "v")) {
-                (Ok(k), Ok(v)) => Some((k.to_string(), v.to_string())),
-                _ => None,
-            },
-        )
+        .filter_map(|x| match (get_required_attr(x, "k"), get_required_attr(x, "v")) {
+            (Ok(k), Ok(v)) => Some((k.to_string(), v.to_string())),
+            _ => None,
+        })
         .collect::<Vec<_>>();
 
     result.sort();
@@ -314,12 +294,7 @@ struct TileIdToReferences {
 }
 
 impl TileIdToReferences {
-    fn tile_ref_by_node(
-        &mut self,
-        node: &RawNode,
-        x_delta: i32,
-        y_delta: i32,
-    ) -> &mut TileReferences {
+    fn tile_ref_by_node(&mut self, node: &RawNode, x_delta: i32, y_delta: i32) -> &mut TileReferences {
         let node_tile = tile::coords_to_max_zoom_tile(node);
         let get_real_coord = |c, delta| (c as i32 + delta) as u32;
         self.refs
@@ -331,9 +306,7 @@ impl TileIdToReferences {
     }
 
     fn tile_ref_by_xy(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
-        self.refs
-            .entry((tile_x, tile_y))
-            .or_insert_with(Default::default)
+        self.refs.entry((tile_x, tile_y)).or_insert_with(Default::default)
     }
 }
 
@@ -410,11 +383,7 @@ fn save_ways(writer: &mut Write, ways: &[RawWay], data: &mut BufferedData) -> Re
     Ok(())
 }
 
-fn save_relations(
-    writer: &mut Write,
-    relations: &[RawRelation],
-    data: &mut BufferedData,
-) -> Result<()> {
+fn save_relations(writer: &mut Write, relations: &[RawRelation], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(relations.len())?)?;
     for relation in relations {
         writer.write_u64::<LittleEndian>(relation.global_id)?;
@@ -480,13 +449,11 @@ impl BufferedData {
     fn add_string(&mut self, s: &str) -> (usize, usize) {
         let bytes = s.as_bytes();
         let all_strings = &mut self.all_strings;
-        let offset = self.string_to_offset
-            .entry(s.to_string())
-            .or_insert_with(|| {
-                let offset = all_strings.len();
-                all_strings.extend_from_slice(bytes);
-                offset
-            });
+        let offset = self.string_to_offset.entry(s.to_string()).or_insert_with(|| {
+            let offset = all_strings.len();
+            all_strings.extend_from_slice(bytes);
+            offset
+        });
         (*offset, bytes.len())
     }
 
@@ -500,11 +467,7 @@ impl BufferedData {
     }
 }
 
-fn get_tile_references(
-    nodes: &[RawNode],
-    ways: &[RawWay],
-    relations: &[RawRelation],
-) -> TileIdToReferences {
+fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelation]) -> TileIdToReferences {
     let mut result: TileIdToReferences = Default::default();
 
     for (i, node) in nodes.iter().enumerate() {
@@ -515,10 +478,7 @@ fn get_tile_references(
             for dx in &deltas {
                 for dy in &deltas {
                     if *dx != 0 || *dy != 0 {
-                        result
-                            .tile_ref_by_node(node, *dx, *dy)
-                            .local_node_ids
-                            .insert(i);
+                        result.tile_ref_by_node(node, *dx, *dy).local_node_ids.insert(i);
                     }
                 }
             }
@@ -665,11 +625,7 @@ mod tests {
         }
 
         let reader = ::geodata::reader::GeodataReader::new(tmp_path.to_str().unwrap()).unwrap();
-        let tile = ::tile::Tile {
-            zoom: 15,
-            x: 0,
-            y: 1,
-        };
+        let tile = ::tile::Tile { zoom: 15, x: 0, y: 1 };
         use geodata::reader::OsmEntity;
         let node_ids = reader
             .get_entities_in_tile(&tile, &None)
