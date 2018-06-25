@@ -60,26 +60,23 @@ impl Figure {
     }
 
     pub fn update_from(&mut self, other: &Figure) {
-        let mut is_good = true;
         for (other_y, other_x_to_color) in other.pixels.iter() {
+            if other_x_to_color.is_empty() {
+                continue;
+            }
             if let Some(our_x_to_color) = self.pixels.get(other_y) {
-                if !our_x_to_color.is_empty() {
-                    if our_x_to_color
-                        .range(other_x_to_color.keys().min().unwrap()..=other_x_to_color.keys().max().unwrap())
-                        .next()
-                        .is_some()
-                    {
-                        is_good = false;
-                        break;
-                    }
+                if our_x_to_color
+                    .range(other_x_to_color.keys().min().unwrap()..=other_x_to_color.keys().max().unwrap())
+                    .next()
+                    .is_some()
+                {
+                    return;
                 }
             }
         }
-        if is_good {
-            for (other_y, other_x_to_color) in other.pixels.iter() {
-                for (other_x, other_color) in other_x_to_color.iter() {
-                    self.add(*other_x, *other_y, other_color.clone());
-                }
+        for (other_y, other_x_to_color) in other.pixels.iter() {
+            for (other_x, other_color) in other_x_to_color.iter() {
+                self.add(*other_x, *other_y, other_color.clone());
             }
         }
     }
