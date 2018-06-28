@@ -528,11 +528,11 @@ mod tests {
         assert_eq!(
             tokenize(&unindent(s)),
             expected
-                .iter()
-                .map(|&(ref token, line, ch)| TokenWithPosition {
+                .into_iter()
+                .map(|(ref token, line, ch)| TokenWithPosition {
                     token: token.clone(),
                     position: InputPosition {
-                        line: line,
+                        line,
                         character: ch
                     },
                 })

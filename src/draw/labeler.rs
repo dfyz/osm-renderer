@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 pub struct Labeler {
-    icon_cache: RwLock<HashMap<String, Option<Icon>>>,
+    icon_cache: IconCache,
     base_path: PathBuf,
     text_placer: TextPlacer,
 }
@@ -16,9 +16,9 @@ pub struct Labeler {
 impl Labeler {
     pub fn new(base_path: &Path) -> Labeler {
         Labeler {
-            icon_cache: Default::default(),
+            icon_cache: IconCache::default(),
             base_path: base_path.to_owned(),
-            text_placer: TextPlacer::new(),
+            text_placer: TextPlacer::default(),
         }
     }
 
@@ -95,3 +95,5 @@ impl Labeler {
             });
     }
 }
+
+type IconCache = RwLock<HashMap<String, Option<Icon>>>;

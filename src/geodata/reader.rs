@@ -64,7 +64,7 @@ impl<'a> GeodataReader<'a> {
         t: &tile::Tile,
         osm_ids: &Option<HashSet<u64>>,
     ) -> OsmEntities<'a> {
-        let mut entities: OsmEntities = Default::default();
+        let mut entities = OsmEntities::default();
 
         let deltas = [-1, 0, 1];
         for dx in &deltas {
@@ -86,7 +86,7 @@ impl<'a> GeodataReader<'a> {
         let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
 
-        let mut result: OsmEntities<'a> = Default::default();
+        let mut result = OsmEntities::default();
 
         let tile_count = self.tile_count();
         while start_from_index < tile_count {

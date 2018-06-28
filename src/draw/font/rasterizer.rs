@@ -19,13 +19,15 @@ pub struct Rasterizer {
 
 impl Rasterizer {
     pub fn draw_line(&mut self, x0: f64, y0: f64, x1: f64, y1: f64) {
-        if y0 == y1 {
+        let delta = y1 - y0;
+
+        if delta == 0.0 {
             return;
         }
 
         let sign = if y0 <= y1 { 1.0 } else { -1.0 };
 
-        let slope = (x1 - x0) / (y1 - y0);
+        let slope = (x1 - x0) / delta;
         let eval_x_at_y = |y| x0 + (y - y0) * slope;
         let eval_y_at_x = |x| y0 + (x - x0) * slope.recip();
 
@@ -33,10 +35,10 @@ impl Rasterizer {
         let y_max = y0.max(y1);
 
         for y in (y_min.floor() as i32)..=(y_max.floor() as i32) {
-            let mut current_stripes = self.stripes.entry(y).or_insert_with(|| Default::default());
+            let mut current_stripes = self.stripes.entry(y).or_insert_with(Default::default);
 
-            let y_bottom = (y as f64).max(y_min);
-            let y_top = ((y + 1) as f64).min(y_max);
+            let y_bottom = f64::from(y).max(y_min);
+            let y_top = f64::from(y + 1).min(y_max);
             let y_delta = y_top - y_bottom;
 
             let x_at_bottom = eval_x_at_y(y_bottom);
@@ -50,8 +52,8 @@ impl Rasterizer {
 
             let x_to = x_largest.floor() as i32;
             for x in (x_smallest.floor() as i32)..=x_to {
-                let x_left = (x as f64).max(x_smallest);
-                let x_next = (x + 1) as f64;
+                let x_left = f64::from(x).max(x_smallest);
+                let x_next = f64::from(x + 1) as f64;
                 let x_right = x_next.min(x_largest);
 
                 let mut pixel_area = (x_next - x_right) * y_delta;
@@ -113,7 +115,7 @@ impl Rasterizer {
         }
 
         let black = Color { r: 0, g: 0, b: 0 };
-        for (y, stripe) in self.stripes.iter() {
+        for (y, stripe) in &self.stripes {
             let cur_a = stripe.a.iter().collect();
             let cur_s = stripe.s.iter().collect();
             let mut a_idx = 0;

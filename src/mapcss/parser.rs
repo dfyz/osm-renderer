@@ -226,7 +226,7 @@ pub fn parse_file(base_path: &Path, file_name: &str) -> Result<Vec<Rule>> {
         tokenizer: Tokenizer::new(&content),
         base_path: base_path.to_owned(),
         file_name: file_name.to_string(),
-        color_defs: Default::default(),
+        color_defs: ColorDefs::default(),
     };
     parser.parse()
 }

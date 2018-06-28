@@ -20,7 +20,7 @@ impl Icon {
         let decoder = Decoder::new(icon_file);
         let (info, mut reader) = decoder.read_info().chain_err(|| "Icon is not a valid PNG file")?;
 
-        let mut pixels: Vec<RgbaColor> = Default::default();
+        let mut pixels = Vec::<RgbaColor>::default();
         while let Some(row) = reader.next_row().chain_err(|| "Failed to read a PNG pixel")? {
             let mut idx = 0;
             while idx < row.len() {

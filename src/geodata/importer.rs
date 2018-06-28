@@ -305,7 +305,7 @@ impl TileIdToReferences {
 }
 
 fn save_to_internal_format(writer: &mut Write, osm_xml: &ParsedOsmXml) -> Result<()> {
-    let mut buffered_data: BufferedData = Default::default();
+    let mut buffered_data = BufferedData::default();
 
     let mut nodes = Vec::new();
     for n in &osm_xml.node_storage.entities {
@@ -462,7 +462,7 @@ impl BufferedData {
 }
 
 fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelation]) -> TileIdToReferences {
-    let mut result: TileIdToReferences = Default::default();
+    let mut result = TileIdToReferences::default();
 
     for (i, node) in nodes.iter().enumerate() {
         result.tile_ref_by_node(node).local_node_ids.insert(i);
@@ -579,16 +579,16 @@ mod tests {
                 global_id: idx as u64,
                 lat: 1.0,
                 lon: 1.0,
-                tags: Default::default(),
+                tags: RawTags::default(),
             });
         }
 
-        let mut tile_refs: TileIdToReferences = Default::default();
+        let mut tile_refs = TileIdToReferences::default();
         for (idx, &(x, y)) in tile_ids.iter().enumerate() {
             tile_refs.refs.entry((x, y)).or_insert(TileReferences {
                 local_node_ids: [idx].iter().cloned().collect(),
-                local_way_ids: Default::default(),
-                local_relation_ids: Default::default(),
+                local_way_ids: BTreeSet::<usize>::default(),
+                local_relation_ids: BTreeSet::<usize>::default(),
             });
         }
 
@@ -599,7 +599,7 @@ mod tests {
             let tmp_file = File::create(&tmp_path).unwrap();
             let mut writer = BufWriter::new(tmp_file);
 
-            let mut data: BufferedData = Default::default();
+            let mut data = BufferedData::default();
             save_nodes(&mut writer, &nodes, &mut data).unwrap();
             save_ways(&mut writer, &[], &mut data).unwrap();
             save_relations(&mut writer, &[], &mut data).unwrap();

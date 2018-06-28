@@ -11,7 +11,7 @@ pub fn fill_contour<I>(points: I, color: &Color, opacity: f64, figure: &mut Figu
 where
     I: Iterator<Item = (Point, Point)>,
 {
-    let mut y_to_edges = Default::default();
+    let mut y_to_edges = EdgesByY::default();
     let fill_color = RgbaColor::from_color(color, opacity);
 
     for (idx, (p1, p2)) in points.enumerate() {

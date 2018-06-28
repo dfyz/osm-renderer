@@ -10,13 +10,15 @@ pub struct TextPlacer {
     font: FontInfo<&'static [u8]>,
 }
 
-impl TextPlacer {
-    pub fn new() -> TextPlacer {
+impl Default for TextPlacer {
+    fn default() -> Self {
         TextPlacer {
             font: FontInfo::new(FONT_DATA, 0).unwrap(),
         }
     }
+}
 
+impl TextPlacer {
     pub fn place(
         &self,
         on: &impl Labelable,
@@ -27,10 +29,10 @@ impl TextPlacer {
         y_offset: usize,
         figure: &mut Figure,
     ) {
-        let scale = self.font.scale_for_pixel_height(font_size as f32) as f64;
+        let scale = f64::from(self.font.scale_for_pixel_height(font_size as f32));
         let glyphs = self.text_to_glyphs(text, scale);
 
-        let mut rasterizer: Rasterizer = Default::default();
+        let mut rasterizer = Rasterizer::default();
         let vm = self.get_v_metrics(scale);
 
         match text_pos {
@@ -57,7 +59,7 @@ impl TextPlacer {
                 let mut cur_dist = (total_way_length - glyphs.total_width) / 2.0;
 
                 let glyph_center_y = (vm.descent + vm.ascent) / 2.0;
-                for glyph in glyphs.glyphs.iter() {
+                for glyph in &glyphs.glyphs {
                     let glyph_center_x = glyph.width / 2.0;
                     let way_pos = compute_way_position(&points, cur_dist + glyph_center_x);
 
@@ -113,7 +115,7 @@ impl TextPlacer {
                     cur_y -= total_height / 2.0;
                 }
 
-                for (row, row_width) in glyph_rows.iter() {
+                for (row, row_width) in &glyph_rows {
                     let mut cur_x = center_x - row_width / 2.0;
                     for glyph in row.iter() {
                         let baseline = cur_y + vm.ascent;
@@ -135,13 +137,13 @@ impl TextPlacer {
 
     fn text_to_glyphs(&self, text: &str, scale: f64) -> Glyphs {
         let mut result = Glyphs {
-            glyphs: Default::default(),
+            glyphs: Vec::<Glyph>::default(),
             total_width: 0.0,
         };
         let mut prev_glyph_id: Option<u32> = None;
         for ch in text.chars() {
             let glyph_id = self.font.find_glyph_index(ch as u32);
-            let mut advance_width = self.font.get_glyph_h_metrics(glyph_id).advance_width as f64;
+            let mut advance_width = f64::from(self.font.get_glyph_h_metrics(glyph_id).advance_width);
 
             let mut glyph = Glyph {
                 ch,
@@ -150,7 +152,7 @@ impl TextPlacer {
             };
 
             if let Some(prev_glyph) = prev_glyph_id {
-                let kern_advance = self.font.get_glyph_kern_advance(prev_glyph, glyph_id) as f64;
+                let kern_advance = f64::from(self.font.get_glyph_kern_advance(prev_glyph, glyph_id));
                 glyph.width += kern_advance * scale;
             }
 
@@ -219,11 +221,11 @@ struct Glyphs {
     total_width: f64,
 }
 
-fn get_angle(points: &Vec<Point>, start_idx: usize) -> f64 {
+fn get_angle(points: &[Point], start_idx: usize) -> f64 {
     let from = &points[start_idx];
     let to = &points[start_idx + 1];
-    let x = (to.x - from.x) as f64;
-    let y = (to.y - from.y) as f64;
+    let x = f64::from(to.x - from.x);
+    let y = f64::from(to.y - from.y);
     y.atan2(x)
 }
 
@@ -233,7 +235,7 @@ struct WayPosition {
     angle: f64,
 }
 
-fn compute_way_position(points: &Vec<Point>, advance_by: f64) -> WayPosition {
+fn compute_way_position(points: &[Point], advance_by: f64) -> WayPosition {
     let mut point_idx = 0;
     let mut to_travel = advance_by;
     while to_travel > 0.0 && point_idx + 1 < points.len() {
@@ -255,8 +257,8 @@ fn compute_way_position(points: &Vec<Point>, advance_by: f64) -> WayPosition {
     }
     let last_point = points.iter().last().unwrap();
     WayPosition {
-        x: last_point.x as f64,
-        y: last_point.y as f64,
+        x: f64::from(last_point.x),
+        y: f64::from(last_point.y),
         angle: get_angle(points, points.len() - 2),
     }
 }

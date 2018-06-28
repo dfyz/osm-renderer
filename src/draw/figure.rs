@@ -13,7 +13,7 @@ pub struct BoundingBox {
 }
 
 pub struct Figure {
-    pub pixels: BTreeMap<usize, BTreeMap<usize, RgbaColor>>,
+    pub pixels: Pixels,
     pub bounding_box: BoundingBox,
 }
 
@@ -30,14 +30,14 @@ impl Figure {
         };
 
         Figure {
-            pixels: Default::default(),
+            pixels: Pixels::default(),
             bounding_box,
         }
     }
 
     pub fn clean_copy(&self) -> Figure {
         Figure {
-            pixels: Default::default(),
+            pixels: Pixels::default(),
             bounding_box: self.bounding_box.clone(),
         }
     }
@@ -81,3 +81,5 @@ impl Figure {
         }
     }
 }
+
+type Pixels = BTreeMap<usize, BTreeMap<usize, RgbaColor>>;
