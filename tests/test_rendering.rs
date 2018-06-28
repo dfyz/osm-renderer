@@ -79,7 +79,7 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32)
     for y in min_y..(max_y + 1) {
         for x in min_x..(max_x + 1) {
             let tile_to_draw = renderer::tile::Tile { zoom, x, y };
-            let entities = reader.get_entities_in_tile(&tile_to_draw, &None);
+            let entities = reader.get_entities_in_tile_with_neighbors(&tile_to_draw, &None);
             let rendered = drawer.draw_to_pixels(&entities, &tile_to_draw, &styler);
             rendered_tiles
                 .entry(tile_to_draw.zoom)

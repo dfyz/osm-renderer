@@ -294,15 +294,9 @@ struct TileIdToReferences {
 }
 
 impl TileIdToReferences {
-    fn tile_ref_by_node(&mut self, node: &RawNode, x_delta: i32, y_delta: i32) -> &mut TileReferences {
+    fn tile_ref_by_node(&mut self, node: &RawNode) -> &mut TileReferences {
         let node_tile = tile::coords_to_max_zoom_tile(node);
-        let get_real_coord = |c, delta| (c as i32 + delta) as u32;
-        self.refs
-            .entry((
-                get_real_coord(node_tile.x, x_delta),
-                get_real_coord(node_tile.y, y_delta),
-            ))
-            .or_insert_with(Default::default)
+        self.tile_ref_by_xy(node_tile.x, node_tile.y)
     }
 
     fn tile_ref_by_xy(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
@@ -471,18 +465,7 @@ fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelat
     let mut result: TileIdToReferences = Default::default();
 
     for (i, node) in nodes.iter().enumerate() {
-        result.tile_ref_by_node(node, 0, 0).local_node_ids.insert(i);
-
-        if !node.tags.is_empty() {
-            let deltas = [-1, 0, 1];
-            for dx in &deltas {
-                for dy in &deltas {
-                    if *dx != 0 || *dy != 0 {
-                        result.tile_ref_by_node(node, *dx, *dy).local_node_ids.insert(i);
-                    }
-                }
-            }
-        }
+        result.tile_ref_by_node(node).local_node_ids.insert(i);
     }
 
     for (i, way) in ways.iter().enumerate() {

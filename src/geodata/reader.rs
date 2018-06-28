@@ -59,6 +59,29 @@ impl<'a> GeodataReader<'a> {
         Ok(GeodataReader { handle })
     }
 
+    pub fn get_entities_in_tile_with_neighbors(
+        &'a self,
+        t: &tile::Tile,
+        osm_ids: &Option<HashSet<u64>>,
+    ) -> OsmEntities<'a> {
+        let mut entities: OsmEntities = Default::default();
+
+        let deltas = [-1, 0, 1];
+        for dx in &deltas {
+            for dy in &deltas {
+                let adjacent_tile = tile::Tile {
+                    x: (t.x as i32 + dx) as u32,
+                    y: (t.y as i32 + dy) as u32,
+                    zoom: t.zoom,
+                };
+                let adjacent_entities = self.get_entities_in_tile(&adjacent_tile, osm_ids);
+                entities.merge_from(adjacent_entities);
+            }
+        }
+
+        entities
+    }
+
     pub fn get_entities_in_tile(&'a self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities<'a> {
         let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;

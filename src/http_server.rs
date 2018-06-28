@@ -1,7 +1,7 @@
 use errors::*;
 
 use draw::drawer::Drawer;
-use geodata::reader::{GeodataReader, OsmEntities};
+use geodata::reader::GeodataReader;
 use mapcss::parser::parse_file;
 use mapcss::styler::{StyleType, Styler};
 use num_cpus;
@@ -109,21 +109,7 @@ impl<'a> HttpServer<'a> {
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
         };
 
-        let mut entities: OsmEntities = Default::default();
-
-        let deltas = [-1, 0, 1];
-        for dx in &deltas {
-            for dy in &deltas {
-                let adjacent_tile = Tile {
-                    x: (tile.x as i32 + dx) as u32,
-                    y: (tile.y as i32 + dy) as u32,
-                    zoom: tile.zoom,
-                };
-                let adjacent_entities = self.reader.get_entities_in_tile(&adjacent_tile, &self.osm_ids);
-                entities.merge_from(adjacent_entities);
-            }
-        }
-
+        let entities = self.reader.get_entities_in_tile_with_neighbors(&tile, &self.osm_ids);
         let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
 
         let header = [
