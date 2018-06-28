@@ -361,7 +361,7 @@ where
         icon_image: get_string("icon-image"),
         text,
         text_position: get_text_position("text-position"),
-        font_size: get_num(current_layer_map, "font-size").map(|x| x * 1.5),
+        font_size: get_num(current_layer_map, "font-size"),
     }
 }
 
