@@ -17,9 +17,9 @@ impl Point {
     }
 
     pub fn dist(&self, other: &Point) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        (f64::from(dx * dx) + f64::from(dy * dy)).sqrt()
+        let dx = f64::from(self.x - other.x);
+        let dy = f64::from(self.y - other.y);
+        (dx * dx + dy * dy).sqrt()
     }
 
     pub fn push_away_from(&self, other: &Point, by: f64) -> Point {

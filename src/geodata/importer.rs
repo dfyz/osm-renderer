@@ -295,7 +295,7 @@ struct TileIdToReferences {
 
 impl TileIdToReferences {
     fn tile_ref_by_node(&mut self, node: &RawNode) -> &mut TileReferences {
-        let node_tile = tile::coords_to_max_zoom_tile(node);
+        let node_tile = tile::coords_to_geodata_tile(node);
         self.tile_ref_by_xy(node_tile.x, node_tile.y)
     }
 
@@ -499,7 +499,7 @@ fn insert_entity_id_to_tiles<'a, I>(
         _ => return,
     };
 
-    let first_tile = tile::coords_to_max_zoom_tile(first_node);
+    let first_tile = tile::coords_to_geodata_tile(first_node);
     let mut tile_range = tile::TileRange {
         min_x: first_tile.x,
         max_x: first_tile.x,
@@ -507,7 +507,7 @@ fn insert_entity_id_to_tiles<'a, I>(
         max_y: first_tile.y,
     };
     for node in nodes {
-        let next_tile = tile::coords_to_max_zoom_tile(node);
+        let next_tile = tile::coords_to_geodata_tile(node);
         tile_range.min_x = min(tile_range.min_x, next_tile.x);
         tile_range.max_x = max(tile_range.max_x, next_tile.x);
         tile_range.min_y = min(tile_range.min_y, next_tile.y);

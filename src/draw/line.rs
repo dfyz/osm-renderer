@@ -98,7 +98,8 @@ fn draw_line(
 
     let center_dist_numer_const = (i64::from(p2.x) * i64::from(p1.y)) - (i64::from(p2.y) * i64::from(p1.x));
     let (sdx, sdy) = (i64::from(p2.x) - i64::from(p1.x), i64::from(p2.y) - i64::from(p1.y));
-    let center_dist_denom = (f64::from(dy * dy + dx * dx)).sqrt();
+    let (dx_float, dy_float) = (f64::from(dx), f64::from(dy));
+    let center_dist_denom = (dy_float * dy_float + dx_float * dx_float).sqrt();
 
     let mut draw_perpendiculars = |mn, mx, p_error| {
         let mut draw_one_perpendicular = |mul| {
