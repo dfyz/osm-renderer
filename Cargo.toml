@@ -10,6 +10,7 @@ memmap = "*"
 num_cpus = "*"
 owning_ref = "*"
 png = "*"
+stb_truetype = "*"
 xml-rs = "*"
 
 # So that we have line numbers in backtraces with RUST_BACKTRACE=1.

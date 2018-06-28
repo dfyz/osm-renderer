@@ -27,6 +27,14 @@ pub struct OsmEntities<'a> {
     pub relations: HashSet<Relation<'a>>,
 }
 
+impl<'a> OsmEntities<'a> {
+    pub fn merge_from(&mut self, other: OsmEntities<'a>) {
+        self.nodes.extend(other.nodes);
+        self.ways.extend(other.ways);
+        self.relations.extend(other.relations);
+    }
+}
+
 pub trait OsmArea {
     fn is_closed(&self) -> bool;
 }

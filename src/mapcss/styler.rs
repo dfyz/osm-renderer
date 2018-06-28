@@ -12,6 +12,12 @@ pub enum LineCap {
     Square,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum TextPosition {
+    Center,
+    Line,
+}
+
 pub fn is_non_trivial_cap(line_cap: &Option<LineCap>) -> bool {
     match *line_cap {
         Some(LineCap::Square) | Some(LineCap::Round) => true,
@@ -49,6 +55,9 @@ pub struct Style {
     pub casing_line_cap: Option<LineCap>,
 
     pub icon_image: Option<String>,
+    pub text: Option<String>,
+    pub text_position: Option<TextPosition>,
+    pub font_size: Option<f64>,
 }
 
 pub struct Styler {
@@ -286,6 +295,15 @@ where
         }
     };
 
+    let get_text_position = |prop_name| match get_id(prop_name) {
+        Some("center") => Some(TextPosition::Center),
+        Some("line") => Some(TextPosition::Line),
+        _ => {
+            warn(current_layer_map, prop_name, "unknown text position type");
+            None
+        }
+    };
+
     let get_dashes = |prop_name| match current_layer_map.get(prop_name) {
         Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
         _ => {
@@ -319,6 +337,7 @@ where
         }
     };
     let full_casing_width = casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
+    let text = get_string("text").and_then(|text_key| osm_entity.tags().get_by_key(&text_key).map(|x| x.to_string()));
 
     Style {
         z_index,
@@ -340,6 +359,9 @@ where
         casing_line_cap: get_line_cap("casing-linecap"),
 
         icon_image: get_string("icon-image"),
+        text,
+        text_position: get_text_position("text-position"),
+        font_size: get_num(current_layer_map, "font-size").map(|x| x * 1.5),
     }
 }
 

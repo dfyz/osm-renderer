@@ -5,6 +5,7 @@ extern crate memmap;
 extern crate num_cpus;
 extern crate owning_ref;
 extern crate png;
+extern crate stb_truetype;
 extern crate xml;
 
 pub mod errors {

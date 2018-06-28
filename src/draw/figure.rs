@@ -23,10 +23,10 @@ impl Figure {
         let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
         let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
         let bounding_box = BoundingBox {
-            min_x: tile_start_x,
-            max_x: to_tile_end(tile_start_x),
-            min_y: tile_start_y,
-            max_y: to_tile_end(tile_start_y),
+            min_x: tile_start_x - TILE_SIZE,
+            max_x: to_tile_end(tile_start_x) + TILE_SIZE,
+            min_y: tile_start_y - TILE_SIZE,
+            max_y: to_tile_end(tile_start_y) + TILE_SIZE,
         };
 
         Figure {

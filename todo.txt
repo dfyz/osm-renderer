@@ -1,7 +1,6 @@
 Must have:
-  * draw labels (probably the hardest part; maybe look at font-rs for inspiration)
+  * improve rendering performance
   * implement the algo from https://blog.mapbox.com/a-new-algorithm-for-finding-a-visual-center-of-a-polygon-7c77e6492fbc
-  * render meta-tiles to avoid text/icon clipping
 
 Nice to have:
   * correctly render multipolygons with touching inner rings (e.g., https://www.openstreetmap.org/relation/4485484)
