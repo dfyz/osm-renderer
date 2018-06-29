@@ -69,6 +69,15 @@ fn main() {
             fail();
         }
     };
+    let font_size_multiplier = style_section.0.get("font-mul").map(|multiplier_str| {
+        match multiplier_str.parse() {
+            Ok(multiplier) => multiplier,
+            Err(_) => {
+                eprintln!("Invalid font size multiplier: {}", multiplier_str);
+                fail();
+            }
+        }
+    });
 
     let osm_ids = if args.len() >= 3 {
         Some(
@@ -81,7 +90,14 @@ fn main() {
         None
     };
 
-    let res = run_server(server_address, geodata_file, stylesheet_file, &stylesheet_type, osm_ids);
+    let res = run_server(
+        server_address,
+        geodata_file,
+        stylesheet_file,
+        &stylesheet_type,
+        font_size_multiplier,
+        osm_ids,
+    );
 
     if let Err(e) = res {
         eprintln!("{}", e.display_chain());

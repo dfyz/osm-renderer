@@ -70,6 +70,7 @@ pub struct Styler {
     pub use_caps_for_dashes: bool,
 
     casing_width_multiplier: f64,
+    font_size_multiplier: Option<f64>,
     rules: Vec<Rule>,
 }
 
@@ -82,7 +83,7 @@ where
 }
 
 impl Styler {
-    pub fn new(rules: Vec<Rule>, style_type: &StyleType) -> Styler {
+    pub fn new(rules: Vec<Rule>, style_type: &StyleType, font_size_multiplier: Option<f64>) -> Styler {
         let use_caps_for_dashes = match *style_type {
             StyleType::Josm => true,
             _ => false,
@@ -98,6 +99,7 @@ impl Styler {
             use_caps_for_dashes,
             canvas_fill_color,
             casing_width_multiplier,
+            font_size_multiplier,
             rules,
         }
     }
@@ -127,6 +129,7 @@ impl Styler {
                             base_layer,
                             default_z_index,
                             self.casing_width_multiplier,
+                            &self.font_size_multiplier,
                             area,
                         ),
                     ))
@@ -233,6 +236,7 @@ fn property_map_to_style<'r, 'e, E>(
     base_layer_map: Option<&'r PropertyMap<'r>>,
     default_z_index: f64,
     casing_width_multiplier: f64,
+    font_size_multiplier: &Option<f64>,
     osm_entity: &E,
 ) -> Style
 where
@@ -344,11 +348,13 @@ where
     let full_casing_width = casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
     let text = get_string("text").and_then(|text_key| osm_entity.tags().get_by_key(&text_key).map(|x| x.to_string()));
 
+    let font_size = get_num(current_layer_map, "font-size").map(|x| x * font_size_multiplier.unwrap_or(1.0));
+
     let text_style = text.map(|text| TextStyle {
         text,
         text_color: get_color("text-color"),
         text_position: get_text_position("text-position"),
-        font_size: get_num(current_layer_map, "font-size"),
+        font_size,
     });
 
     Style {

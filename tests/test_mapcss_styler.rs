@@ -19,6 +19,7 @@ fn test_styling() {
     let styler = Styler::new(
         parse_file(Path::new(&get_test_path(&["mapcss"])), "mapnik.mapcss").unwrap(),
         &StyleType::Josm,
+        None,
     );
 
     let entities = reader.get_entities_in_tile(
