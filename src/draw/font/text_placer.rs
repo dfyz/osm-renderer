@@ -2,6 +2,7 @@ use draw::figure::Figure;
 use draw::font::rasterizer::Rasterizer;
 use draw::labelable::Labelable;
 use draw::point::Point;
+use mapcss::color::Color;
 use mapcss::styler::{TextPosition, TextStyle};
 use stb_truetype::{FontInfo, Vertex, VertexType};
 use tile::TILE_SIZE;
@@ -33,7 +34,11 @@ impl TextPlacer {
         let scale = f64::from(self.font.scale_for_pixel_height(font_size as f32));
         let glyphs = self.text_to_glyphs(&text_style.text, scale);
 
-        let mut rasterizer = Rasterizer::default();
+        let text_color = match text_style.text_color {
+            Some(ref color) => color,
+            _ => &Color { r: 0, g: 0, b: 0 },
+        };
+        let mut rasterizer = Rasterizer::new(text_color);
         let vm = self.get_v_metrics(scale);
 
         match text_pos {

@@ -12,12 +12,19 @@ struct Stripe {
 
 type Stripes = BTreeMap<i32, Stripe>;
 
-#[derive(Default)]
 pub struct Rasterizer {
     stripes: Stripes,
+    color: Color,
 }
 
 impl Rasterizer {
+    pub fn new(color: &Color) -> Rasterizer {
+        Rasterizer {
+            stripes: Stripes::default(),
+            color: color.clone(),
+        }
+    }
+
     pub fn draw_line(&mut self, x0: f64, y0: f64, x1: f64, y1: f64) {
         let delta = y1 - y0;
 
@@ -114,7 +121,6 @@ impl Rasterizer {
             }
         }
 
-        let black = Color { r: 0, g: 0, b: 0 };
         for (y, stripe) in &self.stripes {
             let cur_a = stripe.a.iter().collect();
             let cur_s = stripe.s.iter().collect();
@@ -135,7 +141,7 @@ impl Rasterizer {
             for x in x_min..=x_max {
                 s_acc += extract_val(&cur_s, &mut s_idx, x);
                 let total = extract_val(&cur_a, &mut a_idx, x) + s_acc;
-                figure.add(x as usize, *y as usize, RgbaColor::from_color(&black, total));
+                figure.add(x as usize, *y as usize, RgbaColor::from_color(&self.color, total));
             }
         }
     }
