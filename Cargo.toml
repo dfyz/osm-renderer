@@ -10,6 +10,7 @@ memmap = "*"
 num_cpus = "*"
 owning_ref = "*"
 png = "*"
+rust-ini = "*"
 stb_truetype = "*"
 xml-rs = "*"
 
