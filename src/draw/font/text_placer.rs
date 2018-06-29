@@ -2,7 +2,7 @@ use draw::figure::Figure;
 use draw::font::rasterizer::Rasterizer;
 use draw::labelable::Labelable;
 use draw::point::Point;
-use mapcss::styler::TextPosition;
+use mapcss::styler::{TextPosition, TextStyle};
 use stb_truetype::{FontInfo, Vertex, VertexType};
 use tile::TILE_SIZE;
 
@@ -19,18 +19,19 @@ impl Default for TextPlacer {
 }
 
 impl TextPlacer {
-    pub fn place(
-        &self,
-        on: &impl Labelable,
-        text: &str,
-        text_pos: &TextPosition,
-        font_size: f64,
-        zoom: u8,
-        y_offset: usize,
-        figure: &mut Figure,
-    ) {
+    pub fn place(&self, on: &impl Labelable, text_style: &TextStyle, zoom: u8, y_offset: usize, figure: &mut Figure) {
+        let font_size = match text_style.font_size {
+            Some(font_size) => font_size,
+            _ => return,
+        };
+
+        let text_pos = match text_style.text_position {
+            Some(ref text_pos) => text_pos,
+            _ => return,
+        };
+
         let scale = f64::from(self.font.scale_for_pixel_height(font_size as f32));
-        let glyphs = self.text_to_glyphs(text, scale);
+        let glyphs = self.text_to_glyphs(&text_style.text, scale);
 
         let mut rasterizer = Rasterizer::default();
         let vm = self.get_v_metrics(scale);

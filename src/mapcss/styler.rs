@@ -35,6 +35,13 @@ pub trait StyleableEntity {
     fn matches_object_type(&self, object_type: &ObjectType) -> bool;
 }
 
+pub struct TextStyle {
+    pub text: String,
+    pub text_color: Option<Color>,
+    pub text_position: Option<TextPosition>,
+    pub font_size: Option<f64>,
+}
+
 pub struct Style {
     pub z_index: f64,
 
@@ -55,9 +62,7 @@ pub struct Style {
     pub casing_line_cap: Option<LineCap>,
 
     pub icon_image: Option<String>,
-    pub text: Option<String>,
-    pub text_position: Option<TextPosition>,
-    pub font_size: Option<f64>,
+    pub text_style: Option<TextStyle>,
 }
 
 pub struct Styler {
@@ -339,6 +344,13 @@ where
     let full_casing_width = casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
     let text = get_string("text").and_then(|text_key| osm_entity.tags().get_by_key(&text_key).map(|x| x.to_string()));
 
+    let text_style = text.map(|text| TextStyle {
+        text,
+        text_color: get_color("text-color"),
+        text_position: get_text_position("text-position"),
+        font_size: get_num(current_layer_map, "font-size"),
+    });
+
     Style {
         z_index,
 
@@ -359,9 +371,7 @@ where
         casing_line_cap: get_line_cap("casing-linecap"),
 
         icon_image: get_string("icon-image"),
-        text,
-        text_position: get_text_position("text-position"),
-        font_size: get_num(current_layer_map, "font-size"),
+        text_style,
     }
 }
 

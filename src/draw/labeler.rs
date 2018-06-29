@@ -53,13 +53,8 @@ impl Labeler {
     }
 
     fn label_with_text(&self, entity: &impl Labelable, style: &Style, zoom: u8, y_offset: usize, figure: &mut Figure) {
-        if let Some(ref text) = style.text {
-            if let Some(ref text_pos) = style.text_position {
-                if let Some(font_size) = style.font_size {
-                    self.text_placer
-                        .place(entity, text, text_pos, font_size, zoom, y_offset, figure);
-                }
-            }
+        if let Some(ref text_style) = style.text_style {
+            self.text_placer.place(entity, text_style, zoom, y_offset, figure);
         }
     }
 
