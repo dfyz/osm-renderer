@@ -69,15 +69,16 @@ fn main() {
             fail();
         }
     };
-    let font_size_multiplier = style_section.0.get("font-mul").map(|multiplier_str| {
-        match multiplier_str.parse() {
+    let font_size_multiplier = style_section
+        .0
+        .get("font-mul")
+        .map(|multiplier_str| match multiplier_str.parse() {
             Ok(multiplier) => multiplier,
             Err(_) => {
                 eprintln!("Invalid font size multiplier: {}", multiplier_str);
                 fail();
             }
-        }
-    });
+        });
 
     let osm_ids = if args.len() >= 3 {
         Some(
