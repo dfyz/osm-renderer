@@ -5,6 +5,7 @@ pub mod figure;
 pub mod fill;
 pub mod font;
 pub mod icon;
+pub mod icon_cache;
 pub mod labelable;
 pub mod labeler;
 pub mod line;

@@ -2,6 +2,7 @@ use errors::*;
 
 use draw::figure::Figure;
 use draw::fill::fill_contour;
+use draw::icon_cache::IconCache;
 use draw::labeler::Labeler;
 use draw::line::draw_lines;
 use draw::node_pairs::NodePairCollection;
@@ -15,6 +16,7 @@ use std::path::Path;
 use tile as t;
 
 pub struct Drawer {
+    icon_cache: IconCache,
     labeler: Labeler,
 }
 
@@ -28,7 +30,8 @@ enum DrawType {
 impl Drawer {
     pub fn new(base_path: &Path) -> Drawer {
         Drawer {
-            labeler: Labeler::new(base_path),
+            icon_cache: IconCache::new(base_path),
+            labeler: Labeler::default(),
         }
     }
 
@@ -174,16 +177,20 @@ impl Drawer {
 
         for &(ref area, ref style) in areas {
             match area {
-                StyledArea::Way(way) => self.labeler
-                    .label_entity(*way, style, tile.zoom, &mut all_labels_figure),
-                StyledArea::Relation(rel) => self.labeler
-                    .label_entity(*rel, style, tile.zoom, &mut all_labels_figure),
+                StyledArea::Way(way) => {
+                    self.labeler
+                        .label_entity(*way, style, tile.zoom, &self.icon_cache, &mut all_labels_figure)
+                }
+                StyledArea::Relation(rel) => {
+                    self.labeler
+                        .label_entity(*rel, style, tile.zoom, &self.icon_cache, &mut all_labels_figure)
+                }
             }
         }
 
         for &(node, ref style) in nodes {
             self.labeler
-                .label_entity(node, style, tile.zoom, &mut all_labels_figure);
+                .label_entity(node, style, tile.zoom, &self.icon_cache, &mut all_labels_figure);
         }
 
         draw_figure(&all_labels_figure, image, tile);
