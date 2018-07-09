@@ -1,7 +1,7 @@
 use errors::*;
 
 use draw::figure::Figure;
-use draw::fill::fill_contour;
+use draw::fill::{fill_contour, Filler};
 use draw::icon_cache::IconCache;
 use draw::labeler::Labeler;
 use draw::line::draw_lines;
@@ -119,16 +119,24 @@ impl Drawer {
         let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
 
         let figure = match *draw_type {
-            DrawType::Fill => style.fill_color.as_ref().map(|color| {
-                let mut figure = create_figure();
-                fill_contour(
-                    points.into_iter(),
-                    color,
-                    float_or_one(&style.fill_opacity),
-                    &mut figure,
-                );
-                figure
-            }),
+            DrawType::Fill => {
+                let points_iter = points.into_iter();
+                let opacity = float_or_one(&style.fill_opacity);
+                if let Some(ref color) = style.fill_color {
+                    let mut figure = create_figure();
+                    fill_contour(points_iter, &Filler::Color(color), opacity, &mut figure);
+                    Some(figure)
+                } else if let Some(ref icon_name) = style.fill_image {
+                    let mut figure = create_figure();
+                    let read_icon_cache = self.icon_cache.open_read_session(icon_name);
+                    if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
+                        fill_contour(points_iter, &Filler::Image(icon), opacity, &mut figure);
+                    }
+                    Some(figure)
+                } else {
+                    None
+                }
+            }
             DrawType::Casing => style.casing_color.as_ref().and_then(|color| {
                 let mut figure = create_figure();
                 style.casing_width.map(|casing_width| {

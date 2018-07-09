@@ -177,6 +177,7 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
         casing_line_cap: None,
 
         icon_image: None,
+        fill_image: None,
         text_style: None,
     }
 }

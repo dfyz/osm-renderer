@@ -38,7 +38,7 @@ impl Labeler {
             _ => return 0,
         };
 
-        let read_icon_cache = icon_cache.load_if_needed(icon_name);
+        let read_icon_cache = icon_cache.open_read_session(icon_name);
 
         if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
             let (center_x, center_y) = match entity.get_center(zoom) {

@@ -1,4 +1,5 @@
 use draw::figure::Figure;
+use draw::icon::Icon;
 use draw::point::Point;
 use draw::tile_pixels::RgbaColor;
 use mapcss::color::Color;
@@ -7,12 +8,16 @@ use std::cmp::{max, min};
 use std::collections::BTreeMap;
 use std::collections::Bound::Included;
 
-pub fn fill_contour<I>(points: I, color: &Color, opacity: f64, figure: &mut Figure)
+pub enum Filler<'a> {
+    Color(&'a Color),
+    Image(&'a Icon),
+}
+
+pub fn fill_contour<I>(points: I, filler: &Filler, opacity: f64, figure: &mut Figure)
 where
     I: Iterator<Item = (Point, Point)>,
 {
     let mut y_to_edges = EdgesByY::default();
-    let fill_color = RgbaColor::from_color(color, opacity);
 
     for (idx, (p1, p2)) in points.enumerate() {
         draw_line(idx, &p1, &p2, &mut y_to_edges);
@@ -31,7 +36,15 @@ where
             let from_x = e1.x_min.max(figure.bounding_box.min_x as i32);
             let to_x = e2.x_max.min(figure.bounding_box.max_x as i32) + 1;
             for x in from_x..to_x {
-                figure.add(x as usize, *y as usize, fill_color.clone());
+                let fill_color = match filler {
+                    Filler::Color(color) => RgbaColor::from_color(color, opacity),
+                    Filler::Image(icon) => {
+                        let icon_x = (x as usize) % icon.width;
+                        let icon_y = (*y as usize) % icon.height;
+                        icon.get(icon_x, icon_y)
+                    }
+                };
+                figure.add(x as usize, *y as usize, fill_color);
             }
             idx += 2;
         }

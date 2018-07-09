@@ -62,6 +62,7 @@ pub struct Style {
     pub casing_line_cap: Option<LineCap>,
 
     pub icon_image: Option<String>,
+    pub fill_image: Option<String>,
     pub text_style: Option<TextStyle>,
 }
 
@@ -377,6 +378,7 @@ where
         casing_line_cap: get_line_cap("casing-linecap"),
 
         icon_image: get_string("icon-image"),
+        fill_image: get_string("fill-image"),
         text_style,
     }
 }

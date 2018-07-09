@@ -18,7 +18,7 @@ impl IconCache {
         }
     }
 
-    pub fn load_if_needed(&self, icon_name: &str) -> RwLockReadGuard<NameToIcon> {
+    pub fn open_read_session(&self, icon_name: &str) -> RwLockReadGuard<NameToIcon> {
         {
             let read_cache = self.cache.read().unwrap();
             if read_cache.get(icon_name).is_some() {
