@@ -45,7 +45,7 @@ fn main() {
     }
 
     let config_path = &args[1];
-    let config = match Ini::load_from_file(config_path) {
+    let config = match Ini::load_from_file_noescape(config_path) {
         Ok(config) => config,
         Err(err) => {
             eprintln!("Failed to parse config from {}: {}", config_path, err);
