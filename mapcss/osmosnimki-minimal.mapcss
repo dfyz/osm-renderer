@@ -1,4 +1,5 @@
 canvas {
+    fill-color: #fcf8e4;
     background-color: #fcf8e4;
 }
 
