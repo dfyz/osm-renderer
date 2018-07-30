@@ -455,7 +455,12 @@ impl<'a> Way<'a> {
 
 impl<'a> OsmArea for Way<'a> {
     fn is_closed(&self) -> bool {
-        self.node_count() > 2 && (self.get_node(0) == self.get_node(self.node_count() - 1))
+        if self.node_count() <= 2 {
+            return false;
+        }
+        let first_node = self.get_node(0);
+        let last_node = self.get_node(self.node_count() - 1);
+        (first_node.lat(), first_node.lon()) == (last_node.lat(), last_node.lon())
     }
 }
 
