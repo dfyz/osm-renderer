@@ -64,6 +64,8 @@ area|z14-15[place=locality] {
     text: name;
     font-size: 10;
     text-color: #8b5e3c;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -71,6 +73,8 @@ area|z15-[building][office] {
     text: name;
     font-size: 10;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -78,6 +82,8 @@ area|z15-[landuse=commercial] {
     text: name;
     font-size: 10;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -85,6 +91,8 @@ node|z14-15[place=locality] {
     text: name;
     font-size: 10;
     text-color: #8b5e3c;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -92,6 +100,8 @@ node|z16-[place=locality] {
     text: name;
     font-size: 11;
     text-color: #8b5e3c;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -101,6 +111,8 @@ area|z16-[place=locality] {
     text: name;
     font-size: 11;
     text-color: #8b5e3c;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -133,6 +145,8 @@ area|z15[highway=footway] {
     text: name;
     font-size: 10;
     text-color: #7f747c;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -140,6 +154,8 @@ area|z16-[highway=footway] {
     text: name;
     font-size: 11;
     text-color: #7f747c;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -155,6 +171,8 @@ area|z14-[power=generator] {
     text: name;
     font-size: 11;
     text-color: #303030;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 0.5;
     color: #d8d6d7;
     fill-position: background;
@@ -227,6 +245,8 @@ area|z14-15[landuse=allotments] {
     text: name;
     font-size: 10;
     text-color: #303030;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -235,6 +255,8 @@ area|z16-[landuse=allotments] {
     text: name;
     font-size: 11;
     text-color: #303030;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -272,6 +294,8 @@ way|z11-12[mooring=yes] {
     text: name;
     font-size: 9;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -279,6 +303,8 @@ node|z11-12[mooring=yes] {
     text: name;
     font-size: 9;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -286,6 +312,8 @@ node|z11-12[amenity=ferry_terminal] {
     text: name;
     font-size: 9;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -293,6 +321,8 @@ way|z13-15[mooring=yes] {
     text: name;
     font-size: 9;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -300,6 +330,8 @@ node|z13-15[mooring=yes] {
     text: name;
     font-size: 9;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -307,6 +339,8 @@ node|z13-15[amenity=ferry_terminal] {
     text: name;
     font-size: 9;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -314,6 +348,8 @@ way|z16-[mooring=yes] {
     text: name;
     font-size: 10;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -321,6 +357,8 @@ node|z16-[mooring=yes] {
     text: name;
     font-size: 10;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -328,6 +366,8 @@ node|z16-[amenity=ferry_terminal] {
     text: name;
     font-size: 10;
     text-color: #114fcd;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -348,6 +388,8 @@ area|z12-[landuse=cemetery] {
     text: name;
     font-size: 9;
     text-color: #040404;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -613,6 +655,8 @@ way|z13-16[highway=construction] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     casing-width: 0.5;
     casing-color: #996703;
     width: 2;
@@ -626,6 +670,8 @@ way|z17-[highway=construction] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     casing-width: 0.5;
     casing-color: #996703;
     width: 3;
@@ -661,6 +707,10 @@ way|z15[highway=path] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     casing-width: 0.6;
     casing-color: #ffffff;
     z-index: 10;
@@ -672,6 +722,10 @@ way|z16-[highway=path][tunnel!=yes][layer!=-1] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 1.7;
     color: #ffffff;
     casing-width: 0.5;
@@ -704,6 +758,10 @@ way|z15-[highway=cycleway] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z16-[highway=cycleway] {
@@ -725,6 +783,10 @@ way|z14-[highway=pedestrian] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     casing-width: 0.3;
     casing-color: #bf96ce;
 }
@@ -733,6 +795,10 @@ area|z14-[highway=pedestrian] {
     text: name;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     casing-width: 0.3;
     casing-color: #bf96ce;
     text-position: center;
@@ -756,6 +822,8 @@ way|z13[highway=track] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 0.6;
     opacity: 0.5;
     color: #996703;
@@ -768,6 +836,8 @@ way|z14-16[highway=track] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 1.5;
     color: #ffffff;
     casing-width: 0.5;
@@ -781,6 +851,8 @@ way|z16-[highway=track] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 2.5;
     color: #ffffff;
     casing-width: 0.5;
@@ -793,6 +865,8 @@ way|z13-14[highway=residential] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 2;
     color: #ffffff;
     casing-width: 0.1;
@@ -805,6 +879,8 @@ way|z15-[highway=residential] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 1.2;
     color: #ffffff;
     casing-width: 0.3;
@@ -828,6 +904,8 @@ way|z16-[highway=service][service=parking_aisle] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 2;
     color: #ffffff;
     casing-width: 0.3;
@@ -860,6 +938,8 @@ way|z15[highway=service][living_street!=yes][service!=parking_aisle] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 2.5;
     color: #ffffff;
     casing-width: 0.5;
@@ -875,6 +955,8 @@ way|z16[highway=service][living_street!=yes][service!=parking_aisle] {
     text-position: line;
     text-color: #404040;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 3.5;
     color: #ffffff;
     casing-width: 0.5;
@@ -890,6 +972,8 @@ way|z17-[highway=service][living_street!=yes][service!=parking_aisle] {
     text-position: line;
     text-color: #404040;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 4.5;
     color: #ffffff;
     casing-width: 0.5;
@@ -913,6 +997,10 @@ way|z11[highway=tertiary] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 0.4;
     color: #fcffd1;
     casing-width: 0.1;
@@ -928,6 +1016,10 @@ way|z12[highway=tertiary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 1;
     color: #fcffd1;
     casing-width: 0.2;
@@ -943,6 +1035,8 @@ way|z13[highway=tertiary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 4;
     color: #fcffd1;
     casing-width: 0.35;
@@ -958,6 +1052,8 @@ way|z14[highway=tertiary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z14[highway=secondary][tunnel!=yes],
@@ -989,6 +1085,8 @@ way|z15[highway=tertiary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z15[highway=secondary][tunnel!=yes],
@@ -1020,6 +1118,8 @@ way|z16[highway=tertiary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z16[highway=secondary][tunnel!=yes],
@@ -1051,6 +1151,8 @@ way|z17[highway=tertiary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z17[highway=secondary][tunnel!=yes],
@@ -1082,6 +1184,8 @@ way|z18-[highway=tertiary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 13;
+    text-halo-radius: 2;
+    text-halo-color: #fcffd1;
     width: 11;
     color: #fcffd1;
     casing-width: 0.5;
@@ -1109,6 +1213,8 @@ way|z9[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 1.5;
     color: #fcea97;
     casing-width: 0.3;
@@ -1122,6 +1228,8 @@ way|z10[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 3;
     color: #fcea97;
     casing-width: 0.5;
@@ -1135,6 +1243,8 @@ way|z11[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 4;
     color: #fcea97;
     casing-width: 0.5;
@@ -1148,6 +1258,8 @@ way|z12[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 5;
     color: #fcea97;
     casing-width: 0.5;
@@ -1161,6 +1273,8 @@ way|z13[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 6;
     color: #fcea97;
     casing-width: 0.5;
@@ -1174,6 +1288,8 @@ way|z14[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z14[highway=primary][tunnel!=yes],
@@ -1199,6 +1315,8 @@ way|z15[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z15[highway=primary][tunnel!=yes],
@@ -1224,6 +1342,8 @@ way|z16[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z16[highway=primary][tunnel!=yes],
@@ -1249,6 +1369,8 @@ way|z17[highway=primary_link] {
     text-position: line;
     text-color: #505050;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z17[highway=primary][tunnel!=yes],
@@ -1274,6 +1396,8 @@ way|z18-[highway=primary_link] {
     text-position: line;
     text-color: #404040;
     font-size: 13;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 15;
     color: #fcea97;
     casing-width: 0.5;
@@ -1327,6 +1451,8 @@ way|z9[highway=motorway] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 2.5;
     color: #ffd780;
     casing-width: 0.5;
@@ -1340,6 +1466,8 @@ way|z10[highway=motorway] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 4;
     color: #ffd780;
     casing-width: 1;
@@ -1353,6 +1481,8 @@ way|z11[highway=motorway] {
     text-position: line;
     text-color: #505050;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 5;
     color: #ffd780;
     casing-width: 1;
@@ -1366,6 +1496,8 @@ way|z12[highway=motorway] {
     text-position: line;
     text-color: #505050;
     font-size: 10;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 7;
     color: #ffd780;
     casing-width: 1;
@@ -1379,6 +1511,8 @@ way|z13[highway=motorway] {
     text-position: line;
     text-color: #505050;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 8;
     color: #ffd780;
     casing-width: 1;
@@ -1394,6 +1528,8 @@ way|z14[highway=motorway_link] {
     text-position: line;
     text-color: #505050;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z14[highway=trunk][tunnel!=yes],
@@ -1425,6 +1561,8 @@ way|z15[highway=motorway_link] {
     text-position: line;
     text-color: #505050;
     font-size: 12;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z15[highway=trunk][tunnel!=yes],
@@ -1456,6 +1594,8 @@ way|z16[highway=motorway_link] {
     text-position: line;
     text-color: #505050;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z16[highway=trunk][tunnel!=yes],
@@ -1487,6 +1627,8 @@ way|z17[highway=motorway_link] {
     text-position: line;
     text-color: #505050;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
 }
 
 way|z17[highway=trunk][tunnel!=yes],
@@ -1518,6 +1660,8 @@ way|z18-[highway=motorway_link] {
     text-position: line;
     text-color: #505050;
     font-size: 12;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     width: 15;
     color: #ffd780;
     casing-width: 1;
@@ -1851,6 +1995,8 @@ node|z16-[tourism=zoo] {
     text: name;
     font-size: 10;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -1863,6 +2009,8 @@ node|z17-[amenity=cafe] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1871,6 +2019,8 @@ node|z17-[amenity=restaurant] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1879,6 +2029,8 @@ node|z17-[amenity=fast_food] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1887,6 +2039,8 @@ node|z17-[amenity=pub] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1895,6 +2049,8 @@ node|z17-[amenity=bar] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1903,6 +2059,8 @@ node|z17-[amenity=ice_cream] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1911,6 +2069,8 @@ node|z17-[amenity=bicycle_rental] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1919,6 +2079,8 @@ node|z17-[amenity=car_rental] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1927,6 +2089,8 @@ node|z17-[amenity=car_wash] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1935,6 +2099,8 @@ node|z17-[amenity=bank] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1943,6 +2109,8 @@ node|z17-[amenity=dentist] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1951,6 +2119,8 @@ node|z17-[amenity=social_facility] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1959,6 +2129,8 @@ node|z17-[amenity=veterinary] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1968,6 +2140,8 @@ area|z17-[amenity=fountain] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1976,6 +2150,8 @@ node|z17-[amenity=studio] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1984,6 +2160,8 @@ node|z17-[amenity=courthouse] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -1992,6 +2170,8 @@ node|z17-[amenity=embassy] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2000,6 +2180,8 @@ node|z17-[amenity=marketplace] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2008,6 +2190,8 @@ node|z17-[amenity=sauna] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2016,6 +2200,8 @@ node|z17-[amenity=townhall] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2024,6 +2210,8 @@ node|z17-[amenity=place_of_worship][religion=buddhist] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2031,6 +2219,8 @@ node|z17-[amenity=place_of_worship][religion=buddhist] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2038,6 +2228,8 @@ node|z17-[amenity=place_of_worship][religion=christian] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2045,6 +2237,8 @@ node|z17-[amenity=place_of_worship][religion=hindu] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2052,6 +2246,8 @@ node|z17-[amenity=place_of_worship][religion=hindu] {
     text: name;
     font-size: 8;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2059,6 +2255,8 @@ node|z17-[amenity=place_of_worship][religion=muslim] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2066,6 +2264,8 @@ node|z17-[amenity=place_of_worship][religion=muslim] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2073,6 +2273,8 @@ node|z17-[tourism=camp_site] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2081,6 +2283,8 @@ node|z17-[tourism=information] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2089,6 +2293,8 @@ node|z17-[historic=memorial] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2097,6 +2303,8 @@ node|z17-[historic=monument] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2105,6 +2313,8 @@ node|z17-[historic=wayside_cross] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2113,6 +2323,8 @@ node|z17-[historic=rune_stone] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2121,6 +2333,8 @@ node|z17-[sport=equestrian] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2129,6 +2343,8 @@ node|z17-[sport=skating] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2137,6 +2353,8 @@ node|z17-[sport=table_tennis] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2145,6 +2363,8 @@ node|z17-[man_made=water_well] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2153,6 +2373,8 @@ area|z17-[building][man_made=water_well] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2161,6 +2383,8 @@ node|z17-[shop=art] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2169,6 +2393,8 @@ node|z17-[shop=car_repair] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2177,6 +2403,8 @@ node|z17-[shop=clothes] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2185,6 +2413,8 @@ node|z17-[shop=hairdresser] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2193,6 +2423,8 @@ node|z17-[shop=shoes] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2201,6 +2433,8 @@ node|z17-[shop=optician] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2209,6 +2443,8 @@ node|z17-[shop=supermarket] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2217,6 +2453,8 @@ node|z17-[leisure=water_park] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2225,6 +2463,8 @@ node|z17-[leisure=swimming_pool] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2233,6 +2473,8 @@ node|z17-[leisure=travel_agent] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2241,6 +2483,8 @@ node|z17-[leisure=dressmaker] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2249,6 +2493,8 @@ node|z17-[amenity=taxi] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2257,6 +2503,8 @@ area|z17-[building][amenity=taxi] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2265,6 +2513,8 @@ node|z17-[amenity=baby_hatch] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2273,6 +2523,8 @@ area|z17-[building][amenity=baby_hatch] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2281,6 +2533,8 @@ node|z17-[amenity=embassy] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2289,6 +2543,8 @@ area|z17-[building][amenity=embassy] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2297,6 +2553,8 @@ node|z17-[tourism=attraction] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2305,6 +2563,8 @@ area|z17-[building][tourism=attraction] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2313,6 +2573,8 @@ node|z17-[tourism=bed_and_breakfast] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2321,6 +2583,8 @@ area|z17-[building][tourism=bed_and_breakfast] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2329,6 +2593,8 @@ node|z17-[historic=archaeological_site] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2337,6 +2603,8 @@ area|z17-[building][historic=archaeological_site] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2345,6 +2613,8 @@ node|z17-[historic=boundary_stone] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2353,6 +2623,8 @@ area|z17-[building][historic=boundary_stone] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2361,6 +2633,8 @@ node|z17-[historic=ruins] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2369,6 +2643,8 @@ area|z17-[historic=ruins] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2377,6 +2653,8 @@ node|z17-[sport=tennis] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2385,6 +2663,8 @@ area|z17-[building][sport=tennis] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2393,6 +2673,8 @@ node|z17-[shop=convenience] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2401,6 +2683,8 @@ area|z17-[building][shop=convenience] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2409,6 +2693,8 @@ area|z17-[building][amenity=pharmacy] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2417,6 +2703,8 @@ area|z17-[building][tourism=museum] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2425,6 +2713,8 @@ area|z17-[building][tourism=zoo] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2433,6 +2723,8 @@ area|z17-[building][amenity=courthouse] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2441,6 +2733,8 @@ area|z17-[building][amenity=toilets] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2449,6 +2743,8 @@ area|z17-[building][amenity=restaurant] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2457,6 +2753,8 @@ area|z17-[building][amenity=fast_food] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2465,6 +2763,8 @@ area|z17-[building][amenity=pub] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2473,6 +2773,8 @@ area|z17-[building][amenity=bar] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2481,6 +2783,8 @@ area|z17-[building][amenity=cafe] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2489,6 +2793,8 @@ area|z17-[building][amenity=ice_cream] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2497,6 +2803,8 @@ area|z17-[building][amenity=bicycle_rental] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2505,6 +2813,8 @@ area|z17-[building][amenity=car_rental] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2513,6 +2823,8 @@ area|z17-[building][amenity=car_wash] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2521,6 +2833,8 @@ area|z17-[building][amenity=bank] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2529,6 +2843,8 @@ area|z17-[building][amenity=dentist] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2537,6 +2853,8 @@ area|z17-[building][amenity=social_facility] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2545,6 +2863,8 @@ area|z17-[building][amenity=veterinary] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2553,6 +2873,8 @@ area|z17-[building][amenity=fountain] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2561,6 +2883,8 @@ area|z17-[building][amenity=studio] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2569,6 +2893,8 @@ area|z17-[building][amenity=courthouse] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2577,6 +2903,8 @@ area|z17-[building][amenity=embassy] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2585,6 +2913,8 @@ area|z17-[building][amenity=marketplace] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2593,6 +2923,8 @@ area|z17-[building][amenity=sauna] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2601,6 +2933,8 @@ area|z17-[building][amenity=townhall] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2609,6 +2943,8 @@ area|z17-[building][amenity=place_of_worship][religion=buddhist] {
     text: name;
     font-size: 9;
     text-color: #2d1a2d;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2617,6 +2953,8 @@ area|z17-[building][amenity=place_of_worship][religion=christian] {
     text: name;
     font-size: 9;
     text-color: #2d1a2d;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2625,6 +2963,8 @@ area|z17-[building][amenity=place_of_worship][religion=hindu] {
     text: name;
     font-size: 9;
     text-color: #2d1a2d;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2633,6 +2973,8 @@ area|z17-[building][amenity=place_of_worship][religion=muslim] {
     text: name;
     font-size: 9;
     text-color: #2d1a2d;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2641,6 +2983,8 @@ area|z17-[building][amenity=place_of_worship][religion=buddhist] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2648,6 +2992,8 @@ area|z17-[building][amenity=place_of_worship][religion=christian] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2655,6 +3001,8 @@ area|z17-[building][amenity=place_of_worship][religion=hindu] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2662,6 +3010,8 @@ area|z17-[building][amenity=place_of_worship][religion=muslim] {
     text: name;
     font-size: 9;
     text-color: #2c154c;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2669,6 +3019,8 @@ area|z15-[building][historic=castle] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2677,6 +3029,8 @@ area|z17-[building][tourism=camp_site] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2685,6 +3039,8 @@ area|z17-[building][tourism=information] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2693,6 +3049,8 @@ area|z17-[building][historic=memorial] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2701,6 +3059,8 @@ area|z17-[building][historic=monument] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2709,6 +3069,8 @@ area|z17-[building][historic=wayside_cross] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2717,6 +3079,8 @@ area|z17-[building][historic=rune_stone] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2725,6 +3089,8 @@ area|z17-[building][sport=equestrian] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2733,6 +3099,8 @@ area|z17-[building][sport=skating] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2741,6 +3109,8 @@ area|z17-[building][sport=table_tennis] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2749,6 +3119,8 @@ area|z17-[building][shop=art] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2757,6 +3129,8 @@ area|z17-[building][shop=car_repair] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2765,6 +3139,8 @@ area|z17-[building][shop=clothes] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2773,6 +3149,8 @@ area|z17-[building][shop=hairdresser] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2781,6 +3159,8 @@ area|z17-[building][shop=shoes] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2789,6 +3169,8 @@ area|z17-[building][shop=optician] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2797,6 +3179,8 @@ area|z17-[building][shop=supermarket] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2805,6 +3189,8 @@ area|z17-[building][leisure=water_park] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2813,6 +3199,8 @@ area|z17-[building][leisure=swimming_pool] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2821,6 +3209,8 @@ area|z17-[building][leisure=travel_agent] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2829,6 +3219,8 @@ area|z17-[building][leisure=dressmaker] {
     text: name;
     font-size: 8;
     text-color: #2d1a2d;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 15;
     text-position: center;
 }
@@ -2925,14 +3317,18 @@ way|z13-[railway=tram] {
 node|z11-14[railway=station][transport!=subway][station!=subway] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #000d6c;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 node|z15-[railway=station][transport!=subway][station!=subway] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #000d6c;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -2951,7 +3347,9 @@ node|z14-15[railway=station][transport=subway][!colour] {
 node|z13-14[railway=station][transport=subway]::label {
     text: name;
     font-size: 9;
+    text-halo-radius: 1.5;
     text-color: #be1e2d;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -2959,7 +3357,9 @@ node|z13-14[railway=station][transport=subway]::label {
 node|z15[railway=station][transport=subway]::label {
     text: name;
     font-size: 10;
+    text-halo-radius: 1.5;
     text-color: #be1e2d;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -2971,7 +3371,9 @@ node|z16-[railway=subway_entrance] {
 node|z16-[railway=subway_entrance]::label {
     text: name;
     font-size: 10;
+    text-halo-radius: 1.5;
     text-color: #be1e2d;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -2984,7 +3386,9 @@ way|z14-[railway][railway=subway][bridge][service!=siding][service!=spur][servic
     text: name;
     font-size: 11;
     text-position: line;
+    text-halo-radius: 1;
     text-color: #000000;
+    text-halo-color: #ffffff;
     z-index: 30;
 }
 
@@ -2999,7 +3403,9 @@ way|z14-15[railway=rail][bridge][service!=siding][service!=spur][service!=yard]:
 node|z9-[aeroway=aerodrome] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #1e7ca5;
+    text-halo-color: #ffffff;
     z-index: 30;
     text-position: center;
 }
@@ -3007,7 +3413,9 @@ node|z9-[aeroway=aerodrome] {
 node|z3[place][capital][population>5000000] {
     text: name;
     font-size: 8;
+    text-halo-radius: 1;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3015,7 +3423,9 @@ node|z3[place][capital][population>5000000] {
 node|z4-6[place][capital][population>5000000] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3023,7 +3433,9 @@ node|z4-6[place][capital][population>5000000] {
 node|z4-5[place][population<100000][capital][admin_level<5] {
     text: name;
     font-size: 7;
+    text-halo-radius: 1;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3031,7 +3443,9 @@ node|z4-5[place][population<100000][capital][admin_level<5] {
 node|z4-5[place][population>=100000][population<=5000000][capital][admin_level<5] {
     text: name;
     font-size: 8;
+    text-halo-radius: 1;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 1;
     z-index: 50;
     text-position: center;
@@ -3040,7 +3454,9 @@ node|z4-5[place][population>=100000][population<=5000000][capital][admin_level<5
 node|z6-7[place=city][admin_level=2] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3048,7 +3464,9 @@ node|z6-7[place=city][admin_level=2] {
 node|z6-7[place=city][admin_level=3] {
     text: name;
     font-size: 11;
+    text-halo-radius: 2;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3056,7 +3474,9 @@ node|z6-7[place=city][admin_level=3] {
 node|z6-7[place=city][admin_level=4] {
     text: name;
     font-size: 10;
+    text-halo-radius: 2;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3064,7 +3484,9 @@ node|z6-7[place=city][admin_level=4] {
 node|z6-7[place=city][admin_level=6] {
     text: name;
     font-size: 10;
+    text-halo-radius: 2;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3072,7 +3494,9 @@ node|z6-7[place=city][admin_level=6] {
 node|z7[place=city][capital!=yes] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #202020;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3080,6 +3504,8 @@ node|z7[place=city][capital!=yes] {
 node|z7[place=town][population>=50000] {
     text: name;
     font-size: 8;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-color: #202020;
     z-index: 50;
     text-position: center;
@@ -3089,6 +3515,8 @@ node|z8[place=city][population>=100000][population<=1000000],
 node|z7-8[place=city][population>1000000][population<5000000] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-color: #202020;
     z-index: 50;
     text-position: center;
@@ -3097,6 +3525,8 @@ node|z7-8[place=city][population>1000000][population<5000000] {
 node|z7-8[place=city][population>=5000000] {
     text: name;
     font-size: 12;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-color: #202020;
     z-index: 50;
     text-position: center;
@@ -3105,6 +3535,8 @@ node|z7-8[place=city][population>=5000000] {
 node|z8[place=town] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-color: #202020;
     z-index: 50;
     text-position: center;
@@ -3113,7 +3545,9 @@ node|z8[place=town] {
 node|z8[place=city][admin_level=2] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3122,7 +3556,9 @@ node|z8[place=city][admin_level=4],
 node|z8[place=city][admin_level=3] {
     text: name;
     font-size: 11;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3131,7 +3567,9 @@ node|z8[place=city][admin_level=3] {
 node|z8[place=city][capital!=yes] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #202020;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3139,7 +3577,9 @@ node|z8[place=city][capital!=yes] {
 node|z8[place=city][admin_level=6] {
     text: name;
     font-size: 11;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3148,7 +3588,9 @@ node|z8[place=city][admin_level=6] {
 node|z9[place=city][admin_level=2] {
     text: name;
     font-size: 13;
+    text-halo-radius: 2;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3156,7 +3598,9 @@ node|z9[place=city][admin_level=2] {
 node|z9[place=city][capital!=yes] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #202020;
+    text-halo-color: #ffffff;
     z-index: 50;
     text-position: center;
 }
@@ -3164,7 +3608,9 @@ node|z9[place=city][capital!=yes] {
 node|z9[place=city][admin_level=6] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3173,7 +3619,9 @@ node|z9[place=city][admin_level=6] {
 node|z9[place=city][admin_level=4] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3182,7 +3630,9 @@ node|z9[place=city][admin_level=4] {
 node|z10[place=city][capital!=yes] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #202020;
+    text-halo-color: #ffffff;
     z-index: 6;
     text-position: center;
 }
@@ -3190,7 +3640,9 @@ node|z10[place=city][capital!=yes] {
 node|z10[place=city][admin_level=6] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3199,7 +3651,9 @@ node|z10[place=city][admin_level=6] {
 node|z10[place=city][admin_level=4] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3208,7 +3662,9 @@ node|z10[place=city][admin_level=4] {
 node|z10-[place=city][admin_level=2] {
     text: name;
     font-size: 13;
+    text-halo-radius: 2;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 7;
     text-position: center;
 }
@@ -3216,7 +3672,9 @@ node|z10-[place=city][admin_level=2] {
 node|z11-[place=city][capital!=yes] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 6;
     text-position: center;
 }
@@ -3224,7 +3682,9 @@ node|z11-[place=city][capital!=yes] {
 node|z11-[place=city][admin_level=6] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3233,7 +3693,9 @@ node|z11-[place=city][admin_level=6] {
 node|z11-[place=city][admin_level=4] {
     text: name;
     font-size: 12;
+    text-halo-radius: 2;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 20;
     z-index: 50;
     text-position: center;
@@ -3242,7 +3704,9 @@ node|z11-[place=city][admin_level=4] {
 node|z8[place=city][admin_level!=2] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #606060;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3250,7 +3714,9 @@ node|z8[place=city][admin_level!=2] {
 node|z9[place=city][admin_level!=2] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3258,7 +3724,9 @@ node|z9[place=city][admin_level!=2] {
 node|z10[place=city][admin_level!=2] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3266,7 +3734,9 @@ node|z10[place=city][admin_level!=2] {
 node|z10-[place=city][admin_level!=2] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #404040;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3274,14 +3744,18 @@ node|z10-[place=city][admin_level!=2] {
 node|z10-12[place=town] {
     text: name;
     font-size: 10;
+    text-halo-radius: 2;
     text-color: #404040;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 node|z9[place=town] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3289,7 +3763,9 @@ node|z9[place=town] {
 node|z10[place=town] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3297,7 +3773,9 @@ node|z10[place=town] {
 node|z11[place=town] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3305,7 +3783,9 @@ node|z11[place=town] {
 node|z12-[place=town] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3313,7 +3793,9 @@ node|z12-[place=town] {
 node|z12-[place=city] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #202020;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3321,7 +3803,9 @@ node|z12-[place=city] {
 node|z10-[place=village] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #606060;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3329,7 +3813,9 @@ node|z10-[place=village] {
 node|z10-[place=hamlet] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #505050;
+    text-halo-color: #ffffff;
     z-index: 5;
     text-position: center;
 }
@@ -3366,6 +3852,8 @@ area|z14-[natural=beach] {
     text: name;
     font-size: 9;
     text-color: #a89b00;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 11;
     text-position: center;
 }
@@ -3387,6 +3875,8 @@ area|z12[landuse=forest] {
     text: name;
     font-size: 9;
     text-color: green;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 11;
     text-position: center;
 }
@@ -3400,6 +3890,8 @@ area|z13[leisure=park] {
     text: name;
     font-size: 9;
     text-color: green;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 11;
     text-position: center;
 }
@@ -3413,6 +3905,8 @@ area|z14[leisure=park] {
     text: name;
     font-size: 10;
     text-color: green;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 11;
     text-position: center;
 }
@@ -3425,7 +3919,11 @@ area|z15-[leisure=park],
 area|z15-[boundary=protected_area] {
     text: name;
     font-size: 10;
+    text-halo-radius: 0;
     text-color: #419c2e;
+    text-halo-color: #092316;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 11;
     z-index: 11;
     text-position: center;
@@ -3434,7 +3932,9 @@ area|z15-[boundary=protected_area] {
 node|z1[place=continent] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #303030;
+    text-halo-color: #ffffff;
     z-index: -1;
     text-position: center;
 }
@@ -3442,7 +3942,9 @@ node|z1[place=continent] {
 node|z1[place=ocean] {
     text: name;
     font-size: 8;
+    text-halo-radius: 0;
     text-color: #4976d1;
+    text-halo-color: #ffffff;
     z-index: -1;
     text-position: center;
 }
@@ -3450,7 +3952,9 @@ node|z1[place=ocean] {
 node|z2-[place=ocean] {
     text: name;
     font-size: 9;
+    text-halo-radius: 0;
     text-color: #4976d1;
+    text-halo-color: #ffffff;
     z-index: -1;
     text-position: center;
 }
@@ -3458,7 +3962,9 @@ node|z2-[place=ocean] {
 node|z7-[place=ocean] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #202020;
+    text-halo-color: #ffffff;
     z-index: -1;
     text-position: center;
 }
@@ -3466,35 +3972,45 @@ node|z7-[place=ocean] {
 node|z3-6[place=sea] {
     text: name;
     font-size: 8;
+    text-halo-radius: 1;
     text-color: #4976d1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 node|z7-9[place=sea] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #4976d1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 node|z7-12[natural=peak][ele>2500] {
     text: ele;
     font-size: 8;
+    text-halo-radius: 0;
     text-color: #664229;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 node|z13-[natural=peak] {
     text: name;
     font-size: 10;
+    text-halo-radius: 0;
     text-color: #664229;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 node|z2-3[place=country][population>2000000] {
     text: name;
     font-size: 10,9,8,7,6;
+    text-halo-radius: 1;
     text-color: #dd5875;
+    text-halo-color: #ffffff;
     z-index: 1;
     text-position: center;
 }
@@ -3502,7 +4018,9 @@ node|z2-3[place=country][population>2000000] {
 node|z4[place=country] {
     text: name;
     font-size: 12,11,10,9;
+    text-halo-radius: 1;
     text-color: red;
+    text-halo-color: #ffffff;
     z-index: 1;
     text-position: center;
 }
@@ -3510,7 +4028,9 @@ node|z4[place=country] {
 node|z5-8[place=country] {
     text: name;
     font-size: 13,12,11,10,9;
+    text-halo-radius: 1;
     text-color: red;
+    text-halo-color: #ffffff;
     z-index: 1;
     text-position: center;
 }
@@ -3518,7 +4038,9 @@ node|z5-8[place=country] {
 node|z8-10[place=country] {
     text: name;
     font-size: 16,15,14,13,12,11;
+    text-halo-radius: 1;
     text-color: red;
+    text-halo-color: #ffffff;
     z-index: 1;
     text-position: center;
 }
@@ -3526,14 +4048,18 @@ node|z8-10[place=country] {
 area|z3-5[boundary=administrative][admin_level=3] {
     text: name;
     font-size: 8;
+    text-halo-radius: 0;
     text-color: #101010;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 area|z10-[boundary=administrative][admin_level=6] {
     text: name;
     font-size: 12;
+    text-halo-radius: 1;
     text-color: #7848a0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3556,7 +4082,9 @@ area|z12-14[place=suburb] {
 area|z10[admin_level=5] {
     text: name;
     font-size: 10;
+    text-halo-radius: 1;
     text-color: #662d91;
+    text-halo-color: #ffffff;
     text-position: center;
     opacity: 0.5;
     z-index: 30;
@@ -3672,7 +4200,9 @@ area|z15-[building][amenity=university] {
     z-index: 17;
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #843542;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3683,7 +4213,9 @@ node|z15-[amenity=library],
 node|z15-[amenity=university] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #843542;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3696,7 +4228,9 @@ area|z15-[building][amenity=library],
 area|z15-[building][amenity=university] {
     text: name;
     font-size: 9;
+    text-halo-radius: 1;
     text-color: #843542;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3717,7 +4251,9 @@ area|z15-[building][amenity=police] {
     fill-color: #edc2ba;
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #010101;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3727,6 +4263,8 @@ node|z17-[emergency=ambulance_station] {
     text: name;
     font-size: 9;
     text-color: #7f0d18;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3741,6 +4279,8 @@ area|z17-[building][emergency=ambulance_station] {
     text: name;
     font-size: 9;
     text-color: #7f0d18;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3748,7 +4288,9 @@ node|z15-[amenity=fire_station],
 node|z15-[amenity=police] {
     text: name;
     font-size: 11;
+    text-halo-radius: 1;
     text-color: #010101;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3760,6 +4302,8 @@ area|z15-[building][leisure=sports_centre] {
     text: name;
     font-size: 10;
     text-color: #1c4434;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3781,6 +4325,8 @@ node|z16-[amenity=cinema] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3788,6 +4334,8 @@ area|z16-[building][amenity=cinema] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3803,6 +4351,8 @@ node|z16-[amenity=theatre] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3811,6 +4361,8 @@ area|z16-[building][amenity=theatre] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3831,6 +4383,8 @@ area|z15-[building][tourism=artwork] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
@@ -3838,6 +4392,8 @@ area|z16-[building][tourism=museum] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3848,6 +4404,8 @@ node|z16-[tourism=artwork] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3856,6 +4414,8 @@ node|z16-[tourism=museum] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3883,6 +4443,8 @@ area|z15-[building][tourism=motel] {
     text: name;
     font-size: 9;
     text-color: #632834;
+    text-halo-radius: 0;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3891,6 +4453,8 @@ node|z16-[office=government] {
     text: name;
     font-size: 9;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3899,6 +4463,8 @@ area|z16-[building][office=government] {
     text: name;
     font-size: 9;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3907,6 +4473,8 @@ node|z16-[aeroway=helipad] {
     text: name;
     font-size: 9;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3915,6 +4483,8 @@ area|z16-[building][aeroway=helipad] {
     text: name;
     font-size: 9;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 20;
     text-position: center;
 }
@@ -3923,6 +4493,8 @@ area|z16-[building] {
     text: name;
     font-size: 9;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 14;
     text-position: center;
 }
@@ -3931,6 +4503,8 @@ area|z16-[building=retail] {
     text: name;
     font-size: 9;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     z-index: 14;
     text-position: center;
 }
@@ -3939,11 +4513,14 @@ area|z15-[leisure=pitch] {
     text: name;
     font-size: 10;
     text-color: #101010;
+    text-halo-radius: 1;
+    text-halo-color: #ffffff;
     text-position: center;
 }
 
 area|z15-16[building] {
     text: addr:housenumber;
+    text-halo-radius: 1;
     text-position: center;
     font-size: 7;
     opacity: 0.8;
@@ -3951,6 +4528,7 @@ area|z15-16[building] {
 
 node|z15-16["addr:housenumber"]["addr:street"][!amenity][!shop] {
     text: addr:housenumber;
+    text-halo-radius: 1;
     text-position: center;
     font-size: 7;
     opacity: 0.8;
@@ -3958,6 +4536,7 @@ node|z15-16["addr:housenumber"]["addr:street"][!amenity][!shop] {
 
 area|z17-[building] {
     text: addr:housenumber;
+    text-halo-radius: 1;
     text-position: center;
     font-size: 8;
     opacity: 0.8;
@@ -3965,6 +4544,7 @@ area|z17-[building] {
 
 node|z17-["addr:housenumber"][!amenity][!shop] {
     text: addr:housenumber;
+    text-halo-radius: 1;
     text-position: center;
     font-size: 8;
     opacity: 0.8;
@@ -3973,18 +4553,21 @@ node|z17-["addr:housenumber"][!amenity][!shop] {
 node|z13-[highway=milestone][pk] {
     text: pk;
     font-size: 7;
+    text-halo-radius: 5;
     text-position: center;
 }
 
 node|z17-[entrance][ref] {
     text: ref;
     font-size: 7;
+    text-halo-radius: 1;
     text-position: center;
 }
 
 node|z18-[entrance] {
     text: addr:flats;
     font-size: 7;
+    text-halo-radius: 1;
     text-position: center;
 }
 
