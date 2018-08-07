@@ -105,8 +105,3 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
 
     (rescale(x), rescale(y))
 }
-
-pub fn coords_to_float_xy<C: Coords>(coords: &C, zoom: u8) -> (f64, f64) {
-    let (x, y) = coords_to_xy(coords, zoom);
-    (f64::from(x), f64::from(y))
-}
