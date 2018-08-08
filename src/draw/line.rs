@@ -71,6 +71,10 @@ fn draw_line(
     opacity_calculator: &OpacityCalculator,
     figure: &mut Figure,
 ) {
+    if p1 == p2 {
+        return;
+    }
+
     let get_inc = |from, to| if from <= to { 1 } else { -1 };
 
     let (dx, dy) = ((p2.x - p1.x).abs(), (p2.y - p1.y).abs());
@@ -115,7 +119,7 @@ fn draw_line(
                 let center_dist = (center_dist_raw as f64).abs() / center_dist_denom;
 
                 let long_start_dist = current_point.dist(p1);
-                let short_start_dist = (long_start_dist.powi(2) - center_dist.powi(2)).sqrt();
+                let short_start_dist = (long_start_dist.powi(2) - center_dist.powi(2)).max(0.0).sqrt();
 
                 let opacity_params = opacity_calculator.calculate(center_dist, short_start_dist);
 
