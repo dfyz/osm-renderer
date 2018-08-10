@@ -60,7 +60,8 @@ impl OpacityCalculator {
             dist_rem %= self.total_dash_len;
         }
         let safe_cmp_floats = |x: &f64, y: &f64| x.partial_cmp(y).unwrap_or(Ordering::Equal);
-        let opacities_with_cap_distances = self.dashes
+        let opacities_with_cap_distances = self
+            .dashes
             .iter()
             .filter_map(|d| get_opacity_by_segment(dist_rem, d).map(|op| (op, get_distance_in_cap(dist_rem, d))))
             .collect::<Vec<_>>();

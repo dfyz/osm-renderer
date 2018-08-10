@@ -154,7 +154,8 @@ fn extract_path_from_request(first_line: &str) -> Result<String> {
 fn extract_tile_from_path(path: &str) -> Option<Tile> {
     let expected_token_count = 3;
 
-    let mut tokens = path.trim_right_matches(".png")
+    let mut tokens = path
+        .trim_right_matches(".png")
         .rsplit('/')
         .take(expected_token_count)
         .collect::<Vec<_>>();
