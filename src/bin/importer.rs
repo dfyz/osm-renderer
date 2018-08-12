@@ -2,7 +2,11 @@ extern crate error_chain;
 extern crate renderer;
 
 use error_chain::ChainedError;
+use std::alloc::System;
 use std::env;
+
+#[global_allocator]
+static GLOBAL: System = System;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
