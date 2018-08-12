@@ -11,8 +11,6 @@ use std::io::{BufReader, BufWriter};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use xml::attribute::OwnedAttribute;
-use xml::common::{Position, TextPosition};
-use xml::name::OwnedName;
 use xml::reader::{EventReader, XmlEvent};
 
 pub fn import(input: &str, output: &str) -> Result<()> {
@@ -31,82 +29,22 @@ pub fn import(input: &str, output: &str) -> Result<()> {
     Ok(())
 }
 
-struct OsmXmlElement {
-    name: String,
-    attrs: Vec<(String, String)>,
-    input_position: TextPosition,
-}
-
-impl OsmXmlElement {
-    fn new(name: OwnedName, attrs: Vec<OwnedAttribute>, input_position: TextPosition) -> OsmXmlElement {
-        let mut attrs = attrs
-            .into_iter()
-            .map(|x| (x.name.local_name, x.value))
-            .collect::<Vec<_>>();
-        attrs.sort();
-        OsmXmlElement {
-            name: name.local_name,
-            attrs,
-            input_position,
-        }
-    }
-
-    fn get_attr(&self, name: &str) -> Option<&str> {
-        self.attrs
-            .binary_search_by(|probe| {
-                let probe_str: &str = probe.0.as_ref();
-                probe_str.cmp(name)
-            })
-            .ok()
-            .map(|idx| self.attrs[idx].1.as_str())
-    }
-}
-
-impl ::std::fmt::Display for OsmXmlElement {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
-        write!(f, "<{}> at {}", self.name, self.input_position)
-    }
-}
-
-struct OsmEntity {
-    global_id: u64,
-    initial_elem: OsmXmlElement,
-    additional_elems: Vec<OsmXmlElement>,
-}
-
-impl OsmEntity {
-    fn new(initial_element: OsmXmlElement) -> Option<OsmEntity> {
-        initial_element
-            .get_attr("id")
-            .and_then(|x| x.parse().ok())
-            .map(|id| OsmEntity {
-                global_id: id,
-                initial_elem: initial_element,
-                additional_elems: vec![],
-            })
-    }
-
-    fn get_elems_by_name<'a>(&'a self, name: &'static str) -> Box<Iterator<Item = &'a OsmXmlElement> + 'a> {
-        Box::new(self.additional_elems.iter().filter(move |x| x.name == name))
-    }
-}
-
-struct OsmEntityStorage {
+struct OsmEntityStorage<E: Default> {
     global_id_to_local_id: HashMap<u64, usize>,
-    entities: Vec<OsmEntity>,
+    entities: Vec<E>,
 }
 
-impl OsmEntityStorage {
-    fn new() -> OsmEntityStorage {
+impl<E: Default> OsmEntityStorage<E> {
+    fn new() -> OsmEntityStorage<E> {
         OsmEntityStorage {
             global_id_to_local_id: HashMap::new(),
             entities: Vec::new(),
         }
     }
 
-    fn add(&mut self, entity: OsmEntity) {
+    fn add(&mut self, global_id: u64, entity: E) {
         let old_size = self.entities.len();
-        self.global_id_to_local_id.insert(entity.global_id, old_size);
+        self.global_id_to_local_id.insert(global_id, old_size);
         self.entities.push(entity);
     }
 
@@ -115,143 +53,217 @@ impl OsmEntityStorage {
     }
 }
 
-struct ParsedOsmXml {
-    node_storage: OsmEntityStorage,
-    way_storage: OsmEntityStorage,
-    relation_storage: OsmEntityStorage,
-
-    current_entity_with_type: Option<(OsmEntity, String)>,
+struct EntityStorages {
+    node_storage: OsmEntityStorage<RawNode>,
+    way_storage: OsmEntityStorage<RawWay>,
+    relation_storage: OsmEntityStorage<RawRelation>,
 }
 
-fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<ParsedOsmXml> {
-    let mut parsing_state = ParsedOsmXml {
+fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> {
+    let mut entity_storages = EntityStorages {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
         relation_storage: OsmEntityStorage::new(),
-        current_entity_with_type: None,
     };
 
     let mut elem_count = 0;
+
+    fn dump_state(entity_storages: &EntityStorages) -> String {
+        format!(
+            "{} nodes, {} ways and {} relations",
+            entity_storages.node_storage.entities.len(),
+            entity_storages.way_storage.entities.len(),
+            entity_storages.relation_storage.entities.len()
+        )
+    }
+
     loop {
         let e = parser.next().chain_err(|| "Failed to parse the input file")?;
         match e {
             XmlEvent::EndDocument => break,
             XmlEvent::StartElement { name, attributes, .. } => {
-                process_start_element(name, attributes, parser.position(), &mut parsing_state);
+                process_element(&name.local_name, &attributes, &mut entity_storages, &mut parser)?;
                 elem_count += 1;
                 if elem_count % 100_000 == 0 {
-                    println!(
-                        "Got {} nodes, {} ways and {} relations",
-                        parsing_state.node_storage.entities.len(),
-                        parsing_state.way_storage.entities.len(),
-                        parsing_state.relation_storage.entities.len()
-                    );
+                    println!("Got {} so far", dump_state(&entity_storages));
                 }
-            }
-            XmlEvent::EndElement { name } => {
-                process_end_element(&name, &mut parsing_state);
             }
             _ => {}
         }
     }
 
-    Ok(parsing_state)
+    println!("Total: {}", dump_state(&entity_storages));
+
+    Ok(entity_storages)
 }
 
-fn process_start_element(
-    name: OwnedName,
-    attrs: Vec<OwnedAttribute>,
-    input_position: TextPosition,
-    parsing_state: &mut ParsedOsmXml,
-) {
-    let entity_type = name.local_name.clone();
-    let osm_elem = OsmXmlElement::new(name, attrs, input_position);
-    match parsing_state.current_entity_with_type {
-        Some((ref mut entity, _)) => {
-            entity.additional_elems.push(osm_elem);
+type Attrs = Vec<OwnedAttribute>;
+
+fn process_element<R: Read>(
+    name: &String,
+    attrs: &Attrs,
+    entity_storages: &mut EntityStorages,
+    parser: &mut EventReader<R>,
+) -> Result<()> {
+    match name.as_str() {
+        "node" => {
+            let mut node = RawNode {
+                global_id: get_id(name, attrs)?,
+                lat: parse_required_attr(name, attrs, "lat")?,
+                lon: parse_required_attr(name, attrs, "lon")?,
+                tags: RawTags::default(),
+            };
+            process_subelements(name, &mut node, entity_storages, process_node_subelement, parser)?;
+            entity_storages.node_storage.add(node.global_id, node);
         }
-        None => {
-            if let Some(new_entity) = OsmEntity::new(osm_elem) {
-                parsing_state.current_entity_with_type = Some((new_entity, entity_type));
+        "way" => {
+            let mut way = RawWay {
+                global_id: get_id(name, attrs)?,
+                node_ids: RawRefs::default(),
+                tags: RawTags::default(),
+            };
+            process_subelements(name, &mut way, entity_storages, process_way_subelement, parser)?;
+            entity_storages.way_storage.add(way.global_id, way);
+        }
+        "relation" => {
+            let mut relation = RawRelation {
+                global_id: get_id(name, attrs)?,
+                way_ids: RawRefs::default(),
+                tags: RawTags::default(),
+            };
+            process_subelements(
+                name,
+                &mut relation,
+                entity_storages,
+                process_relation_subelement,
+                parser,
+            )?;
+            if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
+                entity_storages.relation_storage.add(relation.global_id, relation);
             }
         }
+        _ => {}
     }
+    Ok(())
 }
 
-fn process_end_element(name: &OwnedName, parsing_state: &mut ParsedOsmXml) {
-    match parsing_state.current_entity_with_type {
-        Some((_, ref entity_type)) if *entity_type == name.local_name => {}
-        _ => return,
-    }
-
-    if let Some((entity, entity_type)) = parsing_state.current_entity_with_type.take() {
-        let maybe_storage = match entity_type.as_ref() {
-            "node" => Some(&mut parsing_state.node_storage),
-            "way" => Some(&mut parsing_state.way_storage),
-            "relation" => Some(&mut parsing_state.relation_storage),
-            _ => None,
-        };
-
-        if let Some(storage) = maybe_storage {
-            storage.add(entity);
+fn process_subelements<E: Default, R: Read, F>(
+    entity_name: &String,
+    entity: &mut E,
+    entity_storages: &EntityStorages,
+    subelement_processor: F,
+    parser: &mut EventReader<R>,
+) -> Result<()>
+where
+    F: Fn(&mut E, &EntityStorages, &String, &Attrs) -> Result<()>,
+{
+    loop {
+        let e = parser
+            .next()
+            .chain_err(|| format!("Failed to parse the input file when processing {}", entity_name))?;
+        match e {
+            XmlEvent::EndDocument => break,
+            XmlEvent::EndElement { ref name } if name.local_name == *entity_name => break,
+            XmlEvent::StartElement { name, attributes, .. } => {
+                subelement_processor(entity, entity_storages, &name.local_name, &attributes)?
+            }
+            _ => {}
         }
     }
+    Ok(())
 }
 
-fn get_required_attr<'a>(osm_elem: &'a OsmXmlElement, attr_name: &'static str) -> Result<&'a str> {
-    match osm_elem.get_attr(attr_name) {
-        Some(value) => Ok(value),
-        None => bail!("Element {} doesn't have required attribute: {}", osm_elem, attr_name),
+fn process_node_subelement(node: &mut RawNode, _: &EntityStorages, sub_name: &String, sub_attrs: &Attrs) -> Result<()> {
+    try_add_tag(sub_name, sub_attrs, &mut node.tags).map(|_| ())
+}
+
+fn process_way_subelement(
+    way: &mut RawWay,
+    entity_storages: &EntityStorages,
+    sub_name: &String,
+    sub_attrs: &Attrs,
+) -> Result<()> {
+    if try_add_tag(sub_name, sub_attrs, &mut way.tags)? {
+        return Ok(());
     }
+    if sub_name == "nd" {
+        add_ref(sub_name, sub_attrs, &entity_storages.node_storage, &mut way.node_ids)?;
+    }
+    Ok(())
 }
 
-fn parse_required_attr<T>(osm_elem: &OsmXmlElement, attr_name: &'static str) -> Result<T>
+fn process_relation_subelement(
+    relation: &mut RawRelation,
+    entity_storages: &EntityStorages,
+    sub_name: &String,
+    sub_attrs: &Attrs,
+) -> Result<()> {
+    if try_add_tag(sub_name, sub_attrs, &mut relation.tags)? {
+        return Ok(());
+    }
+    if sub_name == "member" && get_required_attr(sub_name, sub_attrs, "type")? == "way" {
+        add_ref(sub_name, sub_attrs, &entity_storages.way_storage, &mut relation.way_ids)?;
+    }
+    Ok(())
+}
+
+fn get_required_attr<'a>(elem_name: &str, attrs: &'a Attrs, attr_name: &str) -> Result<&'a String> {
+    attrs
+        .iter()
+        .filter(|x| x.name.local_name == attr_name)
+        .map(|x| &x.value)
+        .next()
+        .ok_or_else(|| format!("Element {} doesn't have required attribute: {}", elem_name, attr_name).into())
+}
+
+fn parse_required_attr<T>(elem_name: &str, attrs: &Attrs, attr_name: &str) -> Result<T>
 where
     T: ::std::str::FromStr,
     T::Err: ::std::error::Error + ::std::marker::Send + 'static,
 {
-    let value = get_required_attr(osm_elem, attr_name)?;
+    let value = get_required_attr(elem_name, attrs, attr_name)?;
 
     let parsed_value = value.parse::<T>().chain_err(|| {
         format!(
-            "Failed to parse the value of attribute {} for element {}",
-            attr_name, osm_elem
+            "Failed to parse the value of attribute {} ({}) for element {}",
+            attr_name, value, elem_name
         )
     })?;
 
     Ok(parsed_value)
 }
 
+fn add_ref<E: Default>(
+    elem_name: &str,
+    attrs: &Attrs,
+    storage: &OsmEntityStorage<E>,
+    refs: &mut RawRefs,
+) -> Result<()> {
+    let reference = parse_required_attr(elem_name, attrs, "ref")?;
+    if let Some(translated) = storage.translate_id(reference) {
+        refs.push(translated);
+    }
+    Ok(())
+}
+
+fn try_add_tag<'a>(elem_name: &str, attrs: &'a Attrs, tags: &mut RawTags) -> Result<bool> {
+    if elem_name != "tag" {
+        return Ok(false);
+    }
+    let key = get_required_attr(elem_name, attrs, "k")?;
+    let value = get_required_attr(elem_name, attrs, "v")?;
+    tags.insert(key.clone(), value.clone());
+    Ok(true)
+}
+
+fn get_id(elem_name: &str, attrs: &Attrs) -> Result<u64> {
+    parse_required_attr(elem_name, attrs, "id")
+}
+
 type RawRefs = Vec<usize>;
+type RawTags = BTreeMap<String, String>;
 
-fn collect_references<'a, I>(elems: I, storage: &OsmEntityStorage) -> RawRefs
-where
-    I: Iterator<Item = &'a OsmXmlElement>,
-{
-    elems
-        .filter_map(|x| {
-            x.get_attr("ref")
-                .and_then(|y| y.parse().ok())
-                .and_then(|y| storage.translate_id(y))
-        })
-        .collect::<Vec<_>>()
-}
-
-type RawTags = Vec<(String, String)>;
-
-fn collect_tags(osm_entity: &OsmEntity) -> RawTags {
-    let mut result = osm_entity
-        .get_elems_by_name("tag")
-        .filter_map(|x| match (get_required_attr(x, "k"), get_required_attr(x, "v")) {
-            (Ok(k), Ok(v)) => Some((k.to_string(), v.to_string())),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-
-    result.sort();
-    result
-}
-
+#[derive(Default)]
 struct RawNode {
     global_id: u64,
     lat: f64,
@@ -269,12 +281,14 @@ impl coords::Coords for RawNode {
     }
 }
 
+#[derive(Default)]
 struct RawWay {
     global_id: u64,
     node_ids: RawRefs,
     tags: RawTags,
 }
 
+#[derive(Default)]
 struct RawRelation {
     global_id: u64,
     way_ids: RawRefs,
@@ -293,6 +307,25 @@ struct TileIdToReferences {
     refs: BTreeMap<(u32, u32), TileReferences>,
 }
 
+fn save_to_internal_format(writer: &mut Write, entity_storages: &EntityStorages) -> Result<()> {
+    let mut buffered_data = BufferedData::default();
+    let nodes = &entity_storages.node_storage.entities;
+    save_nodes(writer, nodes, &mut buffered_data)?;
+
+    let ways = &entity_storages.way_storage.entities;
+    save_ways(writer, &ways, &mut buffered_data)?;
+
+    let relations = &entity_storages.relation_storage.entities;
+    save_relations(writer, &relations, &mut buffered_data)?;
+
+    let tile_references = get_tile_references(&nodes, &ways, &relations);
+    save_tile_references(writer, &tile_references, &mut buffered_data)?;
+
+    buffered_data.save(writer)?;
+
+    Ok(())
+}
+
 impl TileIdToReferences {
     fn tile_ref_by_node(&mut self, node: &RawNode) -> &mut TileReferences {
         let node_tile = tile::coords_to_geodata_tile(node);
@@ -302,58 +335,6 @@ impl TileIdToReferences {
     fn tile_ref_by_xy(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
         self.refs.entry((tile_x, tile_y)).or_insert_with(Default::default)
     }
-}
-
-fn save_to_internal_format(writer: &mut Write, osm_xml: &ParsedOsmXml) -> Result<()> {
-    let mut buffered_data = BufferedData::default();
-
-    let mut nodes = Vec::new();
-    for n in &osm_xml.node_storage.entities {
-        nodes.push(RawNode {
-            global_id: n.global_id,
-            lat: parse_required_attr(&n.initial_elem, "lat")?,
-            lon: parse_required_attr(&n.initial_elem, "lon")?,
-            tags: collect_tags(n),
-        });
-    }
-    save_nodes(writer, &nodes, &mut buffered_data)?;
-
-    let ways = osm_xml
-        .way_storage
-        .entities
-        .iter()
-        .map(|w| RawWay {
-            global_id: w.global_id,
-            node_ids: collect_references(w.get_elems_by_name("nd"), &osm_xml.node_storage),
-            tags: collect_tags(w),
-        })
-        .collect::<Vec<_>>();
-
-    save_ways(writer, &ways, &mut buffered_data)?;
-
-    let relations = osm_xml
-        .relation_storage
-        .entities
-        .iter()
-        .map(|r| {
-            let members = r.get_elems_by_name("member")
-                .filter(|x| x.get_attr("type") == Some("way"));
-            RawRelation {
-                global_id: r.global_id,
-                way_ids: collect_references(members, &osm_xml.way_storage),
-                tags: collect_tags(r),
-            }
-        })
-        .collect::<Vec<_>>();
-
-    save_relations(writer, &relations, &mut buffered_data)?;
-
-    let tile_references = get_tile_references(&nodes, &ways, &relations);
-    save_tile_references(writer, &tile_references, &mut buffered_data)?;
-
-    buffered_data.save(writer)?;
-
-    Ok(())
 }
 
 fn save_nodes(writer: &mut Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
@@ -418,10 +399,10 @@ where
     Ok(())
 }
 
-fn save_tags(writer: &mut Write, tags: &[(String, String)], data: &mut BufferedData) -> Result<()> {
+fn save_tags(writer: &mut Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
     let mut kv_refs = RawRefs::new();
 
-    for &(ref k, ref v) in tags.iter() {
+    for (ref k, ref v) in tags.iter() {
         let (k_offset, k_length) = data.add_string(k);
         let (v_offset, v_length) = data.add_string(v);
         kv_refs.extend([k_offset, k_length, v_offset, v_length].into_iter());
@@ -471,7 +452,7 @@ fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelat
     for (i, way) in ways.iter().enumerate() {
         let node_ids = way.node_ids.iter().map(|idx| &nodes[*idx]);
 
-        insert_entity_id_to_tiles(&mut result, node_ids, &|x| &mut x.local_way_ids, i);
+        insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_way_ids, i);
     }
 
     for (i, relation) in relations.iter().enumerate() {
@@ -480,7 +461,7 @@ fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelat
             .iter()
             .flat_map(|way_id| ways[*way_id].node_ids.iter().map(|idx| &nodes[*idx]));
 
-        insert_entity_id_to_tiles(&mut result, node_ids, &|x| &mut x.local_relation_ids, i);
+        insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_relation_ids, i);
     }
 
     result
@@ -489,7 +470,7 @@ fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelat
 fn insert_entity_id_to_tiles<'a, I>(
     result: &mut TileIdToReferences,
     mut nodes: I,
-    get_refs: &Fn(&mut TileReferences) -> &mut BTreeSet<usize>,
+    get_refs: impl Fn(&mut TileReferences) -> &mut BTreeSet<usize>,
     entity_id: usize,
 ) where
     I: Iterator<Item = &'a RawNode>,
