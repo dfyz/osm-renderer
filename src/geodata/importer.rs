@@ -97,15 +97,13 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> 
     Ok(entity_storages)
 }
 
-type Attrs = Vec<OwnedAttribute>;
-
 fn process_element<R: Read>(
-    name: &String,
-    attrs: &Attrs,
+    name: &str,
+    attrs: &[OwnedAttribute],
     entity_storages: &mut EntityStorages,
     parser: &mut EventReader<R>,
 ) -> Result<()> {
-    match name.as_str() {
+    match name {
         "node" => {
             let mut node = RawNode {
                 global_id: get_id(name, attrs)?,
@@ -148,14 +146,14 @@ fn process_element<R: Read>(
 }
 
 fn process_subelements<E: Default, R: Read, F>(
-    entity_name: &String,
+    entity_name: &str,
     entity: &mut E,
     entity_storages: &EntityStorages,
     subelement_processor: F,
     parser: &mut EventReader<R>,
 ) -> Result<()>
 where
-    F: Fn(&mut E, &EntityStorages, &String, &Attrs) -> Result<()>,
+    F: Fn(&mut E, &EntityStorages, &str, &[OwnedAttribute]) -> Result<()>,
 {
     loop {
         let e = parser
@@ -173,15 +171,15 @@ where
     Ok(())
 }
 
-fn process_node_subelement(node: &mut RawNode, _: &EntityStorages, sub_name: &String, sub_attrs: &Attrs) -> Result<()> {
+fn process_node_subelement(node: &mut RawNode, _: &EntityStorages, sub_name: &str, sub_attrs: &[OwnedAttribute]) -> Result<()> {
     try_add_tag(sub_name, sub_attrs, &mut node.tags).map(|_| ())
 }
 
 fn process_way_subelement(
     way: &mut RawWay,
     entity_storages: &EntityStorages,
-    sub_name: &String,
-    sub_attrs: &Attrs,
+    sub_name: &str,
+    sub_attrs: &[OwnedAttribute],
 ) -> Result<()> {
     if try_add_tag(sub_name, sub_attrs, &mut way.tags)? {
         return Ok(());
@@ -195,8 +193,8 @@ fn process_way_subelement(
 fn process_relation_subelement(
     relation: &mut RawRelation,
     entity_storages: &EntityStorages,
-    sub_name: &String,
-    sub_attrs: &Attrs,
+    sub_name: &str,
+    sub_attrs: &[OwnedAttribute],
 ) -> Result<()> {
     if try_add_tag(sub_name, sub_attrs, &mut relation.tags)? {
         return Ok(());
@@ -207,7 +205,7 @@ fn process_relation_subelement(
     Ok(())
 }
 
-fn get_required_attr<'a>(elem_name: &str, attrs: &'a Attrs, attr_name: &str) -> Result<&'a String> {
+fn get_required_attr<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], attr_name: &str) -> Result<&'a String> {
     attrs
         .iter()
         .filter(|x| x.name.local_name == attr_name)
@@ -216,7 +214,7 @@ fn get_required_attr<'a>(elem_name: &str, attrs: &'a Attrs, attr_name: &str) -> 
         .ok_or_else(|| format!("Element {} doesn't have required attribute: {}", elem_name, attr_name).into())
 }
 
-fn parse_required_attr<T>(elem_name: &str, attrs: &Attrs, attr_name: &str) -> Result<T>
+fn parse_required_attr<T>(elem_name: &str, attrs: &[OwnedAttribute], attr_name: &str) -> Result<T>
 where
     T: ::std::str::FromStr,
     T::Err: ::std::error::Error + ::std::marker::Send + 'static,
@@ -235,7 +233,7 @@ where
 
 fn add_ref<E: Default>(
     elem_name: &str,
-    attrs: &Attrs,
+    attrs: &[OwnedAttribute],
     storage: &OsmEntityStorage<E>,
     refs: &mut RawRefs,
 ) -> Result<()> {
@@ -246,7 +244,7 @@ fn add_ref<E: Default>(
     Ok(())
 }
 
-fn try_add_tag<'a>(elem_name: &str, attrs: &'a Attrs, tags: &mut RawTags) -> Result<bool> {
+fn try_add_tag<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], tags: &mut RawTags) -> Result<bool> {
     if elem_name != "tag" {
         return Ok(false);
     }
@@ -256,7 +254,7 @@ fn try_add_tag<'a>(elem_name: &str, attrs: &'a Attrs, tags: &mut RawTags) -> Res
     Ok(true)
 }
 
-fn get_id(elem_name: &str, attrs: &Attrs) -> Result<u64> {
+fn get_id(elem_name: &str, attrs: &[OwnedAttribute]) -> Result<u64> {
     parse_required_attr(elem_name, attrs, "id")
 }
 
