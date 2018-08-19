@@ -171,7 +171,12 @@ where
     Ok(())
 }
 
-fn process_node_subelement(node: &mut RawNode, _: &EntityStorages, sub_name: &str, sub_attrs: &[OwnedAttribute]) -> Result<()> {
+fn process_node_subelement(
+    node: &mut RawNode,
+    _: &EntityStorages,
+    sub_name: &str,
+    sub_attrs: &[OwnedAttribute],
+) -> Result<()> {
     try_add_tag(sub_name, sub_attrs, &mut node.tags).map(|_| ())
 }
 
