@@ -18,14 +18,9 @@ pub mod errors {
     }
 }
 
-pub mod geodata {
-    pub mod importer;
-    pub mod reader;
-}
-
-pub mod mapcss;
-
 pub mod coords;
 pub mod draw;
+pub mod geodata;
 pub mod http_server;
+pub mod mapcss;
 pub mod tile;

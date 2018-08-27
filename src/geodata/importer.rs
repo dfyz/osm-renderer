@@ -10,6 +10,10 @@ use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 
 use byteorder::{LittleEndian, WriteBytesExt};
+use geodata::multipolygons::{
+    convert_relation_to_multipolygon, save_multipolygons, save_polygons, to_node_ids, Multipolygon, Polygon,
+};
+use std::collections::HashSet;
 use xml::attribute::OwnedAttribute;
 use xml::reader::{EventReader, XmlEvent};
 
@@ -53,27 +57,29 @@ impl<E: Default> OsmEntityStorage<E> {
     }
 }
 
-struct EntityStorages {
+pub(super) struct EntityStorages {
     node_storage: OsmEntityStorage<RawNode>,
     way_storage: OsmEntityStorage<RawWay>,
-    relation_storage: OsmEntityStorage<RawRelation>,
+    polygon_storage: OsmEntityStorage<Polygon>,
+    multipolygon_storage: OsmEntityStorage<Multipolygon>,
 }
 
 fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> {
     let mut entity_storages = EntityStorages {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
-        relation_storage: OsmEntityStorage::new(),
+        polygon_storage: OsmEntityStorage::new(),
+        multipolygon_storage: OsmEntityStorage::new(),
     };
 
     let mut elem_count = 0;
 
     fn dump_state(entity_storages: &EntityStorages) -> String {
         format!(
-            "{} nodes, {} ways and {} relations",
+            "{} nodes, {} ways and {} multipolygon relations",
             entity_storages.node_storage.entities.len(),
             entity_storages.way_storage.entities.len(),
-            entity_storages.relation_storage.entities.len()
+            entity_storages.multipolygon_storage.entities.len()
         )
     }
 
@@ -121,6 +127,7 @@ fn process_element<R: Read>(
                 tags: RawTags::default(),
             };
             process_subelements(name, &mut way, entity_storages, process_way_subelement, parser)?;
+            postprocess_node_refs(&mut way.node_ids);
             entity_storages.way_storage.add(way.global_id, way);
         }
         "relation" => {
@@ -137,7 +144,7 @@ fn process_element<R: Read>(
                 parser,
             )?;
             if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
-                entity_storages.relation_storage.add(relation.global_id, relation);
+                convert_relation_to_multipolygon(entity_storages, &relation);
             }
         }
         _ => {}
@@ -169,6 +176,27 @@ where
         }
     }
     Ok(())
+}
+
+fn postprocess_node_refs(refs: &mut RawRefs) {
+    if refs.is_empty() {
+        return;
+    }
+
+    let mut seen_node_pairs = HashSet::<(usize, usize)>::default();
+    let mut refs_without_duplicates = vec![refs[0]];
+
+    for idx in 1..refs.len() {
+        let cur = refs[idx];
+        let prev = refs[idx - 1];
+        let node_pair = (cur, prev);
+        if !seen_node_pairs.contains(&node_pair) && !seen_node_pairs.contains(&(prev, cur)) {
+            seen_node_pairs.insert(node_pair);
+            refs_without_duplicates.push(cur);
+        }
+    }
+
+    *refs = refs_without_duplicates;
 }
 
 fn process_node_subelement(
@@ -263,8 +291,8 @@ fn get_id(elem_name: &str, attrs: &[OwnedAttribute]) -> Result<u64> {
     parse_required_attr(elem_name, attrs, "id")
 }
 
-type RawRefs = Vec<usize>;
-type RawTags = BTreeMap<String, String>;
+pub(super) type RawRefs = Vec<usize>;
+pub(super) type RawTags = BTreeMap<String, String>;
 
 #[derive(Default)]
 struct RawNode {
@@ -292,7 +320,7 @@ struct RawWay {
 }
 
 #[derive(Default)]
-struct RawRelation {
+pub(super) struct RawRelation {
     global_id: u64,
     way_ids: RawRefs,
     tags: RawTags,
@@ -302,7 +330,7 @@ struct RawRelation {
 struct TileReferences {
     local_node_ids: BTreeSet<usize>,
     local_way_ids: BTreeSet<usize>,
-    local_relation_ids: BTreeSet<usize>,
+    local_multipolygon_ids: BTreeSet<usize>,
 }
 
 #[derive(Default)]
@@ -318,10 +346,13 @@ fn save_to_internal_format(writer: &mut Write, entity_storages: &EntityStorages)
     let ways = &entity_storages.way_storage.entities;
     save_ways(writer, &ways, &mut buffered_data)?;
 
-    let relations = &entity_storages.relation_storage.entities;
-    save_relations(writer, &relations, &mut buffered_data)?;
+    let polygons = &entity_storages.polygon_storage.entities;
+    save_polygons(writer, polygons, &mut buffered_data)?;
 
-    let tile_references = get_tile_references(&nodes, &ways, &relations);
+    let multipolygons = &entity_storages.multipolygon_storage.entities;
+    save_multipolygons(writer, &multipolygons, &mut buffered_data)?;
+
+    let tile_references = get_tile_references(&entity_storages);
     save_tile_references(writer, &tile_references, &mut buffered_data)?;
 
     buffered_data.save(writer)?;
@@ -361,16 +392,6 @@ fn save_ways(writer: &mut Write, ways: &[RawWay], data: &mut BufferedData) -> Re
     Ok(())
 }
 
-fn save_relations(writer: &mut Write, relations: &[RawRelation], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(relations.len())?)?;
-    for relation in relations {
-        writer.write_u64::<LittleEndian>(relation.global_id)?;
-        save_refs(writer, relation.way_ids.iter(), data)?;
-        save_tags(writer, &relation.tags, data)?;
-    }
-    Ok(())
-}
-
 fn save_tile_references(
     writer: &mut Write,
     tile_references: &TileIdToReferences,
@@ -383,13 +404,13 @@ fn save_tile_references(
 
         save_refs(writer, v.local_node_ids.iter(), data)?;
         save_refs(writer, v.local_way_ids.iter(), data)?;
-        save_refs(writer, v.local_relation_ids.iter(), data)?;
+        save_refs(writer, v.local_multipolygon_ids.iter(), data)?;
     }
 
     Ok(())
 }
 
-fn save_refs<'a, I>(writer: &mut Write, refs: I, data: &mut BufferedData) -> Result<()>
+pub(super) fn save_refs<'a, I>(writer: &mut Write, refs: I, data: &mut BufferedData) -> Result<()>
 where
     I: Iterator<Item = &'a usize>,
 {
@@ -402,7 +423,7 @@ where
     Ok(())
 }
 
-fn save_tags(writer: &mut Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
+pub(super) fn save_tags(writer: &mut Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
     let mut kv_refs = RawRefs::new();
 
     for (ref k, ref v) in tags.iter() {
@@ -417,7 +438,7 @@ fn save_tags(writer: &mut Write, tags: &BTreeMap<String, String>, data: &mut Buf
 }
 
 #[derive(Default)]
-struct BufferedData {
+pub(super) struct BufferedData {
     all_ints: Vec<u32>,
     string_to_offset: HashMap<String, usize>,
     all_strings: Vec<u8>,
@@ -445,26 +466,24 @@ impl BufferedData {
     }
 }
 
-fn get_tile_references(nodes: &[RawNode], ways: &[RawWay], relations: &[RawRelation]) -> TileIdToReferences {
+fn get_tile_references(entity_storages: &EntityStorages) -> TileIdToReferences {
     let mut result = TileIdToReferences::default();
 
+    let nodes = &entity_storages.node_storage.entities;
     for (i, node) in nodes.iter().enumerate() {
         result.tile_ref_by_node(node).local_node_ids.insert(i);
     }
 
-    for (i, way) in ways.iter().enumerate() {
+    for (i, way) in entity_storages.way_storage.entities.iter().enumerate() {
         let node_ids = way.node_ids.iter().map(|idx| &nodes[*idx]);
 
         insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_way_ids, i);
     }
 
-    for (i, relation) in relations.iter().enumerate() {
-        let node_ids = relation
-            .way_ids
-            .iter()
-            .flat_map(|way_id| ways[*way_id].node_ids.iter().map(|idx| &nodes[*idx]));
-
-        insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_relation_ids, i);
+    let polygons = &entity_storages.polygon_storage.entities;
+    for (i, multipolygon) in entity_storages.multipolygon_storage.entities.iter().enumerate() {
+        let node_ids = to_node_ids(multipolygon, polygons).map(|idx| &nodes[*idx]);
+        insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_multipolygon_ids, i);
     }
 
     result
@@ -504,7 +523,7 @@ fn insert_entity_id_to_tiles<'a, I>(
     }
 }
 
-fn to_u32_safe(num: usize) -> Result<u32> {
+pub(super) fn to_u32_safe(num: usize) -> Result<u32> {
     if num > (u32::max_value() as usize) {
         bail!("{} doesn't fit into u32", num);
     }
@@ -572,7 +591,7 @@ mod tests {
             tile_refs.refs.entry((x, y)).or_insert(TileReferences {
                 local_node_ids: [idx].iter().cloned().collect(),
                 local_way_ids: BTreeSet::<usize>::default(),
-                local_relation_ids: BTreeSet::<usize>::default(),
+                local_multipolygon_ids: BTreeSet::<usize>::default(),
             });
         }
 
@@ -586,7 +605,7 @@ mod tests {
             let mut data = BufferedData::default();
             save_nodes(&mut writer, &nodes, &mut data).unwrap();
             save_ways(&mut writer, &[], &mut data).unwrap();
-            save_relations(&mut writer, &[], &mut data).unwrap();
+            save_multipolygons(&mut writer, &[], &mut data).unwrap();
             save_tile_references(&mut writer, &tile_refs, &mut data).unwrap();
             data.save(&mut writer).unwrap();
         }
