@@ -1,7 +1,7 @@
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
-use geodata::reader::{Node, OsmArea, OsmEntity, Relation, Way};
+use geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -80,7 +80,7 @@ where
     'a: 'wr,
 {
     Way(&'wr Way<'a>),
-    Relation(&'wr Relation<'a>),
+    Relation(&'wr Multipolygon<'a>),
 }
 
 impl Styler {
@@ -146,7 +146,7 @@ impl Styler {
     pub fn style_areas<'a, 'wr>(
         &self,
         ways: impl Iterator<Item = &'wr Way<'a>>,
-        relations: impl Iterator<Item = &'wr Relation<'a>>,
+        relations: impl Iterator<Item = &'wr Multipolygon<'a>>,
         zoom: u8,
     ) -> Vec<(StyledArea<'a, 'wr>, Style)> {
         let styled_ways = self.style_entities(ways, zoom);

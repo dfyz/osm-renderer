@@ -8,7 +8,6 @@ use std::io::Write;
 
 #[derive(Default)]
 pub(super) struct Polygon {
-    is_inner: bool,
     node_ids: RawRefs,
 }
 
@@ -24,7 +23,6 @@ pub(super) fn convert_relation_to_multipolygon(entity_storages: &mut EntityStora
 pub(super) fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(polygons.len())?)?;
     for polygon in polygons {
-        writer.write_u64::<LittleEndian>(u64::from(polygon.is_inner))?;
         save_refs(writer, polygon.node_ids.iter(), data)?;
     }
     Ok(())

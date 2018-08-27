@@ -1,5 +1,5 @@
 use draw::point::Point;
-use geodata::reader::{Node, Relation, Way};
+use geodata::reader::{Multipolygon, Node, Polygon, Way};
 
 #[derive(Eq, PartialEq, Hash)]
 pub struct NodePair<'n> {
@@ -24,21 +24,31 @@ pub trait NodePairCollection<'a> {
     fn to_node_pairs(&self) -> Vec<NodePair<'a>>;
 }
 
-impl<'w> NodePairCollection<'w> for Way<'w> {
-    fn to_node_pairs(&self) -> Vec<NodePair<'w>> {
+macro_rules! implement_to_node_pairs {
+    ($lft:lifetime) => {
+        fn to_node_pairs(&self) -> Vec<NodePair<$lft>> {
         (1..self.node_count())
             .map(|idx| NodePair {
                 n1: self.get_node(idx - 1),
                 n2: self.get_node(idx),
             })
             .collect()
+        }
     }
 }
 
-impl<'r> NodePairCollection<'r> for Relation<'r> {
+impl<'w> NodePairCollection<'w> for Way<'w> {
+    implement_to_node_pairs!('w);
+}
+
+impl<'p> NodePairCollection<'p> for Polygon<'p> {
+    implement_to_node_pairs!('p);
+}
+
+impl<'r> NodePairCollection<'r> for Multipolygon<'r> {
     fn to_node_pairs(&self) -> Vec<NodePair<'r>> {
-        (0..self.way_count())
-            .flat_map(|idx| self.get_way(idx).to_node_pairs())
+        (0..self.polygon_count())
+            .flat_map(|idx| self.get_polygon(idx).to_node_pairs())
             .collect()
     }
 }

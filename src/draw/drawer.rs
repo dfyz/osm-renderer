@@ -45,7 +45,7 @@ impl Drawer {
         fill_canvas(&mut pixels, styler);
 
         let multipolygons = entities
-            .relations
+            .multipolygons
             .iter()
             .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
         let styled_areas = styler.style_areas(entities.ways.iter(), multipolygons, tile.zoom);
