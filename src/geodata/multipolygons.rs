@@ -18,7 +18,9 @@ pub(super) struct Multipolygon {
     tags: RawTags,
 }
 
-pub(super) fn convert_relation_to_multipolygon(entity_storages: &mut EntityStorages, relation: &RawRelation) {}
+pub(super) fn convert_relation_to_multipolygon(entity_storages: &mut EntityStorages, relation: &RawRelation) {
+
+}
 
 pub(super) fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(polygons.len())?)?;

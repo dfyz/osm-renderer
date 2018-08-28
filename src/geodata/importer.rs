@@ -347,7 +347,7 @@ fn save_to_internal_format(writer: &mut Write, entity_storages: &EntityStorages)
     save_ways(writer, &ways, &mut buffered_data)?;
 
     let polygons = &entity_storages.polygon_storage.entities;
-    save_polygons(writer, polygons, &mut buffered_data)?;
+    save_polygons(writer, &polygons, &mut buffered_data)?;
 
     let multipolygons = &entity_storages.multipolygon_storage.entities;
     save_multipolygons(writer, &multipolygons, &mut buffered_data)?;
@@ -605,6 +605,7 @@ mod tests {
             let mut data = BufferedData::default();
             save_nodes(&mut writer, &nodes, &mut data).unwrap();
             save_ways(&mut writer, &[], &mut data).unwrap();
+            save_polygons(&mut writer, &[], &mut data).unwrap();
             save_multipolygons(&mut writer, &[], &mut data).unwrap();
             save_tile_references(&mut writer, &tile_refs, &mut data).unwrap();
             data.save(&mut writer).unwrap();
