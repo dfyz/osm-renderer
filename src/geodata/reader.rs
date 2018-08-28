@@ -203,10 +203,7 @@ impl<'a> GeodataReader<'a> {
     fn get_polygon(&'a self, idx: usize) -> Polygon<'a> {
         let bytes = self.storages().polygon_storage.get_object(idx);
         let node_ids = self.get_ints_by_ref(&bytes);
-        Polygon {
-            reader: self,
-            node_ids,
-        }
+        Polygon { reader: self, node_ids }
     }
 
     fn get_multipolygon(&'a self, idx: usize) -> Multipolygon<'a> {

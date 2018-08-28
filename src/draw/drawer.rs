@@ -11,7 +11,6 @@ use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::TILE_SIZE;
 use geodata::reader::{Node, OsmEntities, OsmEntity};
 use mapcss::styler::{Style, StyledArea, Styler};
-use std::collections::HashSet;
 use std::path::Path;
 use tile as t;
 
@@ -44,19 +43,15 @@ impl Drawer {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
-        let multipolygons = entities
-            .multipolygons
-            .iter()
-            .filter(|x| x.tags().get_by_key("type") == Some("multipolygon"));
-        let styled_areas = styler.style_areas(entities.ways.iter(), multipolygons, tile.zoom);
+        let styled_areas = styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom);
 
-        let draw_areas_with_type = |pixels: &mut TilePixels, draw_type, use_relations| {
+        let draw_areas_with_type = |pixels: &mut TilePixels, draw_type, use_multipolygons| {
             self.draw_areas(
                 pixels,
                 &styled_areas,
                 tile,
                 draw_type,
-                use_relations,
+                use_multipolygons,
                 styler.use_caps_for_dashes,
             );
         };
@@ -77,7 +72,7 @@ impl Drawer {
         areas: &[(StyledArea, Style)],
         tile: &t::Tile,
         draw_type: &DrawType,
-        use_relations: bool,
+        use_multipolygons: bool,
         use_caps_for_dashes: bool,
     ) {
         for (area, style) in areas {
@@ -85,7 +80,7 @@ impl Drawer {
                 StyledArea::Way(way) => {
                     self.draw_one_area(pixels, tile, *way, style, draw_type, use_caps_for_dashes);
                 }
-                StyledArea::Relation(rel) if use_relations => {
+                StyledArea::Multipolygon(rel) if use_multipolygons => {
                     self.draw_one_area(pixels, tile, *rel, style, draw_type, use_caps_for_dashes);
                 }
                 _ => {}
@@ -97,40 +92,31 @@ impl Drawer {
         &self,
         image: &mut TilePixels,
         tile: &t::Tile,
-        area: &A,
+        area: &'e A,
         style: &Style,
         draw_type: &DrawType,
         use_caps_for_dashes: bool,
     ) where
         A: OsmEntity<'e> + NodePairCollection<'e>,
     {
-        let mut seen_node_pairs = HashSet::new();
-        let mut points = Vec::new();
-
-        for np in area.to_node_pairs() {
-            if seen_node_pairs.contains(&np) || seen_node_pairs.contains(&np.reverse()) {
-                continue;
-            }
-            points.push(np.to_points(tile.zoom));
-            seen_node_pairs.insert(np);
-        }
+        let node_pairs = area.to_node_pairs();
+        let points = node_pairs.iter().map(|x| x.to_points(tile.zoom));
 
         let create_figure = || Figure::new(tile);
         let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
 
         let figure = match *draw_type {
             DrawType::Fill => {
-                let points_iter = points.into_iter();
                 let opacity = float_or_one(&style.fill_opacity);
                 if let Some(ref color) = style.fill_color {
                     let mut figure = create_figure();
-                    fill_contour(points_iter, &Filler::Color(color), opacity, &mut figure);
+                    fill_contour(points, &Filler::Color(color), opacity, &mut figure);
                     Some(figure)
                 } else if let Some(ref icon_name) = style.fill_image {
                     let mut figure = create_figure();
                     let read_icon_cache = self.icon_cache.open_read_session(icon_name);
                     if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
-                        fill_contour(points_iter, &Filler::Image(icon), opacity, &mut figure);
+                        fill_contour(points, &Filler::Image(icon), opacity, &mut figure);
                     }
                     Some(figure)
                 } else {
@@ -141,7 +127,7 @@ impl Drawer {
                 let mut figure = create_figure();
                 style.casing_width.map(|casing_width| {
                     draw_lines(
-                        points.into_iter(),
+                        points,
                         casing_width,
                         color,
                         1.0,
@@ -189,7 +175,7 @@ impl Drawer {
                     self.labeler
                         .label_entity(*way, style, tile.zoom, &self.icon_cache, &mut all_labels_figure)
                 }
-                StyledArea::Relation(rel) => {
+                StyledArea::Multipolygon(rel) => {
                     self.labeler
                         .label_entity(*rel, style, tile.zoom, &self.icon_cache, &mut all_labels_figure)
                 }
