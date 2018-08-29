@@ -2,7 +2,7 @@ use errors::*;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use geodata::importer::{save_refs, save_tags, to_u32_safe, BufferedData, EntityStorages, RawRefs, RawTags};
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::io::Write;
 
 #[derive(Default)]
