@@ -11,7 +11,7 @@ use std::io::{BufReader, BufWriter};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use geodata::multipolygons::{
-    convert_relation_to_multipolygon, save_multipolygons, save_polygons, to_node_ids, Multipolygon, Polygon,
+    convert_relation_to_multipolygon, save_multipolygons, save_polygons, to_node_ids, Multipolygon, NodeDesc, Polygon,
 };
 use std::collections::HashSet;
 use xml::attribute::OwnedAttribute;
@@ -144,7 +144,8 @@ fn process_element<R: Read>(
                 parser,
             )?;
             if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
-                convert_relation_to_multipolygon(entity_storages, &relation);
+                let segments = relation.to_segments(&entity_storages);
+                convert_relation_to_multipolygon(entity_storages, relation.global_id, &segments, relation.tags);
             }
         }
         _ => {}
@@ -324,6 +325,24 @@ pub(super) struct RawRelation {
     global_id: u64,
     way_ids: RawRefs,
     tags: RawTags,
+}
+
+impl RawRelation {
+    fn to_segments(&self, entity_storages: &EntityStorages) -> Vec<Vec<NodeDesc>> {
+        self.way_ids
+            .iter()
+            .map(|way_id| {
+                let way = &entity_storages.way_storage.entities[*way_id];
+                way.node_ids
+                    .iter()
+                    .map(|node_id| {
+                        let node = &entity_storages.node_storage.entities[*node_id];
+                        NodeDesc::new(*node_id, node.lat, node.lon)
+                    })
+                    .collect()
+            })
+            .collect()
+    }
 }
 
 #[derive(Default)]
