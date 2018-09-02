@@ -20,12 +20,12 @@ pub trait NodePairCollection<'a> {
 macro_rules! implement_to_node_pairs {
     ($lft:lifetime) => {
         fn to_node_pairs(&self) -> Vec<NodePair<$lft>> {
-        (1..self.node_count())
-            .map(|idx| NodePair {
-                n1: self.get_node(idx - 1),
-                n2: self.get_node(idx),
-            })
-            .collect()
+            (1..self.node_count())
+                .map(|idx| NodePair {
+                    n1: self.get_node(idx - 1),
+                    n2: self.get_node(idx),
+                })
+                .collect()
         }
     }
 }
