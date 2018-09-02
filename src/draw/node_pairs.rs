@@ -11,13 +11,6 @@ impl<'n> NodePair<'n> {
     pub fn to_points(&self, zoom: u8) -> (Point, Point) {
         (Point::from_node(&self.n1, zoom), Point::from_node(&self.n2, zoom))
     }
-
-    pub fn reverse(&self) -> NodePair<'n> {
-        NodePair {
-            n1: self.n2.clone(),
-            n2: self.n1.clone(),
-        }
-    }
 }
 
 pub trait NodePairCollection<'a> {
