@@ -5,7 +5,7 @@ use draw::fill::{fill_contour, Filler};
 use draw::icon_cache::IconCache;
 use draw::labeler::Labeler;
 use draw::line::draw_lines;
-use draw::node_pairs::NodePairCollection;
+use draw::point_pairs::PointPairCollection;
 use draw::png_writer::rgb_triples_to_png;
 use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use draw::TILE_SIZE;
@@ -97,10 +97,9 @@ impl Drawer {
         draw_type: &DrawType,
         use_caps_for_dashes: bool,
     ) where
-        A: OsmEntity<'e> + NodePairCollection<'e>,
+        A: OsmEntity<'e> + PointPairCollection,
     {
-        let node_pairs = area.to_node_pairs();
-        let points = node_pairs.iter().map(|x| x.to_points(tile.zoom));
+        let points = area.to_point_pairs(tile.zoom);
 
         let create_figure = || Figure::new(tile);
         let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
@@ -110,13 +109,13 @@ impl Drawer {
                 let opacity = float_or_one(&style.fill_opacity);
                 if let Some(ref color) = style.fill_color {
                     let mut figure = create_figure();
-                    fill_contour(points, &Filler::Color(color), opacity, &mut figure);
+                    fill_contour(&points, &Filler::Color(color), opacity, &mut figure);
                     Some(figure)
                 } else if let Some(ref icon_name) = style.fill_image {
                     let mut figure = create_figure();
                     let read_icon_cache = self.icon_cache.open_read_session(icon_name);
                     if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
-                        fill_contour(points, &Filler::Image(icon), opacity, &mut figure);
+                        fill_contour(&points, &Filler::Image(icon), opacity, &mut figure);
                     }
                     Some(figure)
                 } else {
@@ -127,7 +126,7 @@ impl Drawer {
                 let mut figure = create_figure();
                 style.casing_width.map(|casing_width| {
                     draw_lines(
-                        points,
+                        &points,
                         casing_width,
                         color,
                         1.0,
@@ -142,7 +141,7 @@ impl Drawer {
             DrawType::Stroke => style.color.as_ref().map(|color| {
                 let mut figure = create_figure();
                 draw_lines(
-                    points.into_iter(),
+                    &points,
                     float_or_one(&style.width),
                     color,
                     float_or_one(&style.opacity),

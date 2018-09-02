@@ -1,6 +1,7 @@
 use draw::figure::Figure;
 use draw::icon::Icon;
 use draw::point::Point;
+use draw::point_pairs::PointPairs;
 use draw::tile_pixels::RgbaColor;
 use mapcss::color::Color;
 
@@ -13,13 +14,10 @@ pub enum Filler<'a> {
     Image(&'a Icon),
 }
 
-pub fn fill_contour<I>(points: I, filler: &Filler, opacity: f64, figure: &mut Figure)
-where
-    I: Iterator<Item = (Point, Point)>,
-{
+pub fn fill_contour(points: &PointPairs, filler: &Filler, opacity: f64, figure: &mut Figure) {
     let mut y_to_edges = EdgesByY::default();
 
-    for (idx, (p1, p2)) in points.enumerate() {
+    for (idx, (p1, p2)) in points.iter().enumerate() {
         draw_line(idx, &p1, &p2, &mut y_to_edges);
     }
 
