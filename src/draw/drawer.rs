@@ -97,7 +97,7 @@ impl Drawer {
         draw_type: &DrawType,
         use_caps_for_dashes: bool,
     ) where
-        A: OsmEntity<'e> + PointPairCollection,
+        A: OsmEntity<'e> + PointPairCollection<'e>,
     {
         let points = area.to_point_pairs(tile.zoom);
 
@@ -109,13 +109,13 @@ impl Drawer {
                 let opacity = float_or_one(&style.fill_opacity);
                 if let Some(ref color) = style.fill_color {
                     let mut figure = create_figure();
-                    fill_contour(&points, &Filler::Color(color), opacity, &mut figure);
+                    fill_contour(points, &Filler::Color(color), opacity, &mut figure);
                     Some(figure)
                 } else if let Some(ref icon_name) = style.fill_image {
                     let mut figure = create_figure();
                     let read_icon_cache = self.icon_cache.open_read_session(icon_name);
                     if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
-                        fill_contour(&points, &Filler::Image(icon), opacity, &mut figure);
+                        fill_contour(points, &Filler::Image(icon), opacity, &mut figure);
                     }
                     Some(figure)
                 } else {
@@ -126,7 +126,7 @@ impl Drawer {
                 let mut figure = create_figure();
                 style.casing_width.map(|casing_width| {
                     draw_lines(
-                        &points,
+                        points,
                         casing_width,
                         color,
                         1.0,
@@ -141,7 +141,7 @@ impl Drawer {
             DrawType::Stroke => style.color.as_ref().map(|color| {
                 let mut figure = create_figure();
                 draw_lines(
-                    &points,
+                    points,
                     float_or_one(&style.width),
                     color,
                     float_or_one(&style.opacity),

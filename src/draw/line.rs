@@ -1,13 +1,13 @@
 use draw::figure::Figure;
 use draw::opacity_calculator::OpacityCalculator;
 use draw::point::Point;
-use draw::point_pairs::PointPairs;
+use draw::point_pairs::PointPairIter;
 use draw::tile_pixels::RgbaColor;
 use mapcss::color::Color;
 use mapcss::styler::{is_non_trivial_cap, LineCap};
 
 pub fn draw_lines(
-    points: &PointPairs,
+    points: PointPairIter,
     width: f64,
     color: &Color,
     opacity: f64,
@@ -23,7 +23,7 @@ pub fn draw_lines(
 
     let has_caps = is_non_trivial_cap(line_cap);
 
-    let mut peekable_points = points.iter().peekable();
+    let mut peekable_points = points.peekable();
     let mut first = true;
 
     while let Some((p1, p2)) = peekable_points.next() {
