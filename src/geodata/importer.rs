@@ -11,7 +11,8 @@ use std::io::{BufReader, BufWriter};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use geodata::multipolygons::{
-    convert_relation_to_multipolygon, save_multipolygons, save_polygons, to_node_ids, Multipolygon, NodeDesc, Polygon,
+    convert_relation_to_multipolygon, save_multipolygons, save_polygons, to_node_ids, Multipolygon, NodeDesc,
+    NodeDescPair, Polygon,
 };
 use std::collections::HashSet;
 use xml::attribute::OwnedAttribute;
@@ -133,7 +134,7 @@ fn process_element<R: Read>(
         "relation" => {
             let mut relation = RawRelation {
                 global_id: get_id(name, attrs)?,
-                way_ids: RawRefs::default(),
+                way_refs: Vec::<RelationWayRef>::default(),
                 tags: RawTags::default(),
             };
             process_subelements(
@@ -219,7 +220,9 @@ fn process_way_subelement(
         return Ok(());
     }
     if sub_name == "nd" {
-        add_ref(sub_name, sub_attrs, &entity_storages.node_storage, &mut way.node_ids)?;
+        if let Some(r) = get_ref(sub_name, sub_attrs, &entity_storages.node_storage)? {
+            way.node_ids.push(r);
+        }
     }
     Ok(())
 }
@@ -234,7 +237,10 @@ fn process_relation_subelement(
         return Ok(());
     }
     if sub_name == "member" && get_required_attr(sub_name, sub_attrs, "type")? == "way" {
-        add_ref(sub_name, sub_attrs, &entity_storages.way_storage, &mut relation.way_ids)?;
+        if let Some(r) = get_ref(sub_name, sub_attrs, &entity_storages.way_storage)? {
+            let is_inner = get_required_attr(sub_name, sub_attrs, "role")? == "inner";
+            relation.way_refs.push(RelationWayRef { way_id: r, is_inner });
+        }
     }
     Ok(())
 }
@@ -265,17 +271,13 @@ where
     Ok(parsed_value)
 }
 
-fn add_ref<E: Default>(
+fn get_ref<E: Default>(
     elem_name: &str,
     attrs: &[OwnedAttribute],
     storage: &OsmEntityStorage<E>,
-    refs: &mut RawRefs,
-) -> Result<()> {
+) -> Result<Option<usize>> {
     let reference = parse_required_attr(elem_name, attrs, "ref")?;
-    if let Some(translated) = storage.translate_id(reference) {
-        refs.push(translated);
-    }
-    Ok(())
+    Ok(storage.translate_id(reference))
 }
 
 fn try_add_tag<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], tags: &mut RawTags) -> Result<bool> {
@@ -320,26 +322,36 @@ struct RawWay {
     tags: RawTags,
 }
 
+pub struct RelationWayRef {
+    way_id: usize,
+    is_inner: bool,
+}
+
 #[derive(Default)]
 pub(super) struct RawRelation {
     global_id: u64,
-    way_ids: RawRefs,
+    way_refs: Vec<RelationWayRef>,
     tags: RawTags,
 }
 
 impl RawRelation {
-    fn to_segments(&self, entity_storages: &EntityStorages) -> Vec<Vec<NodeDesc>> {
-        self.way_ids
+    fn to_segments(&self, entity_storages: &EntityStorages) -> Vec<NodeDescPair> {
+        let create_node_desc = |way: &RawWay, node_idx_in_way| {
+            let node_id = way.node_ids[node_idx_in_way];
+            let node = &entity_storages.node_storage.entities[node_id];
+            NodeDesc::new(node_id, node.lat, node.lon)
+        };
+        self.way_refs
             .iter()
-            .map(|way_id| {
-                let way = &entity_storages.way_storage.entities[*way_id];
-                way.node_ids
-                    .iter()
-                    .map(|node_id| {
-                        let node = &entity_storages.node_storage.entities[*node_id];
-                        NodeDesc::new(*node_id, node.lat, node.lon)
-                    })
-                    .collect()
+            .flat_map(|way_ref| {
+                let way = &entity_storages.way_storage.entities[way_ref.way_id];
+                (1..way.node_ids.len()).map(move |idx| {
+                    NodeDescPair::new(
+                        create_node_desc(way, idx - 1),
+                        create_node_desc(way, idx),
+                        way_ref.is_inner,
+                    )
+                })
             })
             .collect()
     }

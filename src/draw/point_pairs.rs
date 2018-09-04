@@ -9,16 +9,12 @@ pub trait PointPairCollection<'a> {
 
 macro_rules! implement_to_point_pairs {
     ($s:expr, $zoom:expr) => {
-        Box::new(
-            (1..$s.node_count())
-                .map(move |idx| {
-                    let n1 = $s.get_node(idx - 1);
-                    let n2 = $s.get_node(idx);
-                    (Point::from_node(&n1, $zoom), Point::from_node(&n2, $zoom))
-                }
-            )
-        )
-    }
+        Box::new((1..$s.node_count()).map(move |idx| {
+            let n1 = $s.get_node(idx - 1);
+            let n2 = $s.get_node(idx);
+            (Point::from_node(&n1, $zoom), Point::from_node(&n2, $zoom))
+        }))
+    };
 }
 
 impl<'w> PointPairCollection<'w> for Way<'w> {

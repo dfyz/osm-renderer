@@ -31,26 +31,24 @@ impl NodeDesc {
     }
 }
 
+pub struct NodeDescPair {
+    node1: NodeDesc,
+    node2: NodeDesc,
+    is_inner: bool,
+}
+
+impl NodeDescPair {
+    pub(super) fn new(node1: NodeDesc, node2: NodeDesc, is_inner: bool) -> NodeDescPair {
+        NodeDescPair { node1, node2, is_inner }
+    }
+}
+
 pub(super) fn convert_relation_to_multipolygon(
     entity_storages: &mut EntityStorages,
     relation_id: u64,
-    relation_segments: &[Vec<NodeDesc>],
+    relation_segments: &[NodeDescPair],
     relation_tags: RawTags,
 ) {
-    let mut endpoint_to_segment: HashMap<(u64, u64), Vec<usize>> = HashMap::default();
-    for (idx, seg) in relation_segments.iter().enumerate() {
-        if !seg.is_empty() && (seg[0].pos != seg[seg.len() - 1].pos) {
-            endpoint_to_segment.entry(seg[0].pos).or_default().push(idx);
-            endpoint_to_segment.entry(seg[seg.len() - 1].pos).or_default().push(idx);
-        }
-    }
-
-    for (_, v) in endpoint_to_segment.iter() {
-        if v.len() % 2 != 0 {
-            eprintln!("Relation {} is invalid", relation_id);
-            break;
-        }
-    }
 }
 
 pub(super) fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
