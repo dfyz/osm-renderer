@@ -1,0 +1,5 @@
+target
+.idea
+tests/mapcss/*.parsed
+tests/osm/*.bin
+tests/rendered
