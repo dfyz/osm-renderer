@@ -2,7 +2,7 @@ use errors::*;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use geodata::importer::{save_refs, save_tags, to_u32_safe, BufferedData, EntityStorages, RawRefs, RawTags};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 #[derive(Default)]
@@ -17,9 +17,11 @@ pub(super) struct Multipolygon {
     tags: RawTags,
 }
 
+type NodePos = (u64, u64);
+
 pub(super) struct NodeDesc {
     id: usize,
-    pos: (u64, u64),
+    pos: NodePos,
 }
 
 impl NodeDesc {
@@ -49,6 +51,7 @@ pub(super) fn convert_relation_to_multipolygon(
     relation_segments: &[NodeDescPair],
     relation_tags: RawTags,
 ) {
+
 }
 
 pub(super) fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
@@ -81,4 +84,80 @@ pub(super) fn to_node_ids<'a>(
         .polygon_ids
         .iter()
         .flat_map(move |poly_id| polygons[*poly_id].node_ids.iter())
+}
+
+struct SearchParams {
+    first_pos: NodePos,
+    is_inner: bool,
+}
+
+struct ConnectedSegment {
+    other_side: NodePos,
+    segment_index: usize,
+    is_inner: bool,
+}
+
+type ConnectedSegments = HashMap<NodePos, Vec<ConnectedSegment>>;
+
+struct CurrentRing {
+    available_segments: Vec<bool>,
+    used_segments: Vec<usize>,
+    used_vertices: HashSet<NodePos>,
+}
+
+impl CurrentRing {
+    fn is_valid(&self) -> bool {
+        // TODO: check for self-intersections
+        false
+    }
+
+    fn include_segment(&mut self, seg: &ConnectedSegment) {
+        self.available_segments[seg.segment_index] = false;
+        self.used_segments.push(seg.segment_index);
+        self.used_vertices.insert(seg.other_side);
+    }
+
+    fn exclude_segment(&mut self, seg: &ConnectedSegment) {
+        self.available_segments[seg.segment_index] = true;
+        self.used_segments.pop();
+        self.used_vertices.remove(&seg.other_side);
+    }
+}
+
+fn find_ring_rec(
+    last_pos: NodePos,
+    search_params: &SearchParams,
+    segments: &ConnectedSegments,
+    ring: &mut CurrentRing,
+) -> bool {
+    if search_params.first_pos == last_pos {
+        return ring.is_valid();
+    }
+
+    let mut candidates = Vec::new();
+
+    match segments.get(&last_pos) {
+        None => return false,
+        Some(segs) => for seg in segs {
+            if seg.is_inner == search_params.is_inner && ring.available_segments[seg.segment_index] {
+                candidates.push(seg);
+            }
+        },
+    }
+
+    for cand in candidates {
+        if ring.used_vertices.contains(&cand.other_side) && cand.other_side != search_params.first_pos {
+            return false;
+        }
+
+        ring.include_segment(cand);
+
+        if find_ring_rec(cand.other_side, search_params, segments, ring) {
+            return true;
+        }
+
+        ring.exclude_segment(cand);
+    }
+
+    false
 }
