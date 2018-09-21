@@ -51,7 +51,28 @@ pub(super) fn convert_relation_to_multipolygon(
     relation_segments: &[NodeDescPair],
     relation_tags: RawTags,
 ) {
+    let connections = get_connections(relation_segments);
+    let mut unmatched_count = relation_segments.len();
+    let mut available_segments = vec![true; relation_segments.len()];
+    let mut all_rings = Vec::new();
 
+    while unmatched_count > 0 {
+        match find_ring(relation_segments, &connections, &mut available_segments) {
+            Some(ring) => {
+                unmatched_count -= ring.len();
+                all_rings.push(ring);
+            }
+            None => {
+                eprintln!(
+                    "Relation #{} is not a valid multipolygon (built {} complete rings, but {} segments are unmatched)",
+                    relation_id,
+                    all_rings.len(),
+                    unmatched_count,
+                );
+                return;
+            }
+        }
+    }
 }
 
 pub(super) fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
@@ -97,15 +118,40 @@ struct ConnectedSegment {
     is_inner: bool,
 }
 
-type ConnectedSegments = HashMap<NodePos, Vec<ConnectedSegment>>;
+type SegmentConnections = HashMap<NodePos, Vec<ConnectedSegment>>;
 
-struct CurrentRing {
-    available_segments: Vec<bool>,
+fn get_connections(relation_segments: &[NodeDescPair]) -> SegmentConnections {
+    let mut connections = SegmentConnections::new();
+
+    for (idx, seg) in relation_segments.iter().enumerate() {
+        add_to_connections(&mut connections, seg.node1.pos, seg.node2.pos, idx, seg.is_inner);
+        add_to_connections(&mut connections, seg.node2.pos, seg.node1.pos, idx, seg.is_inner);
+    }
+
+    connections
+}
+
+fn add_to_connections(
+    connections: &mut SegmentConnections,
+    pos1: NodePos,
+    pos2: NodePos,
+    segment_index: usize,
+    is_inner: bool,
+) {
+    connections.entry(pos1).or_default().push(ConnectedSegment {
+        other_side: pos2,
+        segment_index,
+        is_inner,
+    });
+}
+
+struct CurrentRing<'a> {
+    available_segments: &'a mut Vec<bool>,
     used_segments: Vec<usize>,
     used_vertices: HashSet<NodePos>,
 }
 
-impl CurrentRing {
+impl<'a> CurrentRing<'a> {
     fn is_valid(&self) -> bool {
         // TODO: check for self-intersections
         false
@@ -124,10 +170,39 @@ impl CurrentRing {
     }
 }
 
+fn find_ring(
+    relation_segments: &[NodeDescPair],
+    connections: &SegmentConnections,
+    available_segments: &mut Vec<bool>,
+) -> Option<Vec<usize>> {
+    for start_idx in 0..available_segments.len() {
+        if !available_segments[start_idx] {
+            continue;
+        }
+
+        let start_segment = &relation_segments[start_idx];
+        let mut ring = CurrentRing {
+            available_segments,
+            used_segments: vec![start_idx],
+            used_vertices: HashSet::new(),
+        };
+        let search_params = SearchParams {
+            first_pos: start_segment.node1.pos,
+            is_inner: start_segment.is_inner,
+        };
+
+        if find_ring_rec(start_segment.node2.pos, &search_params, connections, &mut ring) {
+            return Some(ring.used_segments);
+        }
+    }
+
+    None
+}
+
 fn find_ring_rec(
     last_pos: NodePos,
     search_params: &SearchParams,
-    segments: &ConnectedSegments,
+    connections: &SegmentConnections,
     ring: &mut CurrentRing,
 ) -> bool {
     if search_params.first_pos == last_pos {
@@ -136,7 +211,7 @@ fn find_ring_rec(
 
     let mut candidates = Vec::new();
 
-    match segments.get(&last_pos) {
+    match connections.get(&last_pos) {
         None => return false,
         Some(segs) => for seg in segs {
             if seg.is_inner == search_params.is_inner && ring.available_segments[seg.segment_index] {
@@ -152,7 +227,7 @@ fn find_ring_rec(
 
         ring.include_segment(cand);
 
-        if find_ring_rec(cand.other_side, search_params, segments, ring) {
+        if find_ring_rec(cand.other_side, search_params, connections, ring) {
             return true;
         }
 
