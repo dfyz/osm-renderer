@@ -154,7 +154,7 @@ struct CurrentRing<'a> {
 impl<'a> CurrentRing<'a> {
     fn is_valid(&self) -> bool {
         // TODO: check for self-intersections
-        false
+        true
     }
 
     fn include_segment(&mut self, seg: &ConnectedSegment) {
@@ -180,23 +180,29 @@ fn find_ring(
             continue;
         }
 
-        let start_segment = &relation_segments[start_idx];
-        let mut ring = CurrentRing {
-            available_segments,
-            used_segments: vec![start_idx],
-            used_vertices: [start_segment.node1.pos, start_segment.node2.pos]
-                .into_iter()
-                .cloned()
-                .collect(),
-        };
-        let search_params = SearchParams {
-            first_pos: start_segment.node1.pos,
-            is_inner: start_segment.is_inner,
-        };
+        available_segments[start_idx] = false;
 
-        if find_ring_rec(start_segment.node2.pos, &search_params, connections, &mut ring) {
-            return Some(ring.used_segments);
+        {
+            let start_segment = &relation_segments[start_idx];
+            let mut ring = CurrentRing {
+                available_segments,
+                used_segments: vec![start_idx],
+                used_vertices: [start_segment.node1.pos, start_segment.node2.pos]
+                    .into_iter()
+                    .cloned()
+                    .collect(),
+            };
+            let search_params = SearchParams {
+                first_pos: start_segment.node1.pos,
+                is_inner: start_segment.is_inner,
+            };
+
+            if find_ring_rec(start_segment.node2.pos, &search_params, connections, &mut ring) {
+                return Some(ring.used_segments);
+            }
         }
+
+        available_segments[start_idx] = true;
     }
 
     None
@@ -208,7 +214,7 @@ fn find_ring_rec(
     connections: &SegmentConnections,
     ring: &mut CurrentRing,
 ) -> bool {
-    if search_params.first_pos == last_pos {
+    if search_params.first_pos == last_pos && ring.used_segments.len() >= 3 {
         return ring.is_valid();
     }
 
