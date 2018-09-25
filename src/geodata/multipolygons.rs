@@ -184,7 +184,10 @@ fn find_ring(
         let mut ring = CurrentRing {
             available_segments,
             used_segments: vec![start_idx],
-            used_vertices: HashSet::new(),
+            used_vertices: [start_segment.node1.pos, start_segment.node2.pos]
+                .into_iter()
+                .cloned()
+                .collect(),
         };
         let search_params = SearchParams {
             first_pos: start_segment.node1.pos,
