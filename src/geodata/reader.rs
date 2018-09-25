@@ -305,7 +305,7 @@ struct ObjectStorages<'a> {
 
 const INT_REF_SIZE: usize = 2 * mem::size_of::<u32>();
 const NODE_SIZE: usize = mem::size_of::<u64>() + 2 * mem::size_of::<f64>() + INT_REF_SIZE;
-const POLYGON_SIZE: usize = mem::size_of::<u64>() + INT_REF_SIZE;
+const POLYGON_SIZE: usize = INT_REF_SIZE;
 const WAY_OR_MULTIPOLYGON_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
 const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
 
