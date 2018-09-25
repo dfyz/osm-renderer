@@ -1,21 +1,5 @@
-use errors::*;
-
-use byteorder::{LittleEndian, WriteBytesExt};
-use geodata::importer::{save_refs, save_tags, to_u32_safe, BufferedData, EntityStorages, RawRefs, RawTags};
+use geodata::importer::Polygon;
 use std::collections::{HashMap, HashSet};
-use std::io::Write;
-
-#[derive(Default)]
-pub(super) struct Polygon {
-    node_ids: RawRefs,
-}
-
-#[derive(Default)]
-pub(super) struct Multipolygon {
-    global_id: u64,
-    polygon_ids: RawRefs,
-    tags: RawTags,
-}
 
 type NodePos = (u64, u64);
 
@@ -33,7 +17,7 @@ impl NodeDesc {
     }
 }
 
-pub struct NodeDescPair {
+pub(super) struct NodeDescPair {
     node1: NodeDesc,
     node2: NodeDesc,
     is_inner: bool,
@@ -45,12 +29,10 @@ impl NodeDescPair {
     }
 }
 
-pub(super) fn convert_relation_to_multipolygon(
-    entity_storages: &mut EntityStorages,
+pub(super) fn find_polygons_in_multipolygon(
     relation_id: u64,
     relation_segments: &[NodeDescPair],
-    relation_tags: RawTags,
-) {
+) -> Option<Vec<Polygon>> {
     let connections = get_connections(relation_segments);
     let mut unmatched_count = relation_segments.len();
     let mut available_segments = vec![true; relation_segments.len()];
@@ -69,42 +51,24 @@ pub(super) fn convert_relation_to_multipolygon(
                     all_rings.len(),
                     unmatched_count,
                 );
-                return;
+                return None;
             }
         }
     }
-}
 
-pub(super) fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(polygons.len())?)?;
-    for polygon in polygons {
-        save_refs(writer, polygon.node_ids.iter(), data)?;
+    let mut polygons = Vec::new();
+    for ring in all_rings {
+        let mut polygon = Polygon::default();
+        for idx in 0..ring.len() {
+            let seg = &relation_segments[ring[idx]];
+            if idx == 0 {
+                polygon.push(seg.node1.id);
+            }
+            polygon.push(seg.node2.id);
+        }
+        polygons.push(polygon);
     }
-    Ok(())
-}
-
-pub(super) fn save_multipolygons(
-    writer: &mut Write,
-    multipolygons: &[Multipolygon],
-    data: &mut BufferedData,
-) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(multipolygons.len())?)?;
-    for multipolygon in multipolygons {
-        writer.write_u64::<LittleEndian>(multipolygon.global_id)?;
-        save_refs(writer, multipolygon.polygon_ids.iter(), data)?;
-        save_tags(writer, &multipolygon.tags, data)?;
-    }
-    Ok(())
-}
-
-pub(super) fn to_node_ids<'a>(
-    multipolygon: &'a Multipolygon,
-    polygons: &'a [Polygon],
-) -> impl Iterator<Item = &'a usize> {
-    multipolygon
-        .polygon_ids
-        .iter()
-        .flat_map(move |poly_id| polygons[*poly_id].node_ids.iter())
+    Some(polygons)
 }
 
 struct SearchParams {

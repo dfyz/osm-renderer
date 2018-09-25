@@ -1,3 +1,3 @@
 pub mod importer;
-mod multipolygons;
+mod find_polygons;
 pub mod reader;
