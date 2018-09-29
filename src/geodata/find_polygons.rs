@@ -64,7 +64,12 @@ pub(super) fn find_polygons_in_multipolygon(
             if idx == 0 {
                 polygon.push(seg.node1.id);
             }
-            polygon.push(seg.node2.id);
+            let last_node = polygon[polygon.len() - 1];
+            polygon.push(if last_node == seg.node1.id {
+                seg.node2.id
+            } else {
+                seg.node1.id
+            });
         }
         polygons.push(polygon);
     }
