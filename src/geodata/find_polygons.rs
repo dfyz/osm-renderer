@@ -121,11 +121,6 @@ struct CurrentRing<'a> {
 }
 
 impl<'a> CurrentRing<'a> {
-    fn is_valid(&self) -> bool {
-        // TODO: check for self-intersections
-        true
-    }
-
     fn include_segment(&mut self, seg: &ConnectedSegment) {
         self.available_segments[seg.segment_index] = false;
         self.used_segments.push(seg.segment_index);
@@ -184,7 +179,7 @@ fn find_ring_rec(
     ring: &mut CurrentRing,
 ) -> bool {
     if search_params.first_pos == last_pos && ring.used_segments.len() >= 3 {
-        return ring.is_valid();
+        return true;
     }
 
     let mut candidates = Vec::new();
