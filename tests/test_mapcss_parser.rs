@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-fn canonize_newlines(s: String) -> String {
+fn canonize_newlines(s: &str) -> String {
     s.replace("\r\n", "\n")
 }
 
@@ -31,7 +31,7 @@ fn test_mapnik_parse() {
         .unwrap()
         .read_to_string(&mut canonical_rules_str)
         .unwrap();
-    assert_eq!(rules_str, canonize_newlines(canonical_rules_str));
+    assert_eq!(rules_str, canonize_newlines(&canonical_rules_str));
 }
 
 #[test]
@@ -47,5 +47,5 @@ fn test_parsing_is_idempotent() {
     let rules = parse_file(Path::new(&mapnik_base_path), "mapnik.parsed.canonical").unwrap();
 
     let rules_str = rules.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join("\n\n");
-    assert_eq!(rules_str, canonize_newlines(canonical));
+    assert_eq!(rules_str, canonize_newlines(&canonical));
 }
