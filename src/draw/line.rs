@@ -1,12 +1,13 @@
 use draw::figure::Figure;
 use draw::opacity_calculator::OpacityCalculator;
 use draw::point::Point;
+use draw::point_pairs::PointPairIter;
 use draw::tile_pixels::RgbaColor;
 use mapcss::color::Color;
 use mapcss::styler::{is_non_trivial_cap, LineCap};
 
-pub fn draw_lines<I>(
-    points: I,
+pub fn draw_lines(
+    points: PointPairIter,
     width: f64,
     color: &Color,
     opacity: f64,
@@ -14,9 +15,7 @@ pub fn draw_lines<I>(
     line_cap: &Option<LineCap>,
     use_caps_for_dashes: bool,
     figure: &mut Figure,
-) where
-    I: Iterator<Item = (Point, Point)>,
-{
+) {
     let half_width = width / 2.0;
     let line_cap_for_dashes = if use_caps_for_dashes { line_cap } else { &None };
     let mut opacity_calculator = OpacityCalculator::new(half_width, dashes, line_cap_for_dashes);

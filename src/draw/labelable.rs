@@ -1,5 +1,5 @@
 use draw::point::Point;
-use geodata::reader::{Node, Relation, Way};
+use geodata::reader::{Multipolygon, Node, Way};
 
 type Center = Option<(f64, f64)>;
 
@@ -34,13 +34,13 @@ impl<'w> Labelable for Way<'w> {
     }
 }
 
-impl<'r> Labelable for Relation<'r> {
+impl<'r> Labelable for Multipolygon<'r> {
     fn get_center(&self, zoom: u8) -> Center {
-        let relation_nodes = (0..self.way_count()).flat_map(|way_idx| {
-            let way = self.get_way(way_idx);
-            (0..way.node_count()).map(move |node_idx| way.get_node(node_idx))
+        let multipolygon_nodes = (0..self.polygon_count()).flat_map(|poly_idx| {
+            let poly = self.get_polygon(poly_idx);
+            (0..poly.node_count()).map(move |node_idx| poly.get_node(node_idx))
         });
-        get_centroid(relation_nodes, zoom)
+        get_centroid(multipolygon_nodes, zoom)
     }
 
     fn get_waypoints(&self, _: u8) -> Option<Vec<Point>> {

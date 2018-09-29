@@ -24,14 +24,14 @@ pub trait OsmEntity<'a> {
 pub struct OsmEntities<'a> {
     pub nodes: HashSet<Node<'a>>,
     pub ways: HashSet<Way<'a>>,
-    pub relations: HashSet<Relation<'a>>,
+    pub multipolygons: HashSet<Multipolygon<'a>>,
 }
 
 impl<'a> OsmEntities<'a> {
     pub fn merge_from(&mut self, other: OsmEntities<'a>) {
         self.nodes.extend(other.nodes);
         self.ways.extend(other.ways);
-        self.relations.extend(other.relations);
+        self.multipolygons.extend(other.multipolygons);
     }
 }
 
@@ -109,10 +109,10 @@ impl<'a> GeodataReader<'a> {
                             }
                         }
 
-                        for relation_id in self.tile_local_ids(current_index, 2) {
-                            let relation = self.get_relation(*relation_id as usize);
-                            if relation.way_count() > 0 {
-                                insert_entity_if_needed(relation, osm_ids, &mut result.relations);
+                        for multipolygon_id in self.tile_local_ids(current_index, 2) {
+                            let multipolygon = self.get_multipolygon(*multipolygon_id as usize);
+                            if multipolygon.polygon_count() > 0 {
+                                insert_entity_if_needed(multipolygon, osm_ids, &mut result.multipolygons);
                             }
                         }
 
@@ -200,13 +200,19 @@ impl<'a> GeodataReader<'a> {
         }
     }
 
-    fn get_relation(&'a self, idx: usize) -> Relation<'a> {
-        let bytes = self.storages().relation_storage.get_object(idx);
+    fn get_polygon(&'a self, idx: usize) -> Polygon<'a> {
+        let bytes = self.storages().polygon_storage.get_object(idx);
+        let node_ids = self.get_ints_by_ref(&bytes);
+        Polygon { reader: self, node_ids }
+    }
+
+    fn get_multipolygon(&'a self, idx: usize) -> Multipolygon<'a> {
+        let bytes = self.storages().multipolygon_storage.get_object(idx);
         let way_ids_start_pos = mem::size_of::<u64>();
         let way_ids = self.get_ints_by_ref(&bytes[way_ids_start_pos..]);
-        Relation {
+        Multipolygon {
             entity: BaseOsmEntity { bytes, reader: self },
-            way_ids,
+            polygon_ids: way_ids,
         }
     }
 
@@ -290,7 +296,8 @@ impl<'a> ObjectStorage<'a> {
 struct ObjectStorages<'a> {
     node_storage: ObjectStorage<'a>,
     way_storage: ObjectStorage<'a>,
-    relation_storage: ObjectStorage<'a>,
+    polygon_storage: ObjectStorage<'a>,
+    multipolygon_storage: ObjectStorage<'a>,
     tile_storage: ObjectStorage<'a>,
     ints: &'a [u32],
     strings: &'a [u8],
@@ -298,7 +305,8 @@ struct ObjectStorages<'a> {
 
 const INT_REF_SIZE: usize = 2 * mem::size_of::<u32>();
 const NODE_SIZE: usize = mem::size_of::<u64>() + 2 * mem::size_of::<f64>() + INT_REF_SIZE;
-const WAY_OR_RELATION_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
+const POLYGON_SIZE: usize = INT_REF_SIZE;
+const WAY_OR_MULTIPOLYGON_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
 const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
 
 impl<'a> ObjectStorages<'a> {
@@ -307,8 +315,9 @@ impl<'a> ObjectStorages<'a> {
     #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
     fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
-        let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;
-        let (relation_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_RELATION_SIZE)?;
+        let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;
+        let (polygon_storage, rest) = ObjectStorage::from_bytes(rest, POLYGON_SIZE)?;
+        let (multipolygon_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;
         let (tile_storage, rest) = ObjectStorage::from_bytes(rest, TILE_SIZE)?;
 
         let int_count = LittleEndian::read_u32(rest) as usize;
@@ -324,7 +333,8 @@ impl<'a> ObjectStorages<'a> {
         Ok(ObjectStorages {
             node_storage,
             way_storage,
-            relation_storage,
+            polygon_storage,
+            multipolygon_storage,
             tile_storage,
             ints,
             strings,
@@ -464,25 +474,41 @@ impl<'a> OsmArea for Way<'a> {
     }
 }
 
-pub struct Relation<'a> {
+pub struct Polygon<'a> {
+    reader: &'a GeodataReader<'a>,
+    node_ids: &'a [u32],
+}
+
+impl<'a> Polygon<'a> {
+    pub fn node_count(&self) -> usize {
+        self.node_ids.len()
+    }
+
+    pub fn get_node(&self, idx: usize) -> Node<'a> {
+        let node_id = self.node_ids[idx];
+        self.reader.get_node(node_id as usize)
+    }
+}
+
+pub struct Multipolygon<'a> {
     entity: BaseOsmEntity<'a>,
-    way_ids: &'a [u32],
+    polygon_ids: &'a [u32],
 }
 
-implement_osm_entity!(Relation<'a>);
+implement_osm_entity!(Multipolygon<'a>);
 
-impl<'a> Relation<'a> {
-    pub fn way_count(&self) -> usize {
-        self.way_ids.len()
+impl<'a> Multipolygon<'a> {
+    pub fn polygon_count(&self) -> usize {
+        self.polygon_ids.len()
     }
 
-    pub fn get_way(&self, idx: usize) -> Way<'a> {
-        let way_id = self.way_ids[idx];
-        self.entity.reader.get_way(way_id as usize)
+    pub fn get_polygon(&self, idx: usize) -> Polygon<'a> {
+        let polygon_id = self.polygon_ids[idx];
+        self.entity.reader.get_polygon(polygon_id as usize)
     }
 }
 
-impl<'a> OsmArea for Relation<'a> {
+impl<'a> OsmArea for Multipolygon<'a> {
     fn is_closed(&self) -> bool {
         true
     }

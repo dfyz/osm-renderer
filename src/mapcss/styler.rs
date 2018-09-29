@@ -1,7 +1,7 @@
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
-use geodata::reader::{Node, OsmArea, OsmEntity, Relation, Way};
+use geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -80,7 +80,7 @@ where
     'a: 'wr,
 {
     Way(&'wr Way<'a>),
-    Relation(&'wr Relation<'a>),
+    Multipolygon(&'wr Multipolygon<'a>),
 }
 
 impl Styler {
@@ -146,30 +146,30 @@ impl Styler {
     pub fn style_areas<'a, 'wr>(
         &self,
         ways: impl Iterator<Item = &'wr Way<'a>>,
-        relations: impl Iterator<Item = &'wr Relation<'a>>,
+        multipolygons: impl Iterator<Item = &'wr Multipolygon<'a>>,
         zoom: u8,
     ) -> Vec<(StyledArea<'a, 'wr>, Style)> {
         let styled_ways = self.style_entities(ways, zoom);
-        let styled_relations = self.style_entities(relations, zoom);
+        let styled_multipolygons = self.style_entities(multipolygons, zoom);
 
-        let mut rel_iter = styled_relations.into_iter();
+        let mut mp_iter = styled_multipolygons.into_iter();
         let mut way_iter = styled_ways.into_iter();
-        let mut rel = rel_iter.next();
+        let mut poly = mp_iter.next();
         let mut way = way_iter.next();
         let mut result = Vec::new();
         loop {
             let is_rel_better = {
-                match (&rel, &way) {
+                match (&poly, &way) {
                     (None, None) => break,
                     (Some(_), None) => true,
                     (None, Some(_)) => false,
-                    (Some(r), Some(w)) => compare_styled_entities(r, w) != Ordering::Greater,
+                    (Some(mp), Some(way)) => compare_styled_entities(mp, way) != Ordering::Greater,
                 }
             };
             if is_rel_better {
-                let (r, style) = rel.unwrap();
-                result.push((StyledArea::Relation(r), style));
-                rel = rel_iter.next();
+                let (mp, style) = poly.unwrap();
+                result.push((StyledArea::Multipolygon(mp), style));
+                poly = mp_iter.next();
             } else {
                 let (w, style) = way.unwrap();
                 result.push((StyledArea::Way(w), style));
