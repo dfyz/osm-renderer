@@ -23,9 +23,12 @@
         reuseTiles: true
     });
 
-    var local = L.tileLayer('http://localhost:8080/{z}/{x}/{y}.png', {
+    var nonce = 1;
+
+    var local = L.tileLayer('http://localhost:8080/{z}/{x}/{y}.png?nonce={nonce}', {
         maxZoom: 18,
-        unloadInvisibleTiles: false
+        unloadInvisibleTiles: false,
+        nonce: () => nonce,
     });
 
     var map = L.map(
@@ -61,6 +64,7 @@
                 switchTo(moscow);
                 break;
             case 'r':
+                nonce += 1;
                 osm.redraw();
                 local.redraw();
                 break;

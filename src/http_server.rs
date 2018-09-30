@@ -154,7 +154,12 @@ fn extract_path_from_request(first_line: &str) -> Result<String> {
 fn extract_tile_from_path(path: &str) -> Option<Tile> {
     let expected_token_count = 3;
 
-    let mut tokens = path
+    let real_path = match path.rfind('?') {
+        Some(pos) => &path[..pos],
+        None => path,
+    };
+
+    let mut tokens = real_path
         .trim_right_matches(".png")
         .rsplit('/')
         .take(expected_token_count)
