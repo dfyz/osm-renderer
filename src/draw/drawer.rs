@@ -12,6 +12,7 @@ use draw::TILE_SIZE;
 use geodata::reader::{Node, OsmEntities, OsmEntity};
 use mapcss::styler::{Style, StyledArea, Styler};
 use std::path::Path;
+use std::time::{Duration, Instant};
 use tile as t;
 
 pub struct Drawer {
@@ -24,6 +25,22 @@ enum DrawType {
     Fill,
     Stroke,
     Casing,
+}
+
+struct Timer {
+    start: Instant,
+}
+
+impl Timer {
+    fn new() -> Timer {
+        Timer {
+            start: Instant::now(),
+        }
+    }
+
+    fn elapsed(&self) -> Duration {
+        Instant::now() - self.start
+    }
 }
 
 impl Drawer {
@@ -43,7 +60,9 @@ impl Drawer {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
+        let tm1 = Timer::new();
         let styled_areas = styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom);
+        let t1 = tm1.elapsed();
 
         let draw_areas_with_type = |pixels: &mut TilePixels, draw_type, use_multipolygons| {
             self.draw_areas(
@@ -56,12 +75,33 @@ impl Drawer {
             );
         };
 
+        let tm2 = Timer::new();
         draw_areas_with_type(&mut pixels, &DrawType::Fill, true);
         draw_areas_with_type(&mut pixels, &DrawType::Casing, false);
         draw_areas_with_type(&mut pixels, &DrawType::Stroke, false);
+        let t2 = tm2.elapsed();
 
+        let tm3 = Timer::new();
         let styled_nodes = styler.style_entities(entities.nodes.iter(), tile.zoom);
+        let t3 = tm3.elapsed();
+
+        let tm4 = Timer::new();
         self.draw_labels(&mut pixels, tile, &styled_areas, &styled_nodes);
+        let t4 = tm4.elapsed();
+
+        let total = t1 + t2 + t3 + t4;
+
+        let duration_to_float = |d: Duration| d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
+        let get_ratio = |d| duration_to_float(d) / duration_to_float(total) * 100.0;
+        let format_duration = |desc, d| format!("{}={:.2?} ({:.2}%)", desc, d, get_ratio(d));
+
+        eprintln!(
+            "z={},x={},y={}\t{}, {}, {}, {}",
+            tile.zoom, tile.x, tile.y,
+            format_duration("style_areas", t1), format_duration("draw_areas", t2),
+            format_duration("style_nodes", t3), format_duration("draw_labels", t4),
+        );
+        styler.dump_cache_stats();
 
         pixels.to_rgb_triples()
     }

@@ -15,9 +15,17 @@ use memmap::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
 use tile;
 
+#[derive(Debug, Hash, Eq, PartialEq)]
+pub enum OsmEntityType {
+    Node,
+    Way,
+    Multipolygon,
+}
+
 pub trait OsmEntity<'a> {
     fn global_id(&self) -> u64;
     fn tags(&self) -> Tags<'a>;
+    fn entity_type(&self) -> OsmEntityType;
 }
 
 #[derive(Default)]
@@ -353,7 +361,7 @@ const KV_REF_SIZE: usize = 4;
 
 impl<'a> Tags<'a> {
     pub fn get_by_key(&self, key: &str) -> Option<&'a str> {
-        let kv_count = self.kv_refs.len() / KV_REF_SIZE;
+        let kv_count = self.get_kv_count();
         if kv_count == 0 {
             return None;
         }
@@ -376,6 +384,13 @@ impl<'a> Tags<'a> {
         }
     }
 
+    pub fn to_vec(&self) -> Vec<(String, String)> {
+        (0..self.get_kv_count()).map(|idx| {
+            let (k, v) = self.get_kv(idx);
+            (k.to_string(), v.to_string())
+        }).collect()
+    }
+
     fn get_kv(&self, idx: usize) -> (&'a str, &'a str) {
         let start_idx = idx * KV_REF_SIZE;
         let get_int = |offset| self.kv_refs[start_idx + offset] as usize;
@@ -388,6 +403,10 @@ impl<'a> Tags<'a> {
     fn get_str(&self, start_pos: usize, length: usize) -> &'a str {
         unsafe { str::from_utf8_unchecked(&self.strings[start_pos..start_pos + length]) }
     }
+
+    fn get_kv_count(&self) -> usize {
+        self.kv_refs.len() / KV_REF_SIZE
+    }
 }
 
 #[derive(Clone)]
@@ -397,7 +416,7 @@ struct BaseOsmEntity<'a> {
 }
 
 macro_rules! implement_osm_entity {
-    ($type_name:ty) => {
+    ($type_name:ty, $entity_type:expr) => {
         impl<'a> PartialEq for $type_name {
             fn eq(&self, other: &$type_name) -> bool {
                 self.global_id() == other.global_id()
@@ -422,6 +441,10 @@ macro_rules! implement_osm_entity {
                 let start_pos = entity.bytes.len() - INT_REF_SIZE;
                 entity.reader.tags(&entity.bytes[start_pos..])
             }
+
+            fn entity_type(&self) -> OsmEntityType {
+                $entity_type
+            }
         }
     };
 }
@@ -431,7 +454,7 @@ pub struct Node<'a> {
     entity: BaseOsmEntity<'a>,
 }
 
-implement_osm_entity!(Node<'a>);
+implement_osm_entity!(Node<'a>, OsmEntityType::Node);
 
 impl<'a> Coords for Node<'a> {
     fn lat(&self) -> f64 {
@@ -450,7 +473,7 @@ pub struct Way<'a> {
     node_ids: &'a [u32],
 }
 
-implement_osm_entity!(Way<'a>);
+implement_osm_entity!(Way<'a>, OsmEntityType::Way);
 
 impl<'a> Way<'a> {
     pub fn node_count(&self) -> usize {
@@ -495,7 +518,7 @@ pub struct Multipolygon<'a> {
     polygon_ids: &'a [u32],
 }
 
-implement_osm_entity!(Multipolygon<'a>);
+implement_osm_entity!(Multipolygon<'a>, OsmEntityType::Multipolygon);
 
 impl<'a> Multipolygon<'a> {
     pub fn polygon_count(&self) -> usize {

@@ -4,6 +4,8 @@ use mapcss::parser::*;
 use geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use geodata::reader::OsmEntityType;
+use std::sync::RwLock;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineCap {
@@ -35,6 +37,7 @@ pub trait StyleableEntity {
     fn matches_object_type(&self, object_type: &ObjectType) -> bool;
 }
 
+#[derive(Clone)]
 pub struct TextStyle {
     pub text: String,
     pub text_color: Option<Color>,
@@ -42,6 +45,7 @@ pub struct TextStyle {
     pub font_size: Option<f64>,
 }
 
+#[derive(Clone)]
 pub struct Style {
     pub z_index: f64,
 
@@ -66,6 +70,14 @@ pub struct Style {
     pub text_style: Option<TextStyle>,
 }
 
+#[derive(Debug, Hash, Eq, PartialEq)]
+struct StyleCacheKey {
+    object_type: OsmEntityType,
+    default_z_index: u64,
+    zoom: u8,
+    tags: Vec<(String, String)>,
+}
+
 pub struct Styler {
     pub canvas_fill_color: Option<Color>,
     pub use_caps_for_dashes: bool,
@@ -73,6 +85,8 @@ pub struct Styler {
     casing_width_multiplier: f64,
     font_size_multiplier: Option<f64>,
     rules: Vec<Rule>,
+
+    cache: RwLock<HashMap<StyleCacheKey, Vec<Style>>>,
 }
 
 pub enum StyledArea<'a, 'wr>
@@ -102,6 +116,7 @@ impl Styler {
             casing_width_multiplier,
             font_size_multiplier,
             rules,
+            cache: RwLock::default(),
         }
     }
 
@@ -112,6 +127,27 @@ impl Styler {
     {
         let mut styled_areas = Vec::new();
         for area in areas {
+            let mut add_styles = |styles: &Vec<Style>| {
+                for s in styles.iter() {
+                    styled_areas.push((area, (*s).clone()));
+                }
+            };
+
+            let cache_key = StyleCacheKey {
+                object_type: area.entity_type(),
+                default_z_index: area.default_z_index().to_bits(),
+                zoom,
+                tags: area.tags().to_vec(),
+            };
+
+            {
+                let read_cache = self.cache.read().unwrap();
+                if let Some(styles) = read_cache.get(&cache_key) {
+                    add_styles(styles);
+                    continue;
+                }
+            }
+
             let default_z_index = area.default_z_index();
 
             let all_property_maps = self.style_area(area, zoom);
@@ -121,21 +157,22 @@ impl Styler {
                 .find(|kvp| *kvp.0 == BASE_LAYER_NAME)
                 .map(|kvp| kvp.1);
 
+            let mut styles = Vec::new();
             for (layer, prop_map) in &all_property_maps {
                 if *layer != "*" {
-                    styled_areas.push((
+                    styles.push(property_map_to_style(
+                        prop_map,
+                        base_layer,
+                        default_z_index,
+                        self.casing_width_multiplier,
+                        &self.font_size_multiplier,
                         area,
-                        property_map_to_style(
-                            prop_map,
-                            base_layer,
-                            default_z_index,
-                            self.casing_width_multiplier,
-                            &self.font_size_multiplier,
-                            area,
-                        ),
-                    ))
+                    ));
                 }
             }
+
+            add_styles(&styles);
+            self.cache.write().unwrap().insert(cache_key, styles);
         }
 
         styled_areas.sort_by(compare_styled_entities);
@@ -177,6 +214,15 @@ impl Styler {
             }
         }
         result
+    }
+
+    pub fn dump_cache_stats(&self) {
+        let read_cache = self.cache.read().unwrap();
+        if !read_cache.is_empty() {
+            let first_entry = read_cache.keys().next().unwrap();
+            let last_entry = read_cache.keys().last().unwrap();
+            eprintln!("cache_size={}, first={:?}, last={:?}", read_cache.len(), first_entry, last_entry);
+        }
     }
 
     fn style_area<'r, 'e, A>(&'r self, area: &A, zoom: u8) -> LayerToPropertyMap<'r>
