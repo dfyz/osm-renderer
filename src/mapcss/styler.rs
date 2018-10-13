@@ -1,10 +1,10 @@
 use mapcss::color::{from_color_name, Color};
 use mapcss::parser::*;
 
+use geodata::reader::OsmEntityType;
 use geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use geodata::reader::OsmEntityType;
 use std::sync::RwLock;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -87,6 +87,7 @@ pub struct Styler {
     rules: Vec<Rule>,
 
     cache: RwLock<HashMap<StyleCacheKey, Vec<Style>>>,
+    tag_name_to_value_matters: HashMap<String, bool>,
 }
 
 pub enum StyledArea<'a, 'wr>
@@ -110,6 +111,31 @@ impl Styler {
             _ => 2.0,
         };
 
+        let mut tag_name_to_value_matters = HashMap::new();
+
+        for r in rules.iter() {
+            for sel in r.selectors.iter() {
+                for test in sel.tests.iter() {
+                    let (tag_name, value_matters) = match test {
+                        Test::Unary {
+                            ref tag_name,
+                            ref test_type,
+                        } => {
+                            let value_matters = match test_type {
+                                UnaryTestType::Exists | UnaryTestType::NotExists => false,
+                                _ => true,
+                            };
+                            (tag_name, value_matters)
+                        }
+                        Test::BinaryStringCompare { ref tag_name, .. } => (tag_name, true),
+                        Test::BinaryNumericCompare { ref tag_name, .. } => (tag_name, true),
+                    };
+
+                    *tag_name_to_value_matters.entry(tag_name.clone()).or_default() |= value_matters;
+                }
+            }
+        }
+
         Styler {
             use_caps_for_dashes,
             canvas_fill_color,
@@ -117,6 +143,7 @@ impl Styler {
             font_size_multiplier,
             rules,
             cache: RwLock::default(),
+            tag_name_to_value_matters,
         }
     }
 
@@ -133,11 +160,19 @@ impl Styler {
                 }
             };
 
+            let tags = area.tags();
+
             let cache_key = StyleCacheKey {
                 object_type: area.entity_type(),
                 default_z_index: area.default_z_index().to_bits(),
                 zoom,
-                tags: area.tags().to_vec(),
+                tags: tags.iter().filter_map(|(k, v)| {
+                    match self.tag_name_to_value_matters.get(k) {
+                        Some(false) => Some((k.to_string(), "1".to_string())),
+                        Some(true) => Some((k.to_string(), v.to_string())),
+                        _ => None,
+                    }
+                }).collect(),
             };
 
             {
@@ -221,7 +256,12 @@ impl Styler {
         if !read_cache.is_empty() {
             let first_entry = read_cache.keys().next().unwrap();
             let last_entry = read_cache.keys().last().unwrap();
-            eprintln!("cache_size={}, first={:?}, last={:?}", read_cache.len(), first_entry, last_entry);
+            eprintln!(
+                "cache_size={}, first={:?}, last={:?}",
+                read_cache.len(),
+                first_entry,
+                last_entry
+            );
         }
     }
 
@@ -393,7 +433,7 @@ where
         }
     };
     let full_casing_width = casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
-    let text = get_string("text").and_then(|text_key| osm_entity.tags().get_by_key(&text_key).map(|x| x.to_string()));
+    let text = get_string("text");
 
     let font_size = get_num(current_layer_map, "font-size").map(|x| x * font_size_multiplier.unwrap_or(1.0));
 

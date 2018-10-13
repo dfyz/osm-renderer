@@ -2,6 +2,7 @@ use draw::figure::Figure;
 use draw::font::rasterizer::Rasterizer;
 use draw::labelable::Labelable;
 use draw::point::Point;
+use geodata::reader::OsmEntity;
 use mapcss::color::Color;
 use mapcss::styler::{TextPosition, TextStyle};
 use stb_truetype::{FontInfo, Vertex, VertexType};
@@ -20,7 +21,10 @@ impl Default for TextPlacer {
 }
 
 impl TextPlacer {
-    pub fn place(&self, on: &impl Labelable, text_style: &TextStyle, zoom: u8, y_offset: usize, figure: &mut Figure) {
+    pub fn place<'e, E>(&self, on: &E, text_style: &TextStyle, zoom: u8, y_offset: usize, figure: &mut Figure)
+    where
+        E: Labelable + OsmEntity<'e>,
+    {
         let font_size = match text_style.font_size {
             Some(font_size) => font_size,
             _ => return,
@@ -31,8 +35,13 @@ impl TextPlacer {
             _ => return,
         };
 
+        let text_to_draw = match on.tags().get_by_key(&text_style.text) {
+            Some(text_to_draw) => text_to_draw,
+            _ => return,
+        };
+
         let scale = f64::from(self.font.scale_for_pixel_height(font_size as f32));
-        let glyphs = self.text_to_glyphs(&text_style.text, scale);
+        let glyphs = self.text_to_glyphs(text_to_draw, scale);
 
         let text_color = match text_style.text_color {
             Some(ref color) => color,
@@ -55,8 +64,7 @@ impl TextPlacer {
                         let from = &points[idx - 1];
                         let to = &points[idx];
                         from.dist(&to)
-                    })
-                    .sum();
+                    }).sum();
 
                 if glyphs.total_width > total_way_length {
                     return;

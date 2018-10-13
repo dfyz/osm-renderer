@@ -3,6 +3,7 @@ use draw::font::text_placer::TextPlacer;
 use draw::icon::Icon;
 use draw::icon_cache::IconCache;
 use draw::labelable::Labelable;
+use geodata::reader::OsmEntity;
 use mapcss::styler::Style;
 
 #[derive(Default)]
@@ -11,14 +12,10 @@ pub struct Labeler {
 }
 
 impl Labeler {
-    pub fn label_entity(
-        &self,
-        entity: &impl Labelable,
-        style: &Style,
-        zoom: u8,
-        icon_cache: &IconCache,
-        figure: &mut Figure,
-    ) {
+    pub fn label_entity<'e, E>(&self, entity: &E, style: &Style, zoom: u8, icon_cache: &IconCache, figure: &mut Figure)
+    where
+        E: Labelable + OsmEntity<'e>,
+    {
         let mut label_figure = figure.clean_copy();
         let y_offset = self.label_with_icon(entity, style, zoom, icon_cache, &mut label_figure);
         self.label_with_text(entity, style, zoom, y_offset, &mut label_figure);
@@ -52,7 +49,10 @@ impl Labeler {
         }
     }
 
-    fn label_with_text(&self, entity: &impl Labelable, style: &Style, zoom: u8, y_offset: usize, figure: &mut Figure) {
+    fn label_with_text<'e, E>(&self, entity: &E, style: &Style, zoom: u8, y_offset: usize, figure: &mut Figure)
+    where
+        E: Labelable + OsmEntity<'e>,
+    {
         if let Some(ref text_style) = style.text_style {
             self.text_placer.place(entity, text_style, zoom, y_offset, figure);
         }

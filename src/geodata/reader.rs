@@ -384,11 +384,10 @@ impl<'a> Tags<'a> {
         }
     }
 
-    pub fn to_vec(&self) -> Vec<(String, String)> {
-        (0..self.get_kv_count()).map(|idx| {
-            let (k, v) = self.get_kv(idx);
-            (k.to_string(), v.to_string())
-        }).collect()
+    pub fn iter(&'a self) -> impl Iterator<Item=(&'a str, &'a str)> {
+        (0..self.get_kv_count()).map(move |idx| {
+            self.get_kv(idx)
+        })
     }
 
     fn get_kv(&self, idx: usize) -> (&'a str, &'a str) {
