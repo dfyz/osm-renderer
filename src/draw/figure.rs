@@ -1,5 +1,4 @@
 use draw::tile_pixels::RgbaColor;
-use draw::TILE_SIZE;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use tile::Tile;
@@ -19,14 +18,15 @@ pub struct Figure {
 
 impl Figure {
     pub fn new(tile: &Tile) -> Figure {
-        let to_tile_start = |c| (c as usize) * TILE_SIZE;
-        let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
+        let tile_size = ::tile::TILE_SIZE as usize;
+        let to_tile_start = |c| (c as usize) * tile_size;
+        let to_tile_end = |tile_start_c| tile_start_c + tile_size - 1;
         let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
         let bounding_box = BoundingBox {
-            min_x: tile_start_x - TILE_SIZE,
-            max_x: to_tile_end(tile_start_x) + TILE_SIZE,
-            min_y: tile_start_y - TILE_SIZE,
-            max_y: to_tile_end(tile_start_y) + TILE_SIZE,
+            min_x: tile_start_x - tile_size,
+            max_x: to_tile_end(tile_start_x) + tile_size,
+            min_y: tile_start_y - tile_size,
+            max_y: to_tile_end(tile_start_y) + tile_size,
         };
 
         Figure {
@@ -40,6 +40,13 @@ impl Figure {
             pixels: Pixels::default(),
             bounding_box: self.bounding_box.clone(),
         }
+    }
+
+    pub fn x2(&mut self) {
+        self.bounding_box.min_x *= 2;
+        self.bounding_box.max_x *= 2;
+        self.bounding_box.min_y *= 2;
+        self.bounding_box.max_y *= 2;
     }
 
     pub fn add(&mut self, x: usize, y: usize, color: RgbaColor) {

@@ -207,6 +207,7 @@ impl Drawer {
         nodes: &[(&Node, Style)],
     ) {
         let mut all_labels_figure = Figure::new(tile);
+        all_labels_figure.x2();
 
         for &(ref area, ref style) in areas {
             match area {
@@ -226,7 +227,7 @@ impl Drawer {
                 .label_entity(node, style, tile.zoom, &self.icon_cache, &mut all_labels_figure);
         }
 
-        draw_figure(&all_labels_figure, image, tile);
+        draw_figure_x2(&all_labels_figure, image, tile);
     }
 }
 
@@ -242,12 +243,31 @@ fn fill_canvas(image: &mut TilePixels, styler: &Styler) {
 }
 
 fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
-    let to_tile_start = |c| (c as usize) * TILE_SIZE;
+    let real_tile_size = ::tile::TILE_SIZE as usize;
+    let to_tile_start = |c| (c as usize) * real_tile_size;
     let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
 
-    for (y, x_to_color) in figure.pixels.range(tile_start_y..(tile_start_y + TILE_SIZE)) {
+    for (y, x_to_color) in figure.pixels.range(tile_start_y..(tile_start_y + real_tile_size)) {
         let real_y = *y - tile_start_y;
-        for (x, color) in x_to_color.range(tile_start_x..(tile_start_x + TILE_SIZE)) {
+        for dy in 0..2 {
+            for (x, color) in x_to_color.range(tile_start_x..(tile_start_x + real_tile_size)) {
+                let real_x = *x - tile_start_x;
+                for dx in 0..2 {
+                    image.set_pixel(real_x * 2 + dx, real_y * 2 + dy, color);
+                }
+            }
+        }
+    }
+}
+
+fn draw_figure_x2(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
+    let real_tile_size = TILE_SIZE;
+    let to_tile_start = |c| (c as usize) * real_tile_size;
+    let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
+
+    for (y, x_to_color) in figure.pixels.range(tile_start_y..(tile_start_y + real_tile_size)) {
+        let real_y = *y - tile_start_y;
+        for (x, color) in x_to_color.range(tile_start_x..(tile_start_x + real_tile_size)) {
             let real_x = *x - tile_start_x;
             image.set_pixel(real_x, real_y, color);
         }

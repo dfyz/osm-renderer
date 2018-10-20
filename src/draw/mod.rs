@@ -1,4 +1,4 @@
-const TILE_SIZE: usize = ::tile::TILE_SIZE as usize;
+const TILE_SIZE: usize = ::tile::TILE_SIZE as usize * 2;
 
 pub mod drawer;
 pub mod figure;

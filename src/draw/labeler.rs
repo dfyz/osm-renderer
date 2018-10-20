@@ -59,14 +59,18 @@ impl Labeler {
     }
 
     fn draw_icon(&self, icon: &Icon, center_x: f64, center_y: f64, figure: &mut Figure) {
-        let get_start_coord = |coord, dimension| (coord - (dimension as f64 / 2.0)) as usize;
+        let get_start_coord = |coord, dimension| (coord - (dimension as f64 / 2.0)) as usize * 2;
 
         let start_x = get_start_coord(center_x, icon.width);
         let start_y = get_start_coord(center_y, icon.height);
 
         for x in 0..icon.width {
-            for y in 0..icon.height {
-                figure.add(start_x + x, start_y + y, icon.get(x, y));
+            for dx in 0..2 {
+                for y in 0..icon.height {
+                    for dy in 0..2 {
+                        figure.add(start_x + x * 2 + dx, start_y + y * 2 + dy, icon.get(x, y));
+                    }
+                }
             }
         }
     }

@@ -25,7 +25,12 @@ impl Rasterizer {
         }
     }
 
-    pub fn draw_line(&mut self, x0: f64, y0: f64, x1: f64, y1: f64) {
+    pub fn draw_line(&mut self, mut x0: f64, mut y0: f64, mut x1: f64, mut y1: f64) {
+        x0 *= 2.0;
+        y0 *= 2.0;
+        x1 *= 2.0;
+        y1 *= 2.0;
+
         let delta = y1 - y0;
 
         if delta == 0.0 {
