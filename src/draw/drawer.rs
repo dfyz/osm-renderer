@@ -57,7 +57,7 @@ impl Drawer {
     }
 
     pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> RgbTriples {
-        let mut pixels = TilePixels::new();
+        let mut pixels = TilePixels::new(tile);
         fill_canvas(&mut pixels, styler);
 
         let tm1 = Timer::new();
@@ -96,7 +96,7 @@ impl Drawer {
         let t3 = tm3.elapsed();
 
         let tm4 = Timer::new();
-        self.draw_labels(&mut pixels, tile, &styled_areas, &styled_nodes);
+        // self.draw_labels(&mut pixels, tile, &styled_areas, &styled_nodes);
         let t4 = tm4.elapsed();
 
         let total = t1 + t2 + t3 + t4;
@@ -151,61 +151,50 @@ impl Drawer {
     {
         let points = area.to_point_pairs(tile.zoom);
 
-        let create_figure = || Figure::new(tile);
         let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
 
-        let figure = match *draw_type {
+        match *draw_type {
             DrawType::Fill => {
                 let opacity = float_or_one(&style.fill_opacity);
                 if let Some(ref color) = style.fill_color {
-                    let mut figure = create_figure();
-                    fill_contour(points, &Filler::Color(color), opacity, &mut figure);
-                    Some(figure)
+                    fill_contour(points, &Filler::Color(color), opacity, image);
                 } else if let Some(ref icon_name) = style.fill_image {
-                    let mut figure = create_figure();
                     let read_icon_cache = self.icon_cache.open_read_session(icon_name);
                     if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
-                        fill_contour(points, &Filler::Image(icon), opacity, &mut figure);
+                        fill_contour(points, &Filler::Image(icon), opacity, image);
                     }
-                    Some(figure)
-                } else {
-                    None
                 }
             }
-            DrawType::Casing => style.casing_color.as_ref().and_then(|color| {
-                let mut figure = create_figure();
-                style.casing_width.map(|casing_width| {
+            DrawType::Casing => {
+                if let Some(color) = style.casing_color.as_ref() {
+                    if let Some(casing_width) = style.casing_width {
+                        draw_lines(
+                            points,
+                            casing_width,
+                            color,
+                            1.0,
+                            &style.casing_dashes,
+                            &style.casing_line_cap,
+                            use_caps_for_dashes,
+                            image,
+                        );
+                    }
+                }
+            }
+            DrawType::Stroke => {
+                if let Some(color) = style.color.as_ref() {
                     draw_lines(
                         points,
-                        casing_width,
+                        float_or_one(&style.width),
                         color,
-                        1.0,
-                        &style.casing_dashes,
-                        &style.casing_line_cap,
+                        float_or_one(&style.opacity),
+                        &style.dashes,
+                        &style.line_cap,
                         use_caps_for_dashes,
-                        &mut figure,
+                        image,
                     );
-                    figure
-                })
-            }),
-            DrawType::Stroke => style.color.as_ref().map(|color| {
-                let mut figure = create_figure();
-                draw_lines(
-                    points,
-                    float_or_one(&style.width),
-                    color,
-                    float_or_one(&style.opacity),
-                    &style.dashes,
-                    &style.line_cap,
-                    use_caps_for_dashes,
-                    &mut figure,
-                );
-                figure
-            }),
-        };
-
-        if let Some(ref figure) = figure {
-            draw_figure(figure, image, tile);
+                }
+            }
         }
     }
 
@@ -245,7 +234,9 @@ fn fill_canvas(image: &mut TilePixels, styler: &Styler) {
         let canvas_rgba = RgbaColor::from_color(c, 1.0);
         for x in 0..TILE_SIZE {
             for y in 0..TILE_SIZE {
-                image.set_pixel(x, y, &canvas_rgba);
+                let xx = image.bb.min_x + x;
+                let yy = image.bb.min_y + y;
+                image.set_pixel(xx, yy, &canvas_rgba);
             }
         }
     }

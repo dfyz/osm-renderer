@@ -5,6 +5,7 @@ use draw::point_pairs::PointPairIter;
 use draw::tile_pixels::RgbaColor;
 use mapcss::color::Color;
 use mapcss::styler::{is_non_trivial_cap, LineCap};
+use draw::tile_pixels::TilePixels;
 
 pub fn draw_lines(
     points: PointPairIter,
@@ -14,7 +15,7 @@ pub fn draw_lines(
     dashes: &Option<Vec<f64>>,
     line_cap: &Option<LineCap>,
     use_caps_for_dashes: bool,
-    figure: &mut Figure,
+    figure: &mut TilePixels,
 ) {
     let half_width = width / 2.0;
     let line_cap_for_dashes = if use_caps_for_dashes { line_cap } else { &None };
@@ -68,7 +69,7 @@ fn draw_line(
     color: &Color,
     initial_opacity: f64,
     opacity_calculator: &OpacityCalculator,
-    figure: &mut Figure,
+    figure: &mut TilePixels,
 ) {
     if p1 == p2 {
         return;
@@ -127,7 +128,7 @@ fn draw_line(
                 }
 
                 let current_color = RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
-                figure.add(current_point.x as usize, current_point.y as usize, current_color);
+                figure.set_pixel(current_point.x as usize, current_point.y as usize, &current_color);
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;

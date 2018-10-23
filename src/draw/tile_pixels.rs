@@ -27,9 +27,9 @@ impl RgbaColor {
     }
 }
 
-#[derive(Default)]
 pub struct TilePixels {
     pixels: Vec<RgbaColor>,
+    pub bb: BoundingBox,
 }
 
 pub fn dimension() -> usize {
@@ -38,8 +38,26 @@ pub fn dimension() -> usize {
 
 pub type RgbTriples = Vec<(u8, u8, u8)>;
 
+#[derive(Clone)]
+pub struct BoundingBox {
+    pub min_x: usize,
+    pub max_x: usize,
+    pub min_y: usize,
+    pub max_y: usize,
+}
+
 impl TilePixels {
-    pub fn new() -> TilePixels {
+    pub fn new(tile: &::tile::Tile) -> TilePixels {
+        let to_tile_start = |c| (c as usize) * TILE_SIZE;
+        let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
+        let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
+        let bounding_box = BoundingBox {
+            min_x: tile_start_x,
+            max_x: to_tile_end(tile_start_x),
+            min_y: tile_start_y,
+            max_y: to_tile_end(tile_start_y),
+        };
+
         TilePixels {
             pixels: vec![
                 RgbaColor {
@@ -50,11 +68,15 @@ impl TilePixels {
                 };
                 TILE_SIZE * TILE_SIZE
             ],
+            bb: bounding_box,
         }
     }
 
     pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
-        let idx = to_idx(x, y);
+        if x < self.bb.min_x || x > self.bb.max_x || y < self.bb.min_y || y > self.bb.max_y {
+            return;
+        }
+        let idx = to_idx(x - self.bb.min_x, y - self.bb.min_y);
         let new_pixel = {
             let old_pixel = &self.pixels[idx];
             let blend = |new_value, old_value| new_value + (1.0 - color.a) * old_value;

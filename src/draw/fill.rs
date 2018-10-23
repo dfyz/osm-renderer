@@ -8,22 +8,22 @@ use mapcss::color::Color;
 use std::cmp::{max, min};
 use std::collections::BTreeMap;
 use std::collections::Bound::Included;
+use draw::tile_pixels::TilePixels;
+use std::collections::HashMap;
 
 pub enum Filler<'a> {
     Color(&'a Color),
     Image(&'a Icon),
 }
 
-pub fn fill_contour(points: PointPairIter, filler: &Filler, opacity: f64, figure: &mut Figure) {
+pub fn fill_contour(points: PointPairIter, filler: &Filler, opacity: f64, figure: &mut TilePixels) {
     let mut y_to_edges = EdgesByY::default();
 
     for (idx, (p1, p2)) in points.enumerate() {
-        draw_line(idx, &p1, &p2, &mut y_to_edges);
+        draw_line(idx, &p1, &p2, &mut y_to_edges, figure.bb.min_y as i32, figure.bb.max_y as i32);
     }
 
-    let from_y = Included(figure.bounding_box.min_y as i32);
-    let to_y = Included(figure.bounding_box.max_y as i32);
-    for (y, edges) in y_to_edges.range((from_y, to_y)) {
+    for (y, edges) in y_to_edges.iter() {
         let mut good_edges = edges.values().filter(|e| !e.is_poisoned).collect::<Vec<_>>();
         good_edges.sort_by_key(|e| e.x_min);
 
@@ -31,8 +31,8 @@ pub fn fill_contour(points: PointPairIter, filler: &Filler, opacity: f64, figure
         while idx + 1 < good_edges.len() {
             let e1 = good_edges[idx];
             let e2 = good_edges[idx + 1];
-            let from_x = e1.x_min.max(figure.bounding_box.min_x as i32);
-            let to_x = e2.x_max.min(figure.bounding_box.max_x as i32) + 1;
+            let from_x = e1.x_min.max(figure.bb.min_x as i32);
+            let to_x = e2.x_max.min(figure.bb.max_x as i32) + 1;
             for x in from_x..to_x {
                 let fill_color = match filler {
                     Filler::Color(color) => RgbaColor::from_color(color, opacity),
@@ -42,7 +42,7 @@ pub fn fill_contour(points: PointPairIter, filler: &Filler, opacity: f64, figure
                         icon.get(icon_x, icon_y)
                     }
                 };
-                figure.add(x as usize, *y as usize, fill_color);
+                figure.set_pixel(x as usize, *y as usize, &fill_color);
             }
             idx += 2;
         }
@@ -51,7 +51,7 @@ pub fn fill_contour(points: PointPairIter, filler: &Filler, opacity: f64, figure
 
 // Stripped-down version of Bresenham which is extremely easy to implement.
 // See http://members.chello.at/~easyfilter/bresenham.html
-fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY) {
+fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY, min_y: i32, max_y: i32) {
     let dx = (p2.x - p1.x).abs();
     let dy = -(p2.y - p1.y).abs();
 
@@ -74,19 +74,21 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY)
             false
         };
 
-        let edge = y_to_edges
-            .entry(cur_point.y)
-            .or_insert_with(Default::default)
-            .entry(edge_idx)
-            .or_insert_with(|| Edge {
-                x_min: cur_point.x,
-                x_max: cur_point.x,
-                is_poisoned,
-            });
+        if cur_point.y >= min_y && cur_point.y <= max_y {
+            let edge = y_to_edges
+                .entry(cur_point.y)
+                .or_insert_with(Default::default)
+                .entry(edge_idx)
+                .or_insert_with(|| Edge {
+                    x_min: cur_point.x,
+                    x_max: cur_point.x,
+                    is_poisoned,
+                });
 
-        edge.x_min = min(edge.x_min, cur_point.x);
-        edge.x_max = max(edge.x_max, cur_point.x);
-        edge.is_poisoned |= is_poisoned;
+            edge.x_min = min(edge.x_min, cur_point.x);
+            edge.x_max = max(edge.x_max, cur_point.x);
+            edge.is_poisoned |= is_poisoned;
+        }
 
         if is_end {
             break;
@@ -104,7 +106,7 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY)
     }
 }
 
-type EdgesByY = BTreeMap<i32, BTreeMap<usize, Edge>>;
+type EdgesByY = HashMap<i32, HashMap<usize, Edge>>;
 
 struct Edge {
     x_min: i32,

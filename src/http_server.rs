@@ -110,7 +110,7 @@ impl<'a> HttpServer<'a> {
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
         };
 
-        let entities = self.reader.get_entities_in_tile_with_neighbors(&tile, &self.osm_ids);
+        let entities = self.reader.get_entities_in_tile(&tile, &self.osm_ids);
         let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
 
         let header = [
