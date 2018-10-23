@@ -76,9 +76,19 @@ impl Drawer {
         };
 
         let tm2 = Timer::new();
+
+        let tm21 = Timer::new();
         draw_areas_with_type(&mut pixels, &DrawType::Fill, true);
+        let t21 = tm21.elapsed();
+
+        let tm22 = Timer::new();
         draw_areas_with_type(&mut pixels, &DrawType::Casing, false);
+        let t22 = tm22.elapsed();
+
+        let tm23 = Timer::new();
         draw_areas_with_type(&mut pixels, &DrawType::Stroke, false);
+        let t23 = tm23.elapsed();
+
         let t2 = tm2.elapsed();
 
         let tm3 = Timer::new();
@@ -92,16 +102,16 @@ impl Drawer {
         let total = t1 + t2 + t3 + t4;
 
         let duration_to_float = |d: Duration| d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
-        let get_ratio = |d| duration_to_float(d) / duration_to_float(total) * 100.0;
-        let format_duration = |desc, d| format!("{}={:.2?} ({:.2}%)", desc, d, get_ratio(d));
+        let get_ratio = |d, tt| duration_to_float(d) / duration_to_float(tt) * 100.0;
+        let format_duration = |desc, d, tt| format!("{}={:.2?} ({:.2}%)", desc, d, get_ratio(d, tt));
 
         eprintln!(
-            "z={},x={},y={}\t{}, {}, {}, {}",
+            "z={},x={},y={}\t{}, {} ({}+{}+{}), {}, {}",
             tile.zoom, tile.x, tile.y,
-            format_duration("style_areas", t1), format_duration("draw_areas", t2),
-            format_duration("style_nodes", t3), format_duration("draw_labels", t4),
+            format_duration("sa", t1, total), format_duration("da", t2, total),
+            format_duration("F", t21, t2), format_duration("C", t22, t2), format_duration("S", t23, t2),
+            format_duration("sn", t3, total), format_duration("dl", t4, total),
         );
-        styler.dump_cache_stats();
 
         pixels.to_rgb_triples()
     }

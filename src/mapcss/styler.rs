@@ -251,20 +251,6 @@ impl Styler {
         result
     }
 
-    pub fn dump_cache_stats(&self) {
-        let read_cache = self.cache.read().unwrap();
-        if !read_cache.is_empty() {
-            let first_entry = read_cache.keys().next().unwrap();
-            let last_entry = read_cache.keys().last().unwrap();
-            eprintln!(
-                "cache_size={}, first={:?}, last={:?}",
-                read_cache.len(),
-                first_entry,
-                last_entry
-            );
-        }
-    }
-
     fn style_area<'r, 'e, A>(&'r self, area: &A, zoom: u8) -> LayerToPropertyMap<'r>
     where
         A: StyleableEntity + OsmEntity<'e>,
