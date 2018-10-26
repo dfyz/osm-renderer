@@ -236,10 +236,10 @@ fn to_u32_safe(num: usize) -> Result<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use geodata::importer::RawTags;
     use std::env;
     use std::fs::File;
     use std::io::BufWriter;
-    use geodata::importer::RawTags;
 
     #[test]
     fn test_synthetic_data() {

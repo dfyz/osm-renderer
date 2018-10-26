@@ -120,7 +120,8 @@ impl<'a> HttpServer<'a> {
             "Connection: close",
             "",
             "",
-        ].join("\r\n");
+        ]
+            .join("\r\n");
 
         let mut output_stream = rdr.into_inner();
 

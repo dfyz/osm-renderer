@@ -55,8 +55,7 @@ impl TextPlacer {
                         let from = &points[idx - 1];
                         let to = &points[idx];
                         from.dist(&to)
-                    })
-                    .sum();
+                    }).sum();
 
                 if glyphs.total_width > total_way_length {
                     return;

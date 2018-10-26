@@ -174,11 +174,12 @@ fn get_opacity_by_center_distance(center_distance: f64, half_line_width: f64) ->
     let feather_dist = feather_to - feather_from;
     let opacity_mul = (2.0 * half_line_width).min(1.0);
 
-    opacity_mul * (if center_distance < feather_from {
-        1.0
-    } else if center_distance < feather_to {
-        (feather_to - center_distance) / feather_dist
-    } else {
-        0.0
-    })
+    opacity_mul
+        * (if center_distance < feather_from {
+            1.0
+        } else if center_distance < feather_to {
+            (feather_to - center_distance) / feather_dist
+        } else {
+            0.0
+        })
 }
