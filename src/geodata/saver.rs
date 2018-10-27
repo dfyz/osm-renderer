@@ -219,8 +219,8 @@ fn insert_entity_id_to_tiles<'a, I>(
         tile_range.min_y = min(tile_range.min_y, next_tile.y);
         tile_range.max_y = max(tile_range.max_y, next_tile.y);
     }
-    for x in tile_range.min_x..tile_range.max_x + 1 {
-        for y in tile_range.min_y..tile_range.max_y + 1 {
+    for x in tile_range.min_x..=tile_range.max_x {
+        for y in tile_range.min_y..=tile_range.max_y {
             get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
         }
     }

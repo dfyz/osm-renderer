@@ -136,7 +136,7 @@ impl<'a> Tokenizer<'a> {
         } else if ch == '@' {
             self.read_at_directive()
         } else if ch == '*' {
-            Ok(Token::Identifier(&self.text[idx..idx + 1]))
+            Ok(Token::Identifier(&self.text[idx..=idx]))
         } else if can_start_identifier(ch) {
             Ok(self.read_identifier(idx))
         } else if ch == '"' {
@@ -174,7 +174,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
-        let directive_text = &self.text[start_idx..end_idx + 1];
+        let directive_text = &self.text[start_idx..=end_idx];
         if directive_text == "import" {
             self.expect_char('(')?;
 
@@ -203,7 +203,7 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        Token::Identifier(&self.text[start_idx..end_idx + 1])
+        Token::Identifier(&self.text[start_idx..=end_idx])
     }
 
     fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>> {
