@@ -161,7 +161,7 @@ fn find_ring(
                 is_inner: start_segment.is_inner,
             };
 
-            if find_ring_rec(start_segment.node2.pos, &search_params, connections, &mut ring) {
+            if find_ring_from(start_segment.node2.pos, &search_params, connections, &mut ring) {
                 return Some(ring.used_segments);
             }
         }
@@ -172,39 +172,54 @@ fn find_ring(
     None
 }
 
-fn find_ring_rec(
+enum SearchStackElement<'a> {
+    Root,
+    StartSegment(&'a ConnectedSegment),
+    EndSegment(&'a ConnectedSegment),
+}
+
+fn push_next_segments<'a>(
+    from_pos: NodePos,
+    search_params: &SearchParams,
+    connections: &'a SegmentConnections,
+    ring: &mut CurrentRing,
+    stack: &mut Vec<SearchStackElement<'a>>,
+) {
+    if let Some(segs) = connections.get(&from_pos) {
+        for seg in segs.iter().rev() {
+            let can_use = seg.is_inner == search_params.is_inner && ring.available_segments[seg.segment_index];
+            let is_duplicate =
+                ring.used_vertices.contains(&seg.other_side) && seg.other_side != search_params.first_pos;
+            if can_use && !is_duplicate {
+                stack.push(SearchStackElement::EndSegment(seg));
+                stack.push(SearchStackElement::StartSegment(seg));
+            }
+        }
+    }
+}
+
+fn find_ring_from(
     last_pos: NodePos,
     search_params: &SearchParams,
     connections: &SegmentConnections,
     ring: &mut CurrentRing,
 ) -> bool {
-    if search_params.first_pos == last_pos && ring.used_segments.len() >= 3 {
-        return true;
-    }
+    let mut candidate_stack = vec![SearchStackElement::Root];
 
-    let mut candidates = Vec::new();
-
-    match connections.get(&last_pos) {
-        None => return false,
-        Some(segs) => for seg in segs {
-            if seg.is_inner == search_params.is_inner && ring.available_segments[seg.segment_index] {
-                candidates.push(seg);
+    while let Some(current) = candidate_stack.pop() {
+        match current {
+            SearchStackElement::Root => {
+                push_next_segments(last_pos, search_params, connections, ring, &mut candidate_stack)
             }
-        },
-    }
-
-    for cand in candidates {
-        if ring.used_vertices.contains(&cand.other_side) && cand.other_side != search_params.first_pos {
-            return false;
+            SearchStackElement::StartSegment(seg) => {
+                ring.include_segment(seg);
+                if search_params.first_pos == seg.other_side && ring.used_segments.len() >= 3 {
+                    return true;
+                }
+                push_next_segments(seg.other_side, search_params, connections, ring, &mut candidate_stack);
+            }
+            SearchStackElement::EndSegment(seg) => ring.exclude_segment(seg),
         }
-
-        ring.include_segment(cand);
-
-        if find_ring_rec(cand.other_side, search_params, connections, ring) {
-            return true;
-        }
-
-        ring.exclude_segment(cand);
     }
 
     false
