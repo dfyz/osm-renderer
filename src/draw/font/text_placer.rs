@@ -154,7 +154,7 @@ impl TextPlacer {
         let mut prev_glyph_id: Option<u32> = None;
         for ch in text.chars() {
             let glyph_id = self.font.find_glyph_index(ch as u32);
-            let mut advance_width = f64::from(self.font.get_glyph_h_metrics(glyph_id).advance_width);
+            let advance_width = f64::from(self.font.get_glyph_h_metrics(glyph_id).advance_width);
 
             let mut glyph = Glyph {
                 ch,

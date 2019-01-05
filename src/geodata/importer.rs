@@ -266,8 +266,8 @@ fn get_required_attr<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], attr_name
 
 fn parse_required_attr<T>(elem_name: &str, attrs: &[OwnedAttribute], attr_name: &str) -> Result<T>
 where
-    T: ::std::str::FromStr,
-    T::Err: ::std::error::Error + ::std::marker::Send + 'static,
+    T: std::str::FromStr,
+    T::Err: std::error::Error + std::marker::Send + 'static,
 {
     let value = get_required_attr(elem_name, attrs, attr_name)?;
 
