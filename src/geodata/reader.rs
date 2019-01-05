@@ -9,11 +9,11 @@ use std::mem;
 use std::slice;
 use std::str;
 
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use crate::coords::Coords;
+use crate::tile;
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use memmap::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
-use crate::tile;
 
 pub trait OsmEntity<'a> {
     fn global_id(&self) -> u64;

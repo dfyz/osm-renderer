@@ -4,8 +4,8 @@ use crate::draw::labelable::Labelable;
 use crate::draw::point::Point;
 use crate::mapcss::color::Color;
 use crate::mapcss::styler::{TextPosition, TextStyle};
-use stb_truetype::{FontInfo, Vertex, VertexType};
 use crate::tile::TILE_SIZE;
+use stb_truetype::{FontInfo, Vertex, VertexType};
 
 pub struct TextPlacer {
     font: FontInfo<&'static [u8]>,

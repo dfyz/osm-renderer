@@ -11,8 +11,8 @@ use crate::draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use crate::draw::TILE_SIZE;
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler};
-use std::path::Path;
 use crate::tile as t;
+use std::path::Path;
 
 pub struct Drawer {
     icon_cache: IconCache,

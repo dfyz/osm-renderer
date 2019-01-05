@@ -1,11 +1,11 @@
 use crate::errors::*;
 
-use byteorder::{LittleEndian, WriteBytesExt};
 use crate::geodata::importer::{EntityStorages, Multipolygon, Polygon, RawNode, RawRefs, RawWay};
+use crate::tile;
+use byteorder::{LittleEndian, WriteBytesExt};
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;
-use crate::tile;
 
 #[derive(Default)]
 struct TileReferences {
