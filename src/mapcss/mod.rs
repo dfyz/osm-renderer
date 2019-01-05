@@ -5,6 +5,7 @@ pub mod token;
 
 mod errors {
     use crate::mapcss::token::InputPosition;
+    use error_chain::*;
 
     error_chain! {
         errors {

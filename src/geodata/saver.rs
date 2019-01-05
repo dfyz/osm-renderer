@@ -3,6 +3,7 @@ use crate::errors::*;
 use crate::geodata::importer::{EntityStorages, Multipolygon, Polygon, RawNode, RawRefs, RawWay};
 use crate::tile;
 use byteorder::{LittleEndian, WriteBytesExt};
+use error_chain::bail;
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;

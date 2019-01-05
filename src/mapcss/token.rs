@@ -1,6 +1,7 @@
 use crate::mapcss::color::Color;
 use crate::mapcss::errors::*;
 
+use error_chain::bail;
 use std::fmt;
 use std::iter::Peekable;
 use std::str::CharIndices;

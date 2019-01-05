@@ -1,6 +1,7 @@
 use crate::errors::*;
 
 use crate::draw::tile_pixels::RgbaColor;
+use error_chain::bail;
 use png::{ColorType, Decoder};
 use std::fs::File;
 use std::path::Path;

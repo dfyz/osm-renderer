@@ -1,9 +1,7 @@
-#[macro_use]
-extern crate error_chain;
-
 use num_cpus;
 
 pub mod errors {
+    use error_chain::*;
     use std::io;
 
     error_chain! {

@@ -5,6 +5,7 @@ use crate::geodata::reader::GeodataReader;
 use crate::mapcss::parser::parse_file;
 use crate::mapcss::styler::{StyleType, Styler};
 use crate::tile::{Tile, MAX_ZOOM};
+use error_chain::bail;
 use num_cpus;
 use std::collections::HashSet;
 use std::io::prelude::*;
