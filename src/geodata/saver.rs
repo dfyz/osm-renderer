@@ -317,7 +317,7 @@ mod tests {
             data.save(&mut writer).unwrap();
         }
 
-        let reader = ::geodata::reader::GeodataReader::new(tmp_path.to_str().unwrap()).unwrap();
+        let reader = ::geodata::reader::GeodataReader::load(tmp_path.to_str().unwrap()).unwrap();
         let tile = ::tile::Tile { zoom: 15, x: 0, y: 1 };
         use geodata::reader::OsmEntity;
         let node_ids = reader

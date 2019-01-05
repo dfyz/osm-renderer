@@ -15,7 +15,7 @@ use std::path::Path;
 fn test_styling() {
     let bin_file = get_test_path(&["osm", "nano_moscow.bin"]);
     renderer::geodata::importer::import(&get_test_path(&["osm", "nano_moscow.osm"]), &bin_file).unwrap();
-    let reader = renderer::geodata::reader::GeodataReader::new(&bin_file).unwrap();
+    let reader = renderer::geodata::reader::GeodataReader::load(&bin_file).unwrap();
     let styler = Styler::new(
         parse_file(Path::new(&get_test_path(&["mapcss"])), "mapnik.mapcss").unwrap(),
         &StyleType::Josm,

@@ -44,7 +44,7 @@ pub struct GeodataReader<'a> {
 }
 
 impl<'a> GeodataReader<'a> {
-    pub fn new(file_name: &str) -> Result<GeodataReader<'a>> {
+    pub fn load(file_name: &str) -> Result<GeodataReader<'a>> {
         let input_file =
             File::open(file_name).chain_err(|| format!("Failed to open {} for memory mapping", file_name))?;
         let mmap = unsafe {
@@ -312,7 +312,7 @@ const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
 impl<'a> ObjectStorages<'a> {
     // All geodata members have sizes divisible by 4, so the u8* -> u32* cast should be safe,
     // provided that `bytes` is aligned to 4 bytes (if it's not, we're in trouble anyway).
-    #[cfg_attr(feature = "cargo-clippy", allow(cast_ptr_alignment))]
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
     fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
         let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::thread;
 use tile::{Tile, MAX_ZOOM};
 
-#[cfg_attr(feature = "cargo-clippy", allow(implicit_hasher))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
 pub fn run_server(
     address: &str,
     geodata_file: &str,
@@ -30,7 +30,7 @@ pub fn run_server(
 
     let server = Arc::new(HttpServer {
         styler: Styler::new(rules, stylesheet_type, font_size_multiplier),
-        reader: GeodataReader::new(geodata_file).chain_err(|| "Failed to load the geodata file")?,
+        reader: GeodataReader::load(geodata_file).chain_err(|| "Failed to load the geodata file")?,
         drawer: Drawer::new(&base_path),
         osm_ids,
     });
