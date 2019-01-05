@@ -454,11 +454,13 @@ impl<'a> Parser<'a> {
             Token::QuestionMark => {
                 current_token = self.read_mandatory_token()?;
                 match current_token.token {
-                    Token::RightBracket => if starts_with_bang {
-                        UnaryTestType::False
-                    } else {
-                        UnaryTestType::True
-                    },
+                    Token::RightBracket => {
+                        if starts_with_bang {
+                            UnaryTestType::False
+                        } else {
+                            UnaryTestType::True
+                        }
+                    }
                     Token::Bang if !starts_with_bang => {
                         self.expect_simple_token(&Token::RightBracket)?;
                         UnaryTestType::False

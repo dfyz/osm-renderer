@@ -11,7 +11,7 @@ extern crate xml;
 pub mod errors {
     use std::io;
 
-    error_chain!{
+    error_chain! {
         foreign_links {
             Io(io::Error);
         }

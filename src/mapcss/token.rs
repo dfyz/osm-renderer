@@ -532,7 +532,8 @@ mod tests {
                 .map(|(ref token, line, ch)| TokenWithPosition {
                     token: token.clone(),
                     position: InputPosition { line, character: ch },
-                }).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
         )
     }
 

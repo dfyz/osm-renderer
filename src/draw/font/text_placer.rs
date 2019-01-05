@@ -42,99 +42,105 @@ impl TextPlacer {
         let vm = self.get_v_metrics(scale);
 
         match text_pos {
-            TextPosition::Line => if let Some(orig_points) = on.get_waypoints(zoom) {
-                let mut points = orig_points.clone();
-                if points.len() < 2 {
-                    return;
-                }
-                if points[0].x > points.iter().last().unwrap().x {
-                    points.reverse();
-                }
-                let total_way_length = (1..points.len())
-                    .map(|idx| {
-                        let from = &points[idx - 1];
-                        let to = &points[idx];
-                        from.dist(&to)
-                    }).sum();
-
-                if glyphs.total_width > total_way_length {
-                    return;
-                }
-
-                let mut cur_dist = (total_way_length - glyphs.total_width) / 2.0;
-
-                let glyph_center_y = (vm.descent + vm.ascent) / 2.0;
-                for glyph in &glyphs.glyphs {
-                    let glyph_center_x = glyph.width / 2.0;
-                    let way_pos = compute_way_position(&points, cur_dist + glyph_center_x);
-
-                    let tr = |point: &(f64, f64)| {
-                        let (original_x, original_y) = point;
-
-                        let translated_x = original_x - glyph_center_x;
-                        let translated_y = original_y - glyph_center_y;
-
-                        let (angle_sin, angle_cos) = (-way_pos.angle).sin_cos();
-
-                        let rotated_x = translated_x * angle_cos - translated_y * angle_sin;
-                        let rotated_y = translated_y * angle_cos + translated_x * angle_sin;
-
-                        let back_translated_x = way_pos.x + rotated_x;
-                        let back_translated_y = way_pos.y - rotated_y;
-                        (back_translated_x, back_translated_y)
-                    };
-
-                    glyph.rasterize(&mut rasterizer, scale, tr);
-
-                    cur_dist += glyph.width;
-                }
-            },
-            TextPosition::Center => if let Some((center_x, center_y)) = on.get_center(zoom) {
-                let mut glyph_rows = Vec::new();
-                let mut current_row = Vec::new();
-                let mut current_row_width = 0.0;
-                let mut max_row_width = 0.0;
-
-                for (idx, glyph) in glyphs.glyphs.iter().enumerate() {
-                    current_row.push(glyph);
-                    current_row_width += glyph.width;
-                    let is_last_glyph = idx + 1 == glyphs.glyphs.len();
-                    let should_break = glyph.ch.is_whitespace() && (current_row_width + glyph.width > MAX_TEXT_WIDTH);
-                    if !current_row.is_empty() && (should_break || is_last_glyph) {
-                        glyph_rows.push((current_row.clone(), current_row_width));
-                        if current_row_width > max_row_width {
-                            max_row_width = current_row_width;
-                        }
-                        current_row.clear();
-                        current_row_width = 0.0;
+            TextPosition::Line => {
+                if let Some(orig_points) = on.get_waypoints(zoom) {
+                    let mut points = orig_points.clone();
+                    if points.len() < 2 {
+                        return;
                     }
-                }
+                    if points[0].x > points.iter().last().unwrap().x {
+                        points.reverse();
+                    }
+                    let total_way_length = (1..points.len())
+                        .map(|idx| {
+                            let from = &points[idx - 1];
+                            let to = &points[idx];
+                            from.dist(&to)
+                        })
+                        .sum();
 
-                let row_height = vm.ascent - vm.descent + vm.line_gap;
-                let total_height = row_height * glyph_rows.len() as f64;
+                    if glyphs.total_width > total_way_length {
+                        return;
+                    }
 
-                let mut cur_y = center_y;
-                if y_offset > 0 {
-                    cur_y += y_offset as f64;
-                } else {
-                    cur_y -= total_height / 2.0;
-                }
+                    let mut cur_dist = (total_way_length - glyphs.total_width) / 2.0;
 
-                for (row, row_width) in &glyph_rows {
-                    let mut cur_x = center_x - row_width / 2.0;
-                    for glyph in row.iter() {
-                        let baseline = cur_y + vm.ascent;
-                        let x_offset = cur_x;
+                    let glyph_center_y = (vm.descent + vm.ascent) / 2.0;
+                    for glyph in &glyphs.glyphs {
+                        let glyph_center_x = glyph.width / 2.0;
+                        let way_pos = compute_way_position(&points, cur_dist + glyph_center_x);
+
                         let tr = |point: &(f64, f64)| {
-                            let (x, y) = point;
-                            (x_offset + x, baseline - y)
+                            let (original_x, original_y) = point;
+
+                            let translated_x = original_x - glyph_center_x;
+                            let translated_y = original_y - glyph_center_y;
+
+                            let (angle_sin, angle_cos) = (-way_pos.angle).sin_cos();
+
+                            let rotated_x = translated_x * angle_cos - translated_y * angle_sin;
+                            let rotated_y = translated_y * angle_cos + translated_x * angle_sin;
+
+                            let back_translated_x = way_pos.x + rotated_x;
+                            let back_translated_y = way_pos.y - rotated_y;
+                            (back_translated_x, back_translated_y)
                         };
+
                         glyph.rasterize(&mut rasterizer, scale, tr);
-                        cur_x += glyph.width;
+
+                        cur_dist += glyph.width;
                     }
-                    cur_y += row_height;
                 }
-            },
+            }
+            TextPosition::Center => {
+                if let Some((center_x, center_y)) = on.get_center(zoom) {
+                    let mut glyph_rows = Vec::new();
+                    let mut current_row = Vec::new();
+                    let mut current_row_width = 0.0;
+                    let mut max_row_width = 0.0;
+
+                    for (idx, glyph) in glyphs.glyphs.iter().enumerate() {
+                        current_row.push(glyph);
+                        current_row_width += glyph.width;
+                        let is_last_glyph = idx + 1 == glyphs.glyphs.len();
+                        let should_break =
+                            glyph.ch.is_whitespace() && (current_row_width + glyph.width > MAX_TEXT_WIDTH);
+                        if !current_row.is_empty() && (should_break || is_last_glyph) {
+                            glyph_rows.push((current_row.clone(), current_row_width));
+                            if current_row_width > max_row_width {
+                                max_row_width = current_row_width;
+                            }
+                            current_row.clear();
+                            current_row_width = 0.0;
+                        }
+                    }
+
+                    let row_height = vm.ascent - vm.descent + vm.line_gap;
+                    let total_height = row_height * glyph_rows.len() as f64;
+
+                    let mut cur_y = center_y;
+                    if y_offset > 0 {
+                        cur_y += y_offset as f64;
+                    } else {
+                        cur_y -= total_height / 2.0;
+                    }
+
+                    for (row, row_width) in &glyph_rows {
+                        let mut cur_x = center_x - row_width / 2.0;
+                        for glyph in row.iter() {
+                            let baseline = cur_y + vm.ascent;
+                            let x_offset = cur_x;
+                            let tr = |point: &(f64, f64)| {
+                                let (x, y) = point;
+                                (x_offset + x, baseline - y)
+                            };
+                            glyph.rasterize(&mut rasterizer, scale, tr);
+                            cur_x += glyph.width;
+                        }
+                        cur_y += row_height;
+                    }
+                }
+            }
         }
 
         rasterizer.save_to_figure(figure);

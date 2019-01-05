@@ -167,7 +167,8 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
                 .map(|x| match *x {
                     "Keyword{round}" => LineCap::Round,
                     _ => unreachable!(),
-                }).unwrap_or(LineCap::Butt),
+                })
+                .unwrap_or(LineCap::Butt),
         ),
 
         casing_color: None,

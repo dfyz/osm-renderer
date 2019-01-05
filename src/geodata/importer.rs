@@ -362,7 +362,8 @@ impl RawRelation {
                         way_ref.is_inner,
                     )
                 })
-            }).collect()
+            })
+            .collect()
     }
 }
 

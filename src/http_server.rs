@@ -121,7 +121,7 @@ impl<'a> HttpServer<'a> {
             "",
             "",
         ]
-            .join("\r\n");
+        .join("\r\n");
 
         let mut output_stream = rdr.into_inner();
 
