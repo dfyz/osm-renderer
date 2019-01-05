@@ -20,7 +20,7 @@ pub enum ObjectType {
 }
 
 impl fmt::Display for ObjectType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let object_type = match *self {
             ObjectType::All => "*",
             ObjectType::Canvas => "canvas",
@@ -74,7 +74,7 @@ pub enum Test {
 }
 
 impl fmt::Display for Test {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let quote = |tag_name: &String| {
             if tag_name.contains(':') {
                 format!("\"{}\"", tag_name)
@@ -131,7 +131,7 @@ pub enum PropertyValue {
 }
 
 impl fmt::Display for PropertyValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             PropertyValue::Color(Color { r, g, b }) => write!(f, "#{:02x}{:02x}{:02x}", r, g, b),
             PropertyValue::Identifier(ref id) => write!(f, "{}", id),
@@ -151,7 +151,7 @@ pub struct Property {
 }
 
 impl fmt::Display for Property {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}: {};", self.name, self.value)
     }
 }
@@ -166,7 +166,7 @@ pub struct Selector {
 }
 
 impl fmt::Display for Selector {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted_zoom_range = match (self.min_zoom, self.max_zoom) {
             (None, None) => String::new(),
             (Some(mn), None) => format!("{}-", mn),
@@ -202,7 +202,7 @@ pub struct Rule {
 }
 
 impl fmt::Display for Rule {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{} {{\n{}\n}}",
@@ -675,7 +675,7 @@ struct ConsumedSelector {
     expect_more_selectors: bool,
 }
 
-fn to_binary_string_test_type(token: &Token) -> Option<BinaryStringTestType> {
+fn to_binary_string_test_type(token: &Token<'_>) -> Option<BinaryStringTestType> {
     match *token {
         Token::Equal => Some(BinaryStringTestType::Equal),
         Token::NotEqual => Some(BinaryStringTestType::NotEqual),
@@ -683,7 +683,7 @@ fn to_binary_string_test_type(token: &Token) -> Option<BinaryStringTestType> {
     }
 }
 
-fn to_binary_numeric_test_type(token: &Token) -> Option<BinaryNumericTestType> {
+fn to_binary_numeric_test_type(token: &Token<'_>) -> Option<BinaryNumericTestType> {
     match *token {
         Token::Less => Some(BinaryNumericTestType::Less),
         Token::LessOrEqual => Some(BinaryNumericTestType::LessOrEqual),

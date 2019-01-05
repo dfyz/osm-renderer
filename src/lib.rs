@@ -1,12 +1,7 @@
-extern crate byteorder;
 #[macro_use]
 extern crate error_chain;
-extern crate memmap;
-extern crate num_cpus;
-extern crate owning_ref;
-extern crate png;
-extern crate stb_truetype;
-extern crate xml;
+
+use num_cpus;
 
 pub mod errors {
     use std::io;

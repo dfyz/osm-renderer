@@ -1,5 +1,3 @@
-extern crate renderer;
-
 mod common;
 
 use crate::common::get_test_path;

@@ -182,7 +182,7 @@ fn push_next_segments<'a>(
     from_pos: NodePos,
     search_params: &SearchParams,
     connections: &'a SegmentConnections,
-    ring: &mut CurrentRing,
+    ring: &mut CurrentRing<'_>,
     stack: &mut Vec<SearchStackElement<'a>>,
 ) {
     if let Some(segs) = connections.get(&from_pos) {
@@ -202,7 +202,7 @@ fn find_ring_from(
     last_pos: NodePos,
     search_params: &SearchParams,
     connections: &SegmentConnections,
-    ring: &mut CurrentRing,
+    ring: &mut CurrentRing<'_>,
 ) -> bool {
     let mut candidate_stack = vec![SearchStackElement::Root];
 

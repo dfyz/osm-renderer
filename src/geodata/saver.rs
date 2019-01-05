@@ -19,7 +19,7 @@ struct TileIdToReferences {
     refs: BTreeMap<(u32, u32), TileReferences>,
 }
 
-pub(super) fn save_to_internal_format(writer: &mut Write, entity_storages: &EntityStorages) -> Result<()> {
+pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &EntityStorages) -> Result<()> {
     let mut buffered_data = BufferedData::default();
     let nodes = &entity_storages.node_storage.get_entities();
     save_nodes(writer, nodes, &mut buffered_data)?;
@@ -52,7 +52,7 @@ impl TileIdToReferences {
     }
 }
 
-fn save_nodes(writer: &mut Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
+fn save_nodes(writer: &mut dyn Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(nodes.len())?)?;
     for node in nodes {
         writer.write_u64::<LittleEndian>(node.global_id)?;
@@ -63,7 +63,7 @@ fn save_nodes(writer: &mut Write, nodes: &[RawNode], data: &mut BufferedData) ->
     Ok(())
 }
 
-fn save_ways(writer: &mut Write, ways: &[RawWay], data: &mut BufferedData) -> Result<()> {
+fn save_ways(writer: &mut dyn Write, ways: &[RawWay], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(ways.len())?)?;
     for way in ways {
         writer.write_u64::<LittleEndian>(way.global_id)?;
@@ -73,7 +73,7 @@ fn save_ways(writer: &mut Write, ways: &[RawWay], data: &mut BufferedData) -> Re
     Ok(())
 }
 
-fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
+fn save_polygons(writer: &mut dyn Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(polygons.len())?)?;
     for polygon in polygons {
         save_refs(writer, polygon.iter(), data)?;
@@ -81,7 +81,7 @@ fn save_polygons(writer: &mut Write, polygons: &[Polygon], data: &mut BufferedDa
     Ok(())
 }
 
-fn save_multipolygons(writer: &mut Write, multipolygons: &[Multipolygon], data: &mut BufferedData) -> Result<()> {
+fn save_multipolygons(writer: &mut dyn Write, multipolygons: &[Multipolygon], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(multipolygons.len())?)?;
     for multipolygon in multipolygons {
         writer.write_u64::<LittleEndian>(multipolygon.global_id)?;
@@ -92,7 +92,7 @@ fn save_multipolygons(writer: &mut Write, multipolygons: &[Multipolygon], data: 
 }
 
 fn save_tile_references(
-    writer: &mut Write,
+    writer: &mut dyn Write,
     tile_references: &TileIdToReferences,
     data: &mut BufferedData,
 ) -> Result<()> {
@@ -109,7 +109,7 @@ fn save_tile_references(
     Ok(())
 }
 
-fn save_refs<'a, I>(writer: &mut Write, refs: I, data: &mut BufferedData) -> Result<()>
+fn save_refs<'a, I>(writer: &mut dyn Write, refs: I, data: &mut BufferedData) -> Result<()>
 where
     I: Iterator<Item = &'a usize>,
 {
@@ -122,7 +122,7 @@ where
     Ok(())
 }
 
-fn save_tags(writer: &mut Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
+fn save_tags(writer: &mut dyn Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
     let mut kv_refs = RawRefs::new();
 
     for (ref k, ref v) in tags.iter() {
@@ -155,7 +155,7 @@ impl BufferedData {
         (*offset, bytes.len())
     }
 
-    fn save(&self, writer: &mut Write) -> Result<()> {
+    fn save(&self, writer: &mut dyn Write) -> Result<()> {
         writer.write_u32::<LittleEndian>(to_u32_safe(self.all_ints.len())?)?;
         for i in &self.all_ints {
             writer.write_u32::<LittleEndian>(*i)?;

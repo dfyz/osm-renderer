@@ -14,7 +14,7 @@ pub enum Filler<'a> {
     Image(&'a Icon),
 }
 
-pub fn fill_contour(points: PointPairIter, filler: &Filler, opacity: f64, figure: &mut Figure) {
+pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64, figure: &mut Figure) {
     let mut y_to_edges = EdgesByY::default();
 
     for (idx, (p1, p2)) in points.enumerate() {

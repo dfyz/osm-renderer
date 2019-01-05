@@ -1,7 +1,3 @@
-extern crate error_chain;
-extern crate ini;
-extern crate renderer;
-
 use error_chain::ChainedError;
 use ini::ini::Properties;
 use ini::Ini;
@@ -29,7 +25,7 @@ fn get_section_from_config<'a, 'b>(config: &'a Ini, section_name: &'b str) -> Na
     }
 }
 
-fn get_value_from_config<'a>(section: &'a NamedSection, name: &str) -> &'a str {
+fn get_value_from_config<'a>(section: &'a NamedSection<'_, '_>, name: &str) -> &'a str {
     match section.0.get(name) {
         Some(value) => value,
         _ => {

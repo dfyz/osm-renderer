@@ -66,7 +66,7 @@ const ONE_LETTER_MATCH_TABLE: &[(char, Token<'static>)] = &[
 ];
 
 impl<'a> fmt::Display for Token<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &((ch1, ch2), ref tok) in TWO_LETTER_MATCH_TABLE {
             if tok == self {
                 return write!(f, "{}{}", ch1, ch2);
@@ -89,7 +89,7 @@ pub struct InputPosition {
 }
 
 impl fmt::Display for InputPosition {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "line {}, col {}", self.line, self.character)
     }
 }
@@ -480,21 +480,21 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
 
 fn can_be_in_at_directive(ch: char) -> bool {
     match ch {
-        '_' | 'a'...'z' | '0'...'9' => true,
+        '_' | 'a'..='z' | '0'..='9' => true,
         _ => false,
     }
 }
 
 fn can_start_identifier(ch: char) -> bool {
     match ch {
-        '_' | 'a'...'z' | 'A'...'Z' => true,
+        '_' | 'a'..='z' | 'A'..='Z' => true,
         _ => false,
     }
 }
 
 fn can_continue_identifier(ch: char) -> bool {
     match ch {
-        '-' | '0'...'9' | '.' | '/' => true,
+        '-' | '0'..='9' | '.' | '/' => true,
         ch if can_start_identifier(ch) => true,
         _ => false,
     }
@@ -504,7 +504,7 @@ fn is_digit(ch: char) -> bool {
     ch.to_digit(10).is_some()
 }
 
-fn with_pos(token: Token, position: InputPosition) -> TokenWithPosition {
+fn with_pos(token: Token<'_>, position: InputPosition) -> TokenWithPosition<'_> {
     TokenWithPosition { token, position }
 }
 
@@ -524,7 +524,7 @@ mod tests {
         lines.iter().map(|x| &x[space_count..]).collect::<Vec<_>>().join("\n")
     }
 
-    fn tok(s: &str, expected: Vec<(Token, usize, usize)>) {
+    fn tok(s: &str, expected: Vec<(Token<'_>, usize, usize)>) {
         assert_eq!(
             tokenize(&unindent(s)),
             expected

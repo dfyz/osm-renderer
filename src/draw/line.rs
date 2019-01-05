@@ -7,7 +7,7 @@ use crate::mapcss::color::Color;
 use crate::mapcss::styler::{is_non_trivial_cap, LineCap};
 
 pub fn draw_lines(
-    points: PointPairIter,
+    points: PointPairIter<'_>,
     width: f64,
     color: &Color,
     opacity: f64,

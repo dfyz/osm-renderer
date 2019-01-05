@@ -1,5 +1,4 @@
-extern crate error_chain;
-extern crate renderer;
+use renderer;
 
 use error_chain::ChainedError;
 use std::alloc::System;

@@ -1,5 +1,5 @@
-extern crate png;
-extern crate renderer;
+use png;
+use renderer;
 
 mod common;
 

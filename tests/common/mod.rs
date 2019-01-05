@@ -1,5 +1,3 @@
-extern crate renderer;
-
 use std::path::PathBuf;
 
 pub fn get_test_path(relative_path: &[&str]) -> String {

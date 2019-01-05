@@ -8,7 +8,7 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn from_node(node: &Node, zoom: u8) -> Point {
+    pub fn from_node(node: &Node<'_>, zoom: u8) -> Point {
         let (x, y) = t::coords_to_xy(node, zoom);
         Point {
             x: x as i32,

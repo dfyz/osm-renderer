@@ -1,4 +1,4 @@
-extern crate renderer;
+use renderer;
 
 mod common;
 

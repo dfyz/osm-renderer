@@ -69,7 +69,7 @@ impl Drawer {
     fn draw_areas(
         &self,
         pixels: &mut TilePixels,
-        areas: &[(StyledArea, Style)],
+        areas: &[(StyledArea<'_, '_>, Style)],
         tile: &t::Tile,
         draw_type: &DrawType,
         use_multipolygons: bool,
@@ -163,8 +163,8 @@ impl Drawer {
         &self,
         image: &mut TilePixels,
         tile: &t::Tile,
-        areas: &[(StyledArea, Style)],
-        nodes: &[(&Node, Style)],
+        areas: &[(StyledArea<'_, '_>, Style)],
+        nodes: &[(&Node<'_>, Style)],
     ) {
         let mut all_labels_figure = Figure::new(tile);
 
