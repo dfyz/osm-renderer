@@ -1,9 +1,9 @@
-use errors::*;
+use crate::errors::*;
 
-use draw::drawer::Drawer;
-use geodata::reader::GeodataReader;
-use mapcss::parser::parse_file;
-use mapcss::styler::{StyleType, Styler};
+use crate::draw::drawer::Drawer;
+use crate::geodata::reader::GeodataReader;
+use crate::mapcss::parser::parse_file;
+use crate::mapcss::styler::{StyleType, Styler};
 use num_cpus;
 use std::collections::HashSet;
 use std::io::prelude::*;
@@ -14,7 +14,7 @@ use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use tile::{Tile, MAX_ZOOM};
+use crate::tile::{Tile, MAX_ZOOM};
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
 pub fn run_server(

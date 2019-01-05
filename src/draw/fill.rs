@@ -1,9 +1,9 @@
-use draw::figure::Figure;
-use draw::icon::Icon;
-use draw::point::Point;
-use draw::point_pairs::PointPairIter;
-use draw::tile_pixels::RgbaColor;
-use mapcss::color::Color;
+use crate::draw::figure::Figure;
+use crate::draw::icon::Icon;
+use crate::draw::point::Point;
+use crate::draw::point_pairs::PointPairIter;
+use crate::draw::tile_pixels::RgbaColor;
+use crate::mapcss::color::Color;
 
 use std::cmp::{max, min};
 use std::collections::BTreeMap;

@@ -1,8 +1,8 @@
-use errors::*;
+use crate::errors::*;
 
-use coords;
-use geodata::find_polygons::{find_polygons_in_multipolygon, NodeDesc, NodeDescPair};
-use geodata::saver::save_to_internal_format;
+use crate::coords;
+use crate::geodata::find_polygons::{find_polygons_in_multipolygon, NodeDesc, NodeDescPair};
+use crate::geodata::saver::save_to_internal_format;
 use std::collections::HashSet;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;

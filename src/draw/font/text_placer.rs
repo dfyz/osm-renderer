@@ -1,11 +1,11 @@
-use draw::figure::Figure;
-use draw::font::rasterizer::Rasterizer;
-use draw::labelable::Labelable;
-use draw::point::Point;
-use mapcss::color::Color;
-use mapcss::styler::{TextPosition, TextStyle};
+use crate::draw::figure::Figure;
+use crate::draw::font::rasterizer::Rasterizer;
+use crate::draw::labelable::Labelable;
+use crate::draw::point::Point;
+use crate::mapcss::color::Color;
+use crate::mapcss::styler::{TextPosition, TextStyle};
 use stb_truetype::{FontInfo, Vertex, VertexType};
-use tile::TILE_SIZE;
+use crate::tile::TILE_SIZE;
 
 pub struct TextPlacer {
     font: FontInfo<&'static [u8]>,

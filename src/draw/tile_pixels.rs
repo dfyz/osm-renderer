@@ -1,6 +1,6 @@
-use mapcss::color::Color;
+use crate::mapcss::color::Color;
 
-use draw::TILE_SIZE;
+use crate::draw::TILE_SIZE;
 
 #[derive(Clone)]
 pub struct RgbaColor {

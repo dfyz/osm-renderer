@@ -4,7 +4,7 @@ pub mod styler;
 pub mod token;
 
 mod errors {
-    use mapcss::token::InputPosition;
+    use crate::mapcss::token::InputPosition;
 
     error_chain! {
         errors {

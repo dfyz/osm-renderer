@@ -1,18 +1,18 @@
-use errors::*;
+use crate::errors::*;
 
-use draw::figure::Figure;
-use draw::fill::{fill_contour, Filler};
-use draw::icon_cache::IconCache;
-use draw::labeler::Labeler;
-use draw::line::draw_lines;
-use draw::png_writer::rgb_triples_to_png;
-use draw::point_pairs::PointPairCollection;
-use draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
-use draw::TILE_SIZE;
-use geodata::reader::{Node, OsmEntities, OsmEntity};
-use mapcss::styler::{Style, StyledArea, Styler};
+use crate::draw::figure::Figure;
+use crate::draw::fill::{fill_contour, Filler};
+use crate::draw::icon_cache::IconCache;
+use crate::draw::labeler::Labeler;
+use crate::draw::line::draw_lines;
+use crate::draw::png_writer::rgb_triples_to_png;
+use crate::draw::point_pairs::PointPairCollection;
+use crate::draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
+use crate::draw::TILE_SIZE;
+use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
+use crate::mapcss::styler::{Style, StyledArea, Styler};
 use std::path::Path;
-use tile as t;
+use crate::tile as t;
 
 pub struct Drawer {
     icon_cache: IconCache,

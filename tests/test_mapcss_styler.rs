@@ -2,7 +2,7 @@ extern crate renderer;
 
 mod common;
 
-use common::get_test_path;
+use crate::common::get_test_path;
 use renderer::geodata::reader::OsmEntity;
 use renderer::mapcss::color::{from_color_name, Color};
 use renderer::mapcss::parser::parse_file;

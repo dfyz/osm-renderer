@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use draw::figure::Figure;
-use draw::tile_pixels::RgbaColor;
-use mapcss::color::Color;
+use crate::draw::figure::Figure;
+use crate::draw::tile_pixels::RgbaColor;
+use crate::mapcss::color::Color;
 
 #[derive(Default)]
 struct Stripe {

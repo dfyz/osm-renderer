@@ -1,7 +1,7 @@
-use mapcss::color::{from_color_name, Color};
-use mapcss::parser::*;
+use crate::mapcss::color::{from_color_name, Color};
+use crate::mapcss::parser::*;
 
-use geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
+use crate::geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 

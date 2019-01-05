@@ -1,4 +1,4 @@
-use geodata::importer::Polygon;
+use crate::geodata::importer::Polygon;
 use std::collections::{HashMap, HashSet};
 
 type NodePos = (u64, u64);

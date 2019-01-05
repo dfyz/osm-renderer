@@ -1,9 +1,9 @@
-use draw::figure::Figure;
-use draw::font::text_placer::TextPlacer;
-use draw::icon::Icon;
-use draw::icon_cache::IconCache;
-use draw::labelable::Labelable;
-use mapcss::styler::Style;
+use crate::draw::figure::Figure;
+use crate::draw::font::text_placer::TextPlacer;
+use crate::draw::icon::Icon;
+use crate::draw::icon_cache::IconCache;
+use crate::draw::labelable::Labelable;
+use crate::mapcss::styler::Style;
 
 #[derive(Default)]
 pub struct Labeler {

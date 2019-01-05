@@ -1,7 +1,7 @@
-use mapcss::errors::*;
+use crate::mapcss::errors::*;
 
-use mapcss::color::Color;
-use mapcss::token::{InputPosition, Token, TokenWithPosition, Tokenizer};
+use crate::mapcss::color::Color;
+use crate::mapcss::token::{InputPosition, Token, TokenWithPosition, Tokenizer};
 
 use std::collections::HashMap;
 use std::fmt;

@@ -1,5 +1,5 @@
-use draw::point::Point;
-use geodata::reader::{Multipolygon, Node, Way};
+use crate::draw::point::Point;
+use crate::geodata::reader::{Multipolygon, Node, Way};
 
 type Center = Option<(f64, f64)>;
 

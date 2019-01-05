@@ -2,7 +2,7 @@ extern crate renderer;
 
 mod common;
 
-use common::get_test_path;
+use crate::common::get_test_path;
 use renderer::mapcss::parser::parse_file;
 use std::fs::File;
 use std::io::{Read, Write};

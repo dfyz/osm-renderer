@@ -1,8 +1,8 @@
-use draw::tile_pixels::RgbaColor;
-use draw::TILE_SIZE;
+use crate::draw::tile_pixels::RgbaColor;
+use crate::draw::TILE_SIZE;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
-use tile::Tile;
+use crate::tile::Tile;
 
 #[derive(Clone)]
 pub struct BoundingBox {

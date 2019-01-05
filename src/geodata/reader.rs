@@ -1,4 +1,4 @@
-use errors::*;
+use crate::errors::*;
 
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -10,10 +10,10 @@ use std::slice;
 use std::str;
 
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use coords::Coords;
+use crate::coords::Coords;
 use memmap::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
-use tile;
+use crate::tile;
 
 pub trait OsmEntity<'a> {
     fn global_id(&self) -> u64;

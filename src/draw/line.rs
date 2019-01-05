@@ -1,10 +1,10 @@
-use draw::figure::Figure;
-use draw::opacity_calculator::OpacityCalculator;
-use draw::point::Point;
-use draw::point_pairs::PointPairIter;
-use draw::tile_pixels::RgbaColor;
-use mapcss::color::Color;
-use mapcss::styler::{is_non_trivial_cap, LineCap};
+use crate::draw::figure::Figure;
+use crate::draw::opacity_calculator::OpacityCalculator;
+use crate::draw::point::Point;
+use crate::draw::point_pairs::PointPairIter;
+use crate::draw::tile_pixels::RgbaColor;
+use crate::mapcss::color::Color;
+use crate::mapcss::styler::{is_non_trivial_cap, LineCap};
 
 pub fn draw_lines(
     points: PointPairIter,

@@ -1,4 +1,4 @@
-use errors::*;
+use crate::errors::*;
 
 use png::{ColorType, Encoder, HasParameters};
 

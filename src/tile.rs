@@ -1,4 +1,4 @@
-use coords::Coords;
+use crate::coords::Coords;
 
 use std::f64::consts::PI;
 

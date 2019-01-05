@@ -1,11 +1,11 @@
-use errors::*;
+use crate::errors::*;
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use geodata::importer::{EntityStorages, Multipolygon, Polygon, RawNode, RawRefs, RawWay};
+use crate::geodata::importer::{EntityStorages, Multipolygon, Polygon, RawNode, RawRefs, RawWay};
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;
-use tile;
+use crate::tile;
 
 #[derive(Default)]
 struct TileReferences {
@@ -236,7 +236,7 @@ fn to_u32_safe(num: usize) -> Result<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use geodata::importer::RawTags;
+    use crate::geodata::importer::RawTags;
     use std::env;
     use std::fs::File;
     use std::io::BufWriter;
@@ -317,9 +317,9 @@ mod tests {
             data.save(&mut writer).unwrap();
         }
 
-        let reader = ::geodata::reader::GeodataReader::load(tmp_path.to_str().unwrap()).unwrap();
-        let tile = ::tile::Tile { zoom: 15, x: 0, y: 1 };
-        use geodata::reader::OsmEntity;
+        let reader = crate::geodata::reader::GeodataReader::load(tmp_path.to_str().unwrap()).unwrap();
+        let tile = crate::tile::Tile { zoom: 15, x: 0, y: 1 };
+        use crate::geodata::reader::OsmEntity;
         let node_ids = reader
             .get_entities_in_tile(&tile, &None)
             .nodes

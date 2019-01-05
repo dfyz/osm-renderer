@@ -1,4 +1,4 @@
-use mapcss::styler::{is_non_trivial_cap, LineCap};
+use crate::mapcss::styler::{is_non_trivial_cap, LineCap};
 use std::cmp::Ordering;
 
 pub struct OpacityCalculator {

@@ -1,5 +1,5 @@
-use geodata::reader::Node;
-use tile as t;
+use crate::geodata::reader::Node;
+use crate::tile as t;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Point {
