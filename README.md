@@ -6,7 +6,7 @@ Currently, you also need to install [Rust](https://rustup.rs), since no pre-comp
 
 ## Importing data
 
-This command takes an `city.xml` data file (get one from [Geofabrik](https://download.geofabrik.de) or a simliar service) and outputs `city.bin`, which will be used for rendering.
+This command takes a `city.xml` data file (get one from [Geofabrik](https://download.geofabrik.de) or a simliar service) and outputs `city.bin`, which will be used for rendering.
 
 ```
 $ cargo run --release --bin importer city.xml city.bin
