@@ -1,5 +1,3 @@
-use num_cpus;
-
 pub mod errors {
     use error_chain::*;
     use std::io;
