@@ -16,6 +16,7 @@ use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
+use crate::perf_stats::PerfStats;
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
 pub fn run_server(
@@ -111,8 +112,12 @@ impl<'a> HttpServer<'a> {
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
         };
 
-        let entities = self.reader.get_entities_in_tile_with_neighbors(&tile, &self.osm_ids);
-        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
+        let perf_stats = PerfStats::new(tile.clone());
+        let entities = {
+            let _m = perf_stats.measure("get_entities");
+            self.reader.get_entities_in_tile_with_neighbors(&tile, &self.osm_ids)
+        };
+        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler, &perf_stats).unwrap();
 
         let header = [
             "HTTP/1.1 200 OK",
@@ -132,6 +137,8 @@ impl<'a> HttpServer<'a> {
         if output_stream.write_all(header.as_bytes()).is_ok() {
             let _ = output_stream.write_all(&tile_png_bytes);
         }
+
+        perf_stats.dump();
 
         Ok(())
     }

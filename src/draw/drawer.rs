@@ -11,6 +11,7 @@ use crate::draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use crate::draw::TILE_SIZE;
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler};
+use crate::perf_stats::PerfStats;
 use crate::tile as t;
 use std::path::Path;
 
@@ -34,16 +35,19 @@ impl Drawer {
         }
     }
 
-    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
-        let pixels = self.draw_to_pixels(entities, tile, styler);
+    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler, perf_stats: &PerfStats) -> Result<Vec<u8>> {
+        let pixels = self.draw_to_pixels(entities, tile, styler, perf_stats);
         rgb_triples_to_png(&pixels, dimension(), dimension())
     }
 
-    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> RgbTriples {
+    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler, perf_stats: &PerfStats) -> RgbTriples {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
-        let styled_areas = styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom);
+        let styled_areas = {
+            let _m = perf_stats.measure("style_areas");
+            styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom)
+        };
 
         let draw_areas_with_type = |pixels: &mut TilePixels, draw_type, use_multipolygons| {
             self.draw_areas(
@@ -56,12 +60,25 @@ impl Drawer {
             );
         };
 
-        draw_areas_with_type(&mut pixels, &DrawType::Fill, true);
-        draw_areas_with_type(&mut pixels, &DrawType::Casing, false);
-        draw_areas_with_type(&mut pixels, &DrawType::Stroke, false);
+        {
+            let _m = perf_stats.measure("fill_areas");
+            draw_areas_with_type(&mut pixels, &DrawType::Fill, true);
+        }
+        {
+            let _m = perf_stats.measure("draw_areas");
+            draw_areas_with_type(&mut pixels, &DrawType::Casing, false);
+            draw_areas_with_type(&mut pixels, &DrawType::Stroke, false);
+        }
 
-        let styled_nodes = styler.style_entities(entities.nodes.iter(), tile.zoom);
-        self.draw_labels(&mut pixels, tile, &styled_areas, &styled_nodes);
+        let styled_nodes = {
+            let _m = perf_stats.measure("style_nodes");
+            styler.style_entities(entities.nodes.iter(), tile.zoom)
+        };
+
+        {
+            let _m = perf_stats.measure("draw_labels");
+            self.draw_labels(&mut pixels, tile, &styled_areas, &styled_nodes, &perf_stats);
+        }
 
         pixels.to_rgb_triples()
     }
@@ -165,27 +182,35 @@ impl Drawer {
         tile: &t::Tile,
         areas: &[(StyledArea<'_, '_>, Style)],
         nodes: &[(&Node<'_>, Style)],
+        perf_stats: &PerfStats,
     ) {
         let mut all_labels_figure = Figure::new(tile);
 
-        for &(ref area, ref style) in areas {
-            match area {
-                StyledArea::Way(way) => {
-                    self.labeler
-                        .label_entity(*way, style, tile.zoom, &self.icon_cache, &mut all_labels_figure)
-                }
-                StyledArea::Multipolygon(rel) => {
-                    self.labeler
-                        .label_entity(*rel, style, tile.zoom, &self.icon_cache, &mut all_labels_figure)
+        {
+            let _m = perf_stats.measure("label_areas");
+            for &(ref area, ref style) in areas {
+                match area {
+                    StyledArea::Way(way) => {
+                        self.labeler
+                            .label_entity(*way, style, tile.zoom, &self.icon_cache, &mut all_labels_figure, perf_stats)
+                    }
+                    StyledArea::Multipolygon(rel) => {
+                        self.labeler
+                            .label_entity(*rel, style, tile.zoom, &self.icon_cache, &mut all_labels_figure, perf_stats)
+                    }
                 }
             }
         }
 
-        for &(node, ref style) in nodes {
-            self.labeler
-                .label_entity(node, style, tile.zoom, &self.icon_cache, &mut all_labels_figure);
+        {
+            let _m = perf_stats.measure("label_nodes");
+            for &(node, ref style) in nodes {
+                self.labeler
+                    .label_entity(node, style, tile.zoom, &self.icon_cache, &mut all_labels_figure, perf_stats);
+            }
         }
 
+        let _m = perf_stats.measure("label_draw_figure");
         draw_figure(&all_labels_figure, image, tile);
     }
 }

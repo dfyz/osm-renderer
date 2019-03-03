@@ -6,6 +6,7 @@ use crate::mapcss::color::Color;
 use crate::mapcss::styler::{TextPosition, TextStyle};
 use crate::tile::TILE_SIZE;
 use stb_truetype::{FontInfo, Vertex, VertexType};
+use crate::perf_stats::PerfStats;
 
 pub struct TextPlacer {
     font: FontInfo<&'static [u8]>,
@@ -20,7 +21,7 @@ impl Default for TextPlacer {
 }
 
 impl TextPlacer {
-    pub fn place(&self, on: &impl Labelable, text_style: &TextStyle, zoom: u8, y_offset: usize, figure: &mut Figure) {
+    pub fn place(&self, on: &impl Labelable, text_style: &TextStyle, zoom: u8, y_offset: usize, figure: &mut Figure, perf_stats: &PerfStats) {
         let font_size = match text_style.font_size {
             Some(font_size) => font_size,
             _ => return,
@@ -86,7 +87,10 @@ impl TextPlacer {
                             (back_translated_x, back_translated_y)
                         };
 
-                        glyph.rasterize(&mut rasterizer, scale, tr);
+                        {
+                            let _m = perf_stats.measure("glyph_rasterize");
+                            glyph.rasterize(&mut rasterizer, scale, tr);
+                        }
 
                         cur_dist += glyph.width;
                     }
@@ -134,7 +138,10 @@ impl TextPlacer {
                                 let (x, y) = point;
                                 (x_offset + x, baseline - y)
                             };
-                            glyph.rasterize(&mut rasterizer, scale, tr);
+                            {
+                                let _m = perf_stats.measure("glyph_rasterize");
+                                glyph.rasterize(&mut rasterizer, scale, tr);
+                            }
                             cur_x += glyph.width;
                         }
                         cur_y += row_height;
@@ -143,6 +150,7 @@ impl TextPlacer {
             }
         }
 
+        let _m = perf_stats.measure("save_to_figure");
         rasterizer.save_to_figure(figure);
     }
 
