@@ -17,6 +17,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 use crate::perf_stats::PerfStats;
+use std::sync::Mutex;
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
 pub fn run_server(
@@ -35,6 +36,7 @@ pub fn run_server(
         reader: GeodataReader::load(geodata_file).chain_err(|| "Failed to load the geodata file")?,
         drawer: Drawer::new(&base_path),
         osm_ids,
+        perf_stats: Mutex::new(PerfStats::default()),
     });
 
     let thread_count = num_cpus::get();
@@ -81,6 +83,7 @@ struct HttpServer<'a> {
     reader: GeodataReader<'a>,
     drawer: Drawer,
     osm_ids: Option<HashSet<u64>>,
+    perf_stats: Mutex<PerfStats>,
 }
 
 impl<'a> HttpServer<'a> {
@@ -112,12 +115,17 @@ impl<'a> HttpServer<'a> {
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
         };
 
-        let perf_stats = PerfStats::new(tile.clone());
+        crate::perf_stats::start_tile(tile.zoom);
+
         let entities = {
-            let _m = perf_stats.measure("get_entities");
+            let _m = crate::perf_stats::measure("Get tile entities");
             self.reader.get_entities_in_tile_with_neighbors(&tile, &self.osm_ids)
         };
-        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler, &perf_stats).unwrap();
+        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
+
+        crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
+
+        self.perf_stats.lock().unwrap().dump();
 
         let header = [
             "HTTP/1.1 200 OK",
@@ -137,8 +145,6 @@ impl<'a> HttpServer<'a> {
         if output_stream.write_all(header.as_bytes()).is_ok() {
             let _ = output_stream.write_all(&tile_png_bytes);
         }
-
-        perf_stats.dump();
 
         Ok(())
     }

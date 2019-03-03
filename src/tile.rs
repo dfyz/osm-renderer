@@ -6,7 +6,7 @@ pub const MAX_ZOOM: u8 = 21;
 pub const GEODATA_TILE_ZOOM: u8 = 18;
 pub const TILE_SIZE: u32 = 256;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct Tile {
     pub zoom: u8,
     pub x: u32,

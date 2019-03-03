@@ -4,7 +4,6 @@ use crate::draw::icon::Icon;
 use crate::draw::icon_cache::IconCache;
 use crate::draw::labelable::Labelable;
 use crate::mapcss::styler::Style;
-use crate::perf_stats::PerfStats;
 
 #[derive(Default)]
 pub struct Labeler {
@@ -19,11 +18,10 @@ impl Labeler {
         zoom: u8,
         icon_cache: &IconCache,
         figure: &mut Figure,
-        perf_stats: &PerfStats,
     ) {
         let mut label_figure = figure.clean_copy();
         let y_offset = self.label_with_icon(entity, style, zoom, icon_cache, &mut label_figure);
-        self.label_with_text(entity, style, zoom, y_offset, &mut label_figure, perf_stats);
+        self.label_with_text(entity, style, zoom, y_offset, &mut label_figure);
         figure.update_from(&label_figure);
     }
 
@@ -54,9 +52,9 @@ impl Labeler {
         }
     }
 
-    fn label_with_text(&self, entity: &impl Labelable, style: &Style, zoom: u8, y_offset: usize, figure: &mut Figure, perf_stats: &PerfStats) {
+    fn label_with_text(&self, entity: &impl Labelable, style: &Style, zoom: u8, y_offset: usize, figure: &mut Figure) {
         if let Some(ref text_style) = style.text_style {
-            self.text_placer.place(entity, text_style, zoom, y_offset, figure, perf_stats);
+            self.text_placer.place(entity, text_style, zoom, y_offset, figure);
         }
     }
 
