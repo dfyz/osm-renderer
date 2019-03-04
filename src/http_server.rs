@@ -177,7 +177,7 @@ fn extract_tile_from_path(path: &str) -> Option<Tile> {
     };
 
     let mut tokens = real_path
-        .trim_right_matches(".png")
+        .trim_end_matches(".png")
         .rsplit('/')
         .take(expected_token_count)
         .collect::<Vec<_>>();

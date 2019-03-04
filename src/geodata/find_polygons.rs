@@ -152,7 +152,7 @@ fn find_ring(
                 available_segments,
                 used_segments: vec![start_idx],
                 used_vertices: [start_segment.node1.pos, start_segment.node2.pos]
-                    .into_iter()
+                    .iter()
                     .cloned()
                     .collect(),
             };

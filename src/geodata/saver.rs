@@ -129,7 +129,7 @@ fn save_tags(writer: &mut dyn Write, tags: &BTreeMap<String, String>, data: &mut
     for (ref k, ref v) in tags.iter() {
         let (k_offset, k_length) = data.add_string(k);
         let (v_offset, v_length) = data.add_string(v);
-        kv_refs.extend([k_offset, k_length, v_offset, v_length].into_iter());
+        kv_refs.extend([k_offset, k_length, v_offset, v_length].iter());
     }
 
     save_refs(writer, kv_refs.iter(), data)?;

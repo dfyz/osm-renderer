@@ -11,7 +11,7 @@ pub fn rgb_triples_to_png(triples: &[(u8, u8, u8)], width: usize, height: usize)
 
         let mut image_bytes = Vec::new();
         for &(r, g, b) in triples {
-            image_bytes.extend([r, g, b].into_iter());
+            image_bytes.extend([r, g, b].iter());
         }
 
         png_writer

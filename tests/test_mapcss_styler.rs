@@ -117,8 +117,8 @@ fn assert_styles_eq(our_style: &Style, josm_style: &Style) {
 fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
     let mut props = HashMap::new();
     for p in style
-        .trim_left_matches("Cascade{ ")
-        .trim_right_matches('}')
+        .trim_start_matches("Cascade{ ")
+        .trim_end_matches('}')
         .split(';')
         .map(|x| x.trim().splitn(2, ':').collect::<Vec<_>>())
     {
@@ -136,7 +136,7 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
                     b: u8::from_str_radix(&x[5..7], 16).unwrap(),
                 }
             } else {
-                from_color_name(x.trim_left_matches("Keyword{").trim_right_matches('}')).unwrap()
+                from_color_name(x.trim_start_matches("Keyword{").trim_end_matches('}')).unwrap()
             }
         })
     };
@@ -155,8 +155,8 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
 
         width: parse_num("width"),
         dashes: props.get("dashes").map(|x| {
-            x.trim_left_matches('[')
-                .trim_right_matches(']')
+            x.trim_start_matches('[')
+                .trim_end_matches(']')
                 .split(", ")
                 .map(|x| x.parse().unwrap())
                 .collect::<Vec<_>>()
