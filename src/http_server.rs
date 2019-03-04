@@ -115,7 +115,9 @@ impl<'a> HttpServer<'a> {
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
         };
 
-        crate::perf_stats::start_tile(tile.zoom);
+        if cfg!(feature = "perf-stats") {
+            crate::perf_stats::start_tile(tile.zoom);
+        }
 
         let entities = {
             let _m = crate::perf_stats::measure("Get tile entities");
@@ -123,7 +125,9 @@ impl<'a> HttpServer<'a> {
         };
         let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
 
-        crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
+        if cfg!(feature = "perf-stats") {
+            crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
+        }
 
         let header = [
             "HTTP/1.1 200 OK",
