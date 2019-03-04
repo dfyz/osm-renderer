@@ -4,6 +4,7 @@ use crate::draw::drawer::Drawer;
 use crate::geodata::reader::GeodataReader;
 use crate::mapcss::parser::parse_file;
 use crate::mapcss::styler::{StyleType, Styler};
+use crate::perf_stats::PerfStats;
 use crate::tile::{Tile, MAX_ZOOM};
 use error_chain::bail;
 use num_cpus;
@@ -15,9 +16,8 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
-use std::thread;
-use crate::perf_stats::PerfStats;
 use std::sync::Mutex;
+use std::thread;
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
 pub fn run_server(

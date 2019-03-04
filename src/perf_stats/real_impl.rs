@@ -1,9 +1,9 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::time::Instant;
-use std::time::Duration;
 use indexmap::IndexMap;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::time::Duration;
+use std::time::Instant;
 
 struct PerfStatsElement {
     duration: Duration,
@@ -133,20 +133,29 @@ impl PerfStats {
     }
 }
 
-fn dump_summed_perf_stats_element(current_name: &str, current_element: &SummedPerfStatsElement, depth: usize, parent_duration: Option<Duration>, duration_count: u32) {
+fn dump_summed_perf_stats_element(
+    current_name: &str,
+    current_element: &SummedPerfStatsElement,
+    depth: usize,
+    parent_duration: Option<Duration>,
+    duration_count: u32,
+) {
     let normalized_duration = current_element.duration_sum / duration_count;
     let to_float = |d: Duration| d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
-    let percentage = 100.0 * if let Some(parent_duration) = parent_duration {
-        to_float(normalized_duration) / to_float(parent_duration)
-    } else {
-        1.0
-    };
-    let real_name = if current_name.is_empty() {
-        "TOTAL"
-    } else {
-        current_name
-    };
-    eprintln!("{}{}: {:.2}% ({:.3?})", "\t".repeat(depth), real_name, percentage, normalized_duration);
+    let percentage = 100.0
+        * if let Some(parent_duration) = parent_duration {
+            to_float(normalized_duration) / to_float(parent_duration)
+        } else {
+            1.0
+        };
+    let real_name = if current_name.is_empty() { "TOTAL" } else { current_name };
+    eprintln!(
+        "{}{}: {:.2}% ({:.3?})",
+        "\t".repeat(depth),
+        real_name,
+        percentage,
+        normalized_duration
+    );
     for (child_name, child) in current_element.children.iter() {
         dump_summed_perf_stats_element(child_name, child, depth + 1, Some(normalized_duration), duration_count);
     }
