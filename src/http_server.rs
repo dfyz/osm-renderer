@@ -125,8 +125,6 @@ impl<'a> HttpServer<'a> {
 
         crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
 
-        self.perf_stats.lock().unwrap().dump();
-
         let header = [
             "HTTP/1.1 200 OK",
             "Content-Type: image/png",

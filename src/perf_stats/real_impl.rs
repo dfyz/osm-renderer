@@ -84,19 +84,19 @@ impl TilePerfStats {
 }
 
 #[derive(Default)]
-struct PerfStatsSumElement {
+struct SummedPerfStatsElement {
     duration_sum: Duration,
-    children: IndexMap<String, Box<PerfStatsSumElement>>,
+    children: IndexMap<String, Box<SummedPerfStatsElement>>,
 }
 
-impl PerfStatsSumElement {
+impl SummedPerfStatsElement {
     fn add(&mut self, element: &PerfStatsElementRef) {
         self.duration_sum += element.borrow().duration;
         for (other_child_name, other_child) in element.borrow().children.iter() {
             if let Some(our_child) = self.children.get_mut(other_child_name) {
                 our_child.add(other_child);
             } else {
-                let mut new_child = Box::new(PerfStatsSumElement::default());
+                let mut new_child = Box::new(SummedPerfStatsElement::default());
                 new_child.add(other_child);
                 self.children.insert(other_child_name.clone(), new_child);
             }
@@ -105,33 +105,35 @@ impl PerfStatsSumElement {
 }
 
 #[derive(Default)]
-struct PerfStatsSum {
-    summed_stats: PerfStatsSumElement,
+struct SummedPerfStats {
+    root_element: SummedPerfStatsElement,
     count: u32,
 }
 
 #[derive(Default)]
 pub struct PerfStats {
-    stats_by_zoom: BTreeMap<u8, PerfStatsSum>,
+    stats_by_zoom: BTreeMap<u8, SummedPerfStats>,
 }
 
 impl PerfStats {
     fn add_tile_stats(&mut self, tile_stats: TilePerfStats) {
         let mut zoom_stats = self.stats_by_zoom.entry(tile_stats.zoom).or_default();
-        zoom_stats.summed_stats.add(&tile_stats.root_element);
+        zoom_stats.root_element.add(&tile_stats.root_element);
         zoom_stats.count += 1;
+
+        self.dump();
     }
 
     pub fn dump(&self) {
         for (zoom, zoom_stats) in self.stats_by_zoom.iter() {
             eprintln!("ZOOM {} ({} tiles)", zoom, zoom_stats.count);
             eprintln!("=======");
-            dump_perf_stats_element("", &zoom_stats.summed_stats, 0, None, zoom_stats.count);
+            dump_summed_perf_stats_element("", &zoom_stats.root_element, 0, None, zoom_stats.count);
         }
     }
 }
 
-fn dump_perf_stats_element(current_name: &str, current_element: &PerfStatsSumElement, depth: usize, parent_duration: Option<Duration>, duration_count: u32) {
+fn dump_summed_perf_stats_element(current_name: &str, current_element: &SummedPerfStatsElement, depth: usize, parent_duration: Option<Duration>, duration_count: u32) {
     let normalized_duration = current_element.duration_sum / duration_count;
     let to_float = |d: Duration| d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
     let percentage = 100.0 * if let Some(parent_duration) = parent_duration {
@@ -146,7 +148,7 @@ fn dump_perf_stats_element(current_name: &str, current_element: &PerfStatsSumEle
     };
     eprintln!("{}{}: {:.2}% ({:.3?})", "\t".repeat(depth), real_name, percentage, normalized_duration);
     for (child_name, child) in current_element.children.iter() {
-        dump_perf_stats_element(child_name, child, depth + 1, Some(normalized_duration), duration_count);
+        dump_summed_perf_stats_element(child_name, child, depth + 1, Some(normalized_duration), duration_count);
     }
 }
 
