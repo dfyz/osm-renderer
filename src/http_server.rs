@@ -151,7 +151,7 @@ fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
         "",
         "",
     ]
-        .join("\r\n");
+    .join("\r\n");
 
     // Errors at this stage usually happen when the outstanding requests get terminated for some
     // reason (e.g. the user scrolls the map). We're not interested in reporting these errors,
