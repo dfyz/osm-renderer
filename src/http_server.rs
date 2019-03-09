@@ -110,6 +110,13 @@ impl<'a> HttpServer<'a> {
         };
 
         let path = extract_path_from_request(&first_line)?;
+
+        if cfg!(feature = "perf-stats") && path == "/perf_stats" {
+            let perf_stats_html = self.perf_stats.lock().unwrap().to_html();
+            serve_data(&mut rdr.into_inner(), perf_stats_html.as_bytes(), "text/html");
+            return Ok(());
+        }
+
         let tile = match extract_tile_from_path(&path) {
             Some(tile) => tile,
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
@@ -129,26 +136,28 @@ impl<'a> HttpServer<'a> {
             crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
         }
 
-        let header = [
-            "HTTP/1.1 200 OK",
-            "Content-Type: image/png",
-            &format!("Content-Length: {}", tile_png_bytes.len()),
-            "Connection: close",
-            "",
-            "",
-        ]
-        .join("\r\n");
-
-        let mut output_stream = rdr.into_inner();
-
-        // Errors at this stage usually happen when the user scrolls the map and the outstanding
-        // requests get terminated. We're not interested in reporting these errors, but there's no
-        // point in continuing after a write fails either.
-        if output_stream.write_all(header.as_bytes()).is_ok() {
-            let _ = output_stream.write_all(&tile_png_bytes);
-        }
+        serve_data(&mut rdr.into_inner(), &tile_png_bytes, "image/png");
 
         Ok(())
+    }
+}
+
+fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
+    let header = [
+        "HTTP/1.1 200 OK",
+        &format!("Content-Type: {}", content_type),
+        &format!("Content-Length: {}", data.len()),
+        "Connection: close",
+        "",
+        "",
+    ]
+        .join("\r\n");
+
+    // Errors at this stage usually happen when the outstanding requests get terminated for some
+    // reason (e.g. the user scrolls the map). We're not interested in reporting these errors,
+    // but there's no point in continuing after a write fails either.
+    if stream.write_all(header.as_bytes()).is_ok() {
+        let _ = stream.write_all(&data);
     }
 }
 

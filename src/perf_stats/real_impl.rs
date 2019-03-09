@@ -120,16 +120,18 @@ impl PerfStats {
         let mut zoom_stats = self.stats_by_zoom.entry(tile_stats.zoom).or_default();
         zoom_stats.root_element.add(&tile_stats.root_element);
         zoom_stats.count += 1;
-
-        self.dump();
     }
 
-    pub fn dump(&self) {
+    pub fn to_html(&self) -> String {
+        let html_template = include_str!("perf_stats.html");
+        let mut html_dump = String::new();
         for (zoom, zoom_stats) in self.stats_by_zoom.iter() {
-            eprintln!("ZOOM {} ({} tiles)", zoom, zoom_stats.count);
-            eprintln!("=======");
-            dump_summed_perf_stats_element("", &zoom_stats.root_element, 0, None, zoom_stats.count);
+            html_dump += &format!("<h1>Zoom {} ({} tiles)</h1>", zoom, zoom_stats.count);
+            html_dump += "<dl>";
+            dump_summed_perf_stats_element("TOTAL", &zoom_stats.root_element, 0, None, zoom_stats.count, &mut html_dump);
+            html_dump += "</dl>";
         }
+        html_template.replace("{{CONTENT}}", &html_dump)
     }
 }
 
@@ -139,25 +141,33 @@ fn dump_summed_perf_stats_element(
     depth: usize,
     parent_duration: Option<Duration>,
     duration_count: u32,
+    html_dump: &mut String
 ) {
     let normalized_duration = current_element.duration_sum / duration_count;
     let to_float = |d: Duration| d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
-    let percentage = 100.0
-        * if let Some(parent_duration) = parent_duration {
+    let percentage = if let Some(parent_duration) = parent_duration {
             to_float(normalized_duration) / to_float(parent_duration)
         } else {
             1.0
         };
-    let real_name = if current_name.is_empty() { "TOTAL" } else { current_name };
-    eprintln!(
-        "{}{}: {:.2}% ({:.3?})",
-        "\t".repeat(depth),
-        real_name,
-        percentage,
+
+    let mut time_info = format!(
+        "<span class='percentage'>{:.2}%</span> <span class='duration'>({:.3?})</span>",
+        100.0 * percentage,
         normalized_duration
     );
-    for (child_name, child) in current_element.children.iter() {
-        dump_summed_perf_stats_element(child_name, child, depth + 1, Some(normalized_duration), duration_count);
+    if depth == 1 {
+        time_info = format!("<span style='background-color: rgba(255, 0, 0, {})'>{}</span>", percentage, time_info);
+    }
+
+    *html_dump += &format!("<dt>{}</dt> <dd>{}</dd>", current_name, time_info);
+
+    if !current_element.children.is_empty() {
+        *html_dump += "<dl>";
+        for (child_name, child) in current_element.children.iter() {
+            dump_summed_perf_stats_element(child_name, child, depth + 1, Some(normalized_duration), duration_count, html_dump);
+        }
+        *html_dump += "</dl>";
     }
 }
 
