@@ -1,0 +1,53 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <style type="text/css">
+        dt
+        {
+            height: 18px;
+            position: relative;
+            z-index: 1;
+            border-bottom: 1px dotted #555;
+        }
+        dd
+        {
+            margin-top: -18px;
+            margin-left: 300px;
+            position: relative;
+            z-index: 2;
+            background: white;
+        }
+        dl
+        {
+            margin-top: 3px;
+            margin-bottom: 3px;
+        }
+        dl > dl
+        {
+            margin-left: 40px;
+        }
+        dl > dl dd
+        {
+            margin-left: 260px;
+        }
+        dl > dl > dl dd
+        {
+            margin-left: 220px;
+        }
+        dl > dl > dl > dl dd
+        {
+            margin-left: 180px;
+        }
+        .percentage
+        {
+            display: inline-block;
+            width: 60px;
+        }
+    </style>
+</head>
+<body>
+<div>
+    {{CONTENT}}
+</div>
+</body>
+</html>
