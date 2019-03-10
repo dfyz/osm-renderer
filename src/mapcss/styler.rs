@@ -347,7 +347,7 @@ where
         }
     };
     let full_casing_width = casing_only_width.map(|w| base_width_for_casing + casing_width_multiplier * w);
-    let text = get_string("text").and_then(|text_key| osm_entity.tags().get_by_key(&text_key).map(|x| x.to_string()));
+    let text = get_string("text");
 
     let font_size = get_num(current_layer_map, "font-size").map(|x| x * font_size_multiplier.unwrap_or(1.0));
 
