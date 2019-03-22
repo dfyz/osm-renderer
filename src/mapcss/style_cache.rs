@@ -20,7 +20,7 @@ pub struct StyleCache {
 }
 
 impl StyleCache {
-    pub fn new(rules: &Vec<Rule>) -> StyleCache {
+    pub fn new(rules: &[Rule]) -> StyleCache {
         let mut tag_value_matters = HashMap::new();
 
         for r in rules.iter() {
