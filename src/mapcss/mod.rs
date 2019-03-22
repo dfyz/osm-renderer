@@ -1,5 +1,6 @@
 pub mod color;
 pub mod parser;
+mod style_cache;
 pub mod styler;
 pub mod token;
 

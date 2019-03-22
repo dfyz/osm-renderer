@@ -351,9 +351,14 @@ pub struct Tags<'a> {
 
 const KV_REF_SIZE: usize = 4;
 
+pub struct StringWithOffset<'a> {
+    pub str: &'a str,
+    pub offset: usize,
+}
+
 impl<'a> Tags<'a> {
     pub fn get_by_key(&self, key: &str) -> Option<&'a str> {
-        let kv_count = self.kv_refs.len() / KV_REF_SIZE;
+        let kv_count = self.get_kv_count();
         if kv_count == 0 {
             return None;
         }
@@ -362,31 +367,43 @@ impl<'a> Tags<'a> {
         while lo < hi {
             let mid = (lo + hi) / 2;
             let (k, v) = self.get_kv(mid);
-            match k.cmp(key) {
+            match k.str.cmp(key) {
                 Ordering::Less => lo = mid + 1,
                 Ordering::Greater => hi = mid,
-                Ordering::Equal => return Some(v),
+                Ordering::Equal => return Some(v.str),
             }
         }
         let (k, v) = self.get_kv(lo);
-        if k == key {
-            Some(v)
+        if k.str == key {
+            Some(v.str)
         } else {
             None
         }
     }
 
-    fn get_kv(&self, idx: usize) -> (&'a str, &'a str) {
+    pub fn iter(&'a self) -> impl Iterator<Item = (StringWithOffset<'a>, StringWithOffset<'a>)> {
+        (0..self.get_kv_count()).map(move |idx| self.get_kv(idx))
+    }
+
+    fn get_kv(&self, idx: usize) -> (StringWithOffset<'a>, StringWithOffset<'a>) {
         let start_idx = idx * KV_REF_SIZE;
-        let get_int = |offset| self.kv_refs[start_idx + offset] as usize;
-        (
-            self.get_str(get_int(0), get_int(1)),
-            self.get_str(get_int(2), get_int(3)),
-        )
+        let get_str_with_offset = |offset| {
+            let start_pos = self.kv_refs[start_idx + offset] as usize;
+            let length = self.kv_refs[start_idx + offset + 1] as usize;
+            StringWithOffset {
+                str: self.get_str(start_pos, length),
+                offset: start_pos,
+            }
+        };
+        (get_str_with_offset(0), get_str_with_offset(2))
     }
 
     fn get_str(&self, start_pos: usize, length: usize) -> &'a str {
         unsafe { str::from_utf8_unchecked(&self.strings[start_pos..start_pos + length]) }
+    }
+
+    fn get_kv_count(&self) -> usize {
+        self.kv_refs.len() / KV_REF_SIZE
     }
 }
 

@@ -13,6 +13,7 @@ use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler};
 use crate::tile as t;
 use std::path::Path;
+use std::sync::Arc;
 
 pub struct Drawer {
     icon_cache: IconCache,
@@ -85,7 +86,7 @@ impl Drawer {
     fn draw_areas(
         &self,
         pixels: &mut TilePixels,
-        areas: &[(StyledArea<'_, '_>, Style)],
+        areas: &[(StyledArea<'_, '_>, Arc<Style>)],
         tile: &t::Tile,
         draw_type: &DrawType,
         use_multipolygons: bool,
@@ -179,8 +180,8 @@ impl Drawer {
         &self,
         image: &mut TilePixels,
         tile: &t::Tile,
-        areas: &[(StyledArea<'_, '_>, Style)],
-        nodes: &[(&Node<'_>, Style)],
+        areas: &[(StyledArea<'_, '_>, Arc<Style>)],
+        nodes: &[(&Node<'_>, Arc<Style>)],
     ) {
         let mut all_labels_figure = Figure::new(tile);
 

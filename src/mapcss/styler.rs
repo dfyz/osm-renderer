@@ -1,9 +1,12 @@
 use crate::mapcss::color::{from_color_name, Color};
 use crate::mapcss::parser::*;
+use crate::mapcss::style_cache::StyleCache;
 
 use crate::geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LineCap {
@@ -33,6 +36,10 @@ pub enum StyleType {
 pub trait StyleableEntity {
     fn default_z_index(&self) -> f64;
     fn matches_object_type(&self, object_type: &ObjectType) -> bool;
+}
+
+pub trait CacheableEntity {
+    fn cache_slot(&self) -> usize;
 }
 
 pub struct TextStyle {
@@ -73,6 +80,8 @@ pub struct Styler {
     casing_width_multiplier: f64,
     font_size_multiplier: Option<f64>,
     rules: Vec<Rule>,
+
+    style_cache: RwLock<StyleCache>,
 }
 
 pub enum StyledArea<'a, 'wr>
@@ -96,22 +105,39 @@ impl Styler {
             _ => 2.0,
         };
 
+        let style_cache = StyleCache::new(&rules);
+
         Styler {
             use_caps_for_dashes,
             canvas_fill_color,
             casing_width_multiplier,
             font_size_multiplier,
             rules,
+            style_cache: RwLock::new(style_cache),
         }
     }
 
-    pub fn style_entities<'e, 'wp, I, A>(&self, areas: I, zoom: u8) -> Vec<(&'wp A, Style)>
+    pub fn style_entities<'e, 'wp, I, A>(&self, areas: I, zoom: u8) -> Vec<(&'wp A, Arc<Style>)>
     where
-        A: StyleableEntity + OsmEntity<'e>,
+        A: CacheableEntity + StyleableEntity + OsmEntity<'e>,
         I: Iterator<Item = &'wp A>,
     {
         let mut styled_areas = Vec::new();
         for area in areas {
+            let mut add_styles = |styles: &Vec<Arc<Style>>| {
+                for s in styles.iter() {
+                    styled_areas.push((area, Arc::clone(s)));
+                }
+            };
+
+            {
+                let read_cache = self.style_cache.read().unwrap();
+                if let Some(styles) = read_cache.get(area, zoom) {
+                    add_styles(&styles);
+                    continue;
+                }
+            }
+
             let default_z_index = area.default_z_index();
 
             let all_property_maps = self.style_area(area, zoom);
@@ -121,21 +147,22 @@ impl Styler {
                 .find(|kvp| *kvp.0 == BASE_LAYER_NAME)
                 .map(|kvp| kvp.1);
 
+            let mut styles = Vec::new();
             for (layer, prop_map) in &all_property_maps {
                 if *layer != "*" {
-                    styled_areas.push((
+                    styles.push(Arc::new(property_map_to_style(
+                        prop_map,
+                        base_layer,
+                        default_z_index,
+                        self.casing_width_multiplier,
+                        &self.font_size_multiplier,
                         area,
-                        property_map_to_style(
-                            prop_map,
-                            base_layer,
-                            default_z_index,
-                            self.casing_width_multiplier,
-                            &self.font_size_multiplier,
-                            area,
-                        ),
-                    ))
+                    )))
                 }
             }
+
+            add_styles(&styles);
+            self.style_cache.write().unwrap().insert(area, zoom, styles)
         }
 
         styled_areas.sort_by(compare_styled_entities);
@@ -148,7 +175,7 @@ impl Styler {
         ways: impl Iterator<Item = &'wr Way<'a>>,
         multipolygons: impl Iterator<Item = &'wr Multipolygon<'a>>,
         zoom: u8,
-    ) -> Vec<(StyledArea<'a, 'wr>, Style)> {
+    ) -> Vec<(StyledArea<'a, 'wr>, Arc<Style>)> {
         let styled_ways = self.style_entities(ways, zoom);
         let styled_multipolygons = self.style_entities(multipolygons, zoom);
 
@@ -219,7 +246,7 @@ impl Styler {
     }
 }
 
-fn compare_styled_entities<'a, E1, E2>(a: &(&E1, Style), b: &(&E2, Style)) -> Ordering
+fn compare_styled_entities<'a, E1, E2>(a: &(&E1, Arc<Style>), b: &(&E2, Arc<Style>)) -> Ordering
 where
     E1: OsmEntity<'a>,
     E2: OsmEntity<'a>,
@@ -517,5 +544,27 @@ impl<A: OsmArea> StyleableEntity for A {
             ObjectType::Area => self.is_closed(),
             _ => false,
         }
+    }
+}
+
+impl<'a> CacheableEntity for Node<'a> {
+    fn cache_slot(&self) -> usize {
+        0
+    }
+}
+
+impl<'a> CacheableEntity for Way<'a> {
+    fn cache_slot(&self) -> usize {
+        if self.is_closed() {
+            1
+        } else {
+            2
+        }
+    }
+}
+
+impl<'a> CacheableEntity for Multipolygon<'a> {
+    fn cache_slot(&self) -> usize {
+        3
     }
 }
