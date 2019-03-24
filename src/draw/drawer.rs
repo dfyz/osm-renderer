@@ -11,7 +11,7 @@ use crate::draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
 use crate::draw::TILE_SIZE;
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler};
-use crate::tile as t;
+use crate::tile::Tile;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -35,12 +35,12 @@ impl Drawer {
         }
     }
 
-    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> Result<Vec<u8>> {
+    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> Result<Vec<u8>> {
         let pixels = self.draw_to_pixels(entities, tile, styler);
         rgb_triples_to_png(&pixels, dimension(), dimension())
     }
 
-    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &t::Tile, styler: &Styler) -> RgbTriples {
+    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> RgbTriples {
         let mut pixels = TilePixels::new();
         fill_canvas(&mut pixels, styler);
 
@@ -87,7 +87,7 @@ impl Drawer {
         &self,
         pixels: &mut TilePixels,
         areas: &[(StyledArea<'_, '_>, Arc<Style>)],
-        tile: &t::Tile,
+        tile: &Tile,
         draw_type: &DrawType,
         use_multipolygons: bool,
         use_caps_for_dashes: bool,
@@ -108,7 +108,7 @@ impl Drawer {
     fn draw_one_area<'e, A>(
         &self,
         image: &mut TilePixels,
-        tile: &t::Tile,
+        tile: &Tile,
         area: &'e A,
         style: &Style,
         draw_type: &DrawType,
@@ -179,7 +179,7 @@ impl Drawer {
     fn draw_labels(
         &self,
         image: &mut TilePixels,
-        tile: &t::Tile,
+        tile: &Tile,
         areas: &[(StyledArea<'_, '_>, Arc<Style>)],
         nodes: &[(&Node<'_>, Arc<Style>)],
     ) {
@@ -225,7 +225,7 @@ fn fill_canvas(image: &mut TilePixels, styler: &Styler) {
     }
 }
 
-fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &t::Tile) {
+fn draw_figure(figure: &Figure, image: &mut TilePixels, tile: &Tile) {
     let to_tile_start = |c| (c as usize) * TILE_SIZE;
     let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
 
