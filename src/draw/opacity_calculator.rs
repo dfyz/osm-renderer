@@ -1,5 +1,4 @@
 use crate::mapcss::styler::{is_non_trivial_cap, LineCap};
-use std::cmp::Ordering;
 
 pub struct OpacityCalculator {
     half_line_width: f64,
@@ -59,23 +58,24 @@ impl OpacityCalculator {
         if self.total_dash_len > 0.0 {
             dist_rem %= self.total_dash_len;
         }
-        let safe_cmp_floats = |x: &f64, y: &f64| x.partial_cmp(y).unwrap_or(Ordering::Equal);
-        let opacities_with_cap_distances = self
-            .dashes
-            .iter()
-            .filter_map(|d| get_opacity_by_segment(dist_rem, d).map(|op| (op, get_distance_in_cap(dist_rem, d))))
-            .collect::<Vec<_>>();
+
+        let mut opacity = 0.0f64;
+        let mut distance_in_cap = None;
+
+        for d in self.dashes.iter() {
+            if let Some(op) = get_opacity_by_segment(dist_rem, d) {
+                opacity = opacity.max(op);
+                if let Some(dist) = get_distance_in_cap(dist_rem, d) {
+                    if distance_in_cap.is_none() || dist < distance_in_cap.unwrap() {
+                        distance_in_cap = Some(dist);
+                    }
+                }
+            }
+        }
 
         StartDistanceOpacityData {
-            opacity: opacities_with_cap_distances
-                .iter()
-                .map(|x| x.0)
-                .max_by(&safe_cmp_floats)
-                .unwrap_or_default(),
-            distance_in_cap: opacities_with_cap_distances
-                .iter()
-                .filter_map(|x| x.1)
-                .min_by(&safe_cmp_floats),
+            opacity,
+            distance_in_cap,
         }
     }
 }
