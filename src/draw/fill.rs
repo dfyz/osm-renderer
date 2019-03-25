@@ -6,7 +6,7 @@ use crate::mapcss::color::Color;
 
 use crate::draw::tile_pixels::TilePixels;
 use std::cmp::{max, min};
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 pub enum Filler<'a> {
     Color(&'a Color),
@@ -29,7 +29,7 @@ pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64
 
     for (y, edges) in y_to_edges.iter() {
         let mut good_edges = edges.values().filter(|e| !e.is_poisoned).collect::<Vec<_>>();
-        good_edges.sort_by_key(|e| e.x_min);
+        good_edges.sort_by_key(|e| (e.x_min, e.edge_idx));
 
         let mut idx = 0;
         while idx + 1 < good_edges.len() {
@@ -84,6 +84,7 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY,
                 .or_insert_with(Default::default)
                 .entry(edge_idx)
                 .or_insert_with(|| Edge {
+                    edge_idx,
                     x_min: cur_point.x,
                     x_max: cur_point.x,
                     is_poisoned,
@@ -110,9 +111,10 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY,
     }
 }
 
-type EdgesByY = BTreeMap<i32, BTreeMap<usize, Edge>>;
+type EdgesByY = HashMap<i32, HashMap<usize, Edge>>;
 
 struct Edge {
+    edge_idx: usize,
     x_min: i32,
     x_max: i32,
     is_poisoned: bool,
