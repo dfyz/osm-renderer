@@ -1,7 +1,7 @@
-use crate::draw::figure::Figure;
 use crate::draw::font::rasterizer::Rasterizer;
 use crate::draw::labelable::Labelable;
 use crate::draw::point::Point;
+use crate::draw::tile_pixels::TilePixels;
 use crate::geodata::reader::OsmEntity;
 use crate::mapcss::color::Color;
 use crate::mapcss::styler::{TextPosition, TextStyle};
@@ -21,23 +21,30 @@ impl Default for TextPlacer {
 }
 
 impl TextPlacer {
-    pub fn place<'e, E>(&self, on: &E, text_style: &TextStyle, zoom: u8, y_offset: usize, figure: &mut Figure)
+    pub fn place<'e, E>(
+        &self,
+        on: &E,
+        text_style: &TextStyle,
+        zoom: u8,
+        y_offset: usize,
+        pixels: &mut TilePixels,
+    ) -> bool
     where
         E: Labelable + OsmEntity<'e>,
     {
         let font_size = match text_style.font_size {
             Some(font_size) => font_size,
-            _ => return,
+            _ => return true,
         };
 
         let text_pos = match text_style.text_position {
             Some(ref text_pos) => text_pos,
-            _ => return,
+            _ => return true,
         };
 
         let text_to_draw = match on.tags().get_by_key(&text_style.text) {
             Some(text_to_draw) => text_to_draw,
-            _ => return,
+            _ => return true,
         };
 
         let scale = f64::from(self.font.scale_for_pixel_height(font_size as f32));
@@ -55,7 +62,7 @@ impl TextPlacer {
                 if let Some(orig_points) = on.get_waypoints(zoom) {
                     let mut points = orig_points.clone();
                     if points.len() < 2 {
-                        return;
+                        return true;
                     }
                     if points[0].x > points.iter().last().unwrap().x {
                         points.reverse();
@@ -69,7 +76,7 @@ impl TextPlacer {
                         .sum();
 
                     if glyphs.total_width > total_way_length {
-                        return;
+                        return true;
                     }
 
                     let mut cur_dist = (total_way_length - glyphs.total_width) / 2.0;
@@ -159,7 +166,7 @@ impl TextPlacer {
         }
 
         let _m = crate::perf_stats::measure("Save glyphs to figure");
-        rasterizer.save_to_figure(figure);
+        rasterizer.save_to_figure(pixels)
     }
 
     fn text_to_glyphs(&self, text: &str, scale: f64) -> Glyphs {

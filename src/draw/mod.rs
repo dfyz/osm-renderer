@@ -1,7 +1,6 @@
 const TILE_SIZE: usize = crate::tile::TILE_SIZE as usize;
 
 pub mod drawer;
-pub mod figure;
 pub mod fill;
 pub mod font;
 pub mod icon;

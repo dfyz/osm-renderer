@@ -1,8 +1,8 @@
-use crate::draw::figure::Figure;
 use crate::draw::opacity_calculator::OpacityCalculator;
 use crate::draw::point::Point;
 use crate::draw::point_pairs::PointPairIter;
 use crate::draw::tile_pixels::RgbaColor;
+use crate::draw::tile_pixels::TilePixels;
 use crate::mapcss::color::Color;
 use crate::mapcss::styler::{is_non_trivial_cap, LineCap};
 
@@ -14,7 +14,7 @@ pub fn draw_lines(
     dashes: &Option<Vec<f64>>,
     line_cap: &Option<LineCap>,
     use_caps_for_dashes: bool,
-    figure: &mut Figure,
+    pixels: &mut TilePixels,
 ) {
     let half_width = width / 2.0;
     let line_cap_for_dashes = if use_caps_for_dashes { line_cap } else { &None };
@@ -27,7 +27,7 @@ pub fn draw_lines(
     let mut first = true;
 
     while let Some((p1, p2)) = peekable_points.next() {
-        draw_line(&p1, &p2, color, opacity, &opacity_calculator, figure);
+        draw_line(&p1, &p2, color, opacity, &opacity_calculator, pixels);
         opacity_calculator.add_traveled_distance(p1.dist(&p2));
 
         if p1 != p2 && has_caps {
@@ -39,7 +39,7 @@ pub fn draw_lines(
                     color,
                     opacity,
                     &opacity_calculator_for_outer_caps,
-                    figure,
+                    pixels,
                 );
             }
 
@@ -51,7 +51,7 @@ pub fn draw_lines(
                     color,
                     opacity,
                     &opacity_calculator_for_outer_caps,
-                    figure,
+                    pixels,
                 );
             }
         }
@@ -68,7 +68,7 @@ fn draw_line(
     color: &Color,
     initial_opacity: f64,
     opacity_calculator: &OpacityCalculator,
-    figure: &mut Figure,
+    pixels: &mut TilePixels,
 ) {
     if p1 == p2 {
         return;
@@ -127,7 +127,7 @@ fn draw_line(
                 }
 
                 let current_color = RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
-                figure.add(current_point.x as usize, current_point.y as usize, current_color);
+                pixels.set_pixel(current_point.x as usize, current_point.y as usize, &current_color);
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;

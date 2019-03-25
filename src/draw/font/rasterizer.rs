@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::draw::figure::Figure;
-use crate::draw::tile_pixels::RgbaColor;
+use crate::draw::tile_pixels::{RgbaColor, TilePixels};
 use crate::mapcss::color::Color;
 
 #[derive(Default)]
@@ -107,7 +106,7 @@ impl Rasterizer {
         self.draw_quad(m012_x, m012_y, m12_x, m12_y, x2, y2);
     }
 
-    pub fn save_to_figure(&self, figure: &mut Figure) {
+    pub fn save_to_figure(&self, pixels: &mut TilePixels) -> bool {
         let mut x_min = i32::max_value();
         let mut x_max = i32::min_value();
         for stripe in self.stripes.values() {
@@ -141,8 +140,12 @@ impl Rasterizer {
             for x in x_min..=x_max {
                 s_acc += extract_val(&cur_s, &mut s_idx, x);
                 let total = extract_val(&cur_a, &mut a_idx, x) + s_acc;
-                figure.add(x as usize, *y as usize, RgbaColor::from_color(&self.color, total));
+                if !pixels.set_label_pixel(x as usize, *y as usize, &RgbaColor::from_color(&self.color, total)) {
+                    return false;
+                }
             }
         }
+
+        true
     }
 }
