@@ -83,7 +83,7 @@ impl<'a> GeodataReader<'a> {
     }
 
     pub fn get_entities_in_tile(&'a self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities<'a> {
-        let mut bounds = tile::tile_to_geodata_tile_range(t);
+        let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
 
         let mut result = OsmEntities::default();
