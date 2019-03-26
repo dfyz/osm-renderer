@@ -1,5 +1,9 @@
-use crate::errors::*;
-
+use crate::coords::Coords;
+use crate::tile;
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use failure::{Error, ResultExt};
+use memmap::{Mmap, MmapOptions};
+use owning_ref::OwningHandle;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fs::File;
@@ -8,12 +12,6 @@ use std::io::Cursor;
 use std::mem;
 use std::slice;
 use std::str;
-
-use crate::coords::Coords;
-use crate::tile;
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use memmap::{Mmap, MmapOptions};
-use owning_ref::OwningHandle;
 
 pub trait OsmEntity<'a> {
     fn global_id(&self) -> u64;
@@ -44,13 +42,12 @@ pub struct GeodataReader<'a> {
 }
 
 impl<'a> GeodataReader<'a> {
-    pub fn load(file_name: &str) -> Result<GeodataReader<'a>> {
-        let input_file =
-            File::open(file_name).chain_err(|| format!("Failed to open {} for memory mapping", file_name))?;
+    pub fn load(file_name: &str) -> Result<GeodataReader<'a>, Error> {
+        let input_file = File::open(file_name).context(format!("Failed to open {} for memory mapping", file_name))?;
         let mmap = unsafe {
             MmapOptions::new()
                 .map(&input_file)
-                .chain_err(|| format!("Failed to map {} to memory", file_name))?
+                .context(format!("Failed to map {} to memory", file_name))?
         };
 
         let handle = OwningHandle::try_new(Box::new(mmap), |mm| {
@@ -273,7 +270,7 @@ struct ObjectStorage<'a> {
 }
 
 impl<'a> ObjectStorage<'a> {
-    fn from_bytes(bytes: &[u8], object_size: usize) -> Result<(ObjectStorage<'_>, &[u8])> {
+    fn from_bytes(bytes: &[u8], object_size: usize) -> Result<(ObjectStorage<'_>, &[u8]), Error> {
         let object_count = LittleEndian::read_u32(bytes) as usize;
         let object_start_pos = mem::size_of::<u32>();
         let object_end_pos = object_start_pos + object_size * object_count;
@@ -313,7 +310,7 @@ impl<'a> ObjectStorages<'a> {
     // All geodata members have sizes divisible by 4, so the u8* -> u32* cast should be safe,
     // provided that `bytes` is aligned to 4 bytes (if it's not, we're in trouble anyway).
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
-    fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages<'_>> {
+    fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages<'_>, Error> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
         let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;
         let (polygon_storage, rest) = ObjectStorage::from_bytes(rest, POLYGON_SIZE)?;

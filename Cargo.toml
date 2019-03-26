@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 byteorder = "*"
-error-chain = "*"
+failure = "*"
 memmap = "*"
 num_cpus = "*"
 owning_ref = "*"

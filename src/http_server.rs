@@ -1,12 +1,10 @@
-use crate::errors::*;
-
 use crate::draw::drawer::Drawer;
 use crate::geodata::reader::GeodataReader;
 use crate::mapcss::parser::parse_file;
 use crate::mapcss::styler::{StyleType, Styler};
 use crate::perf_stats::PerfStats;
 use crate::tile::{Tile, MAX_ZOOM};
-use error_chain::bail;
+use failure::{bail, format_err, Error, ResultExt};
 use num_cpus;
 use std::collections::HashSet;
 use std::io::prelude::*;
@@ -27,13 +25,13 @@ pub fn run_server(
     stylesheet_type: &StyleType,
     font_size_multiplier: Option<f64>,
     osm_ids: Option<HashSet<u64>>,
-) -> Result<()> {
+) -> Result<(), Error> {
     let (base_path, file_name) = split_stylesheet_path(stylesheet_file)?;
-    let rules = parse_file(&base_path, &file_name).chain_err(|| "Failed to parse the stylesheet file")?;
+    let rules = parse_file(&base_path, &file_name).context("Failed to parse the stylesheet file")?;
 
     let server = Arc::new(HttpServer {
         styler: Styler::new(rules, stylesheet_type, font_size_multiplier),
-        reader: GeodataReader::load(geodata_file).chain_err(|| "Failed to load the geodata file")?,
+        reader: GeodataReader::load(geodata_file).context("Failed to load the geodata file")?,
         drawer: Drawer::new(&base_path),
         osm_ids,
         perf_stats: Mutex::new(PerfStats::default()),
@@ -61,7 +59,7 @@ pub fn run_server(
         }));
     }
 
-    let tcp_listener = TcpListener::bind(address).chain_err(|| format!("Failed to bind to {}", address))?;
+    let tcp_listener = TcpListener::bind(address).context(format!("Failed to bind to {}", address))?;
     let mut thread_id = 0;
 
     for tcp_stream in tcp_listener.incoming() {
@@ -101,7 +99,7 @@ impl<'a> HttpServer<'a> {
         }
     }
 
-    fn try_handle_connection(&self, stream: TcpStream) -> Result<()> {
+    fn try_handle_connection(&self, stream: TcpStream) -> Result<(), Error> {
         let mut rdr = BufReader::new(stream);
 
         let first_line = match rdr.by_ref().lines().next() {
@@ -161,7 +159,7 @@ fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
     }
 }
 
-fn extract_path_from_request(first_line: &str) -> Result<String> {
+fn extract_path_from_request(first_line: &str) -> Result<String, Error> {
     let tokens: Vec<_> = first_line.split(' ').collect();
     if tokens.len() != 3 {
         bail!("<{}> doesn't look like a valid HTTP request", first_line);
@@ -204,12 +202,12 @@ fn extract_tile_from_path(path: &str) -> Option<Tile> {
     }
 }
 
-fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String)> {
+fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String), Error> {
     let mut result = PathBuf::from(file_path);
     let file_name = result
         .file_name()
         .and_then(|x| x.to_str().map(|y| y.to_string()))
-        .ok_or_else(|| ErrorKind::Msg(format!("Failed to extract the file name for {}", file_path)))?;
+        .ok_or_else(|| format_err!("Failed to extract the file name for {}", file_path))?;
     result.pop();
     Ok((result, file_name))
 }

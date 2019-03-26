@@ -1,6 +1,5 @@
 use renderer;
 
-use error_chain::ChainedError;
 use std::alloc::System;
 use std::env;
 
@@ -24,7 +23,9 @@ fn main() {
     match renderer::geodata::importer::import(input, output) {
         Ok(_) => println!("All good"),
         Err(err) => {
-            eprintln!("{}", err.display_chain());
+            for cause in err.iter_chain() {
+                eprintln!("{}", cause);
+            }
             std::process::exit(1);
         }
     }

@@ -1,7 +1,5 @@
-use crate::errors::*;
-
 use crate::draw::tile_pixels::RgbaColor;
-use error_chain::bail;
+use failure::{bail, Error, ResultExt};
 use png::{ColorType, Decoder};
 use std::fs::File;
 use std::path::Path;
@@ -13,16 +11,16 @@ pub struct Icon {
 }
 
 impl Icon {
-    pub fn load<P>(icon_path: P) -> Result<Icon>
+    pub fn load<P>(icon_path: P) -> Result<Icon, Error>
     where
         P: AsRef<Path>,
     {
-        let icon_file = File::open(&icon_path).chain_err(|| "Failed to open icon file")?;
+        let icon_file = File::open(&icon_path).context("Failed to open icon file")?;
         let decoder = Decoder::new(icon_file);
-        let (info, mut reader) = decoder.read_info().chain_err(|| "Icon is not a valid PNG file")?;
+        let (info, mut reader) = decoder.read_info().context("Icon is not a valid PNG file")?;
 
         let mut pixels = Vec::<RgbaColor>::default();
-        while let Some(row) = reader.next_row().chain_err(|| "Failed to read a PNG pixel")? {
+        while let Some(row) = reader.next_row().context("Failed to read a PNG pixel")? {
             let mut idx = 0;
             while idx < row.len() {
                 let (r, g, b, a, idx_delta) = match info.color_type {

@@ -1,7 +1,7 @@
 use crate::mapcss::color::Color;
-use crate::mapcss::errors::*;
+use crate::mapcss::MapcssError;
 
-use error_chain::bail;
+use failure::{bail, Error};
 use std::fmt;
 use std::iter::Peekable;
 use std::str::CharIndices;
@@ -124,7 +124,7 @@ impl<'a> Tokenizer<'a> {
         self.current_position
     }
 
-    fn read_token(&mut self, idx: usize, ch: char) -> Result<Token<'a>> {
+    fn read_token(&mut self, idx: usize, ch: char) -> Result<Token<'a>, Error> {
         if let Some(next_ch) = self.peek_char() {
             if let Some(token) = get_two_char_simple_token(ch, next_ch) {
                 self.advance();
@@ -159,7 +159,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_at_directive(&mut self) -> Result<Token<'a>> {
+    fn read_at_directive(&mut self) -> Result<Token<'a>, Error> {
         let start_idx = match self.next_char_with_pos() {
             Some((idx, ch)) if can_be_in_at_directive(ch) => idx,
             _ => return self.lexer_error("Expected a letter or underscore after @"),
@@ -207,7 +207,7 @@ impl<'a> Tokenizer<'a> {
         Token::Identifier(&self.text[start_idx..=end_idx])
     }
 
-    fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>> {
+    fn read_string(&mut self, start_idx: usize) -> Result<Token<'a>, Error> {
         let mut end_idx = start_idx;
         let mut terminated_correctly = false;
         while let Some((next_idx, next_ch)) = self.next_char_with_pos() {
@@ -224,7 +224,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_number(&mut self, mut first_ch: char) -> Result<Token<'a>> {
+    fn read_number(&mut self, mut first_ch: char) -> Result<Token<'a>, Error> {
         let sign = match first_ch {
             '+' | '-' => match self.next_char() {
                 Some(next_ch) => {
@@ -282,7 +282,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn read_color(&mut self) -> Result<Token<'a>> {
+    fn read_color(&mut self) -> Result<Token<'a>, Error> {
         let mut color_digits = Vec::new();
         while let Some(hex_digit) = self.read_digit(16) {
             color_digits.push(hex_digit);
@@ -307,7 +307,7 @@ impl<'a> Tokenizer<'a> {
         Ok(Token::Color(color))
     }
 
-    fn read_zoom_range(&mut self) -> Result<Token<'a>> {
+    fn read_zoom_range(&mut self) -> Result<Token<'a>, Error> {
         self.expect_char('z')?;
         let min_zoom = self.read_zoom_level();
         let had_hyphen = {
@@ -353,7 +353,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn next_significant_char(&mut self) -> Option<Result<CharWithPos>> {
+    fn next_significant_char(&mut self) -> Option<Result<CharWithPos, Error>> {
         loop {
             match self.next_char_with_pos() {
                 None => return None,
@@ -404,14 +404,14 @@ impl<'a> Tokenizer<'a> {
         self.chars.peek().map(|x| x.1)
     }
 
-    fn expect_char(&mut self, expected_ch: char) -> Result<()> {
+    fn expect_char(&mut self, expected_ch: char) -> Result<(), Error> {
         match self.next_char() {
             Some(actual_ch) if actual_ch == expected_ch => Ok(()),
             _ => self.lexer_error(format!("Expected '{}' character", expected_ch)),
         }
     }
 
-    fn try_skip_comment(&mut self) -> Result<bool> {
+    fn try_skip_comment(&mut self) -> Result<bool, Error> {
         match self.peek_char() {
             Some('/') => {
                 self.advance();
@@ -436,7 +436,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn skip_block_comment(&mut self) -> Result<()> {
+    fn skip_block_comment(&mut self) -> Result<(), Error> {
         while let Some(ch) = self.next_char() {
             if let ('*', Some('/')) = (ch, self.peek_char()) {
                 self.advance();
@@ -446,13 +446,16 @@ impl<'a> Tokenizer<'a> {
         self.lexer_error("Unterminated block comment")
     }
 
-    fn lexer_error<T, Msg: Into<String>>(&self, message: Msg) -> Result<T> {
-        bail!(ErrorKind::LexerError(message.into(), self.current_position))
+    fn lexer_error<T, Msg: Into<String>>(&self, message: Msg) -> Result<T, Error> {
+        bail!(MapcssError::LexerError {
+            message: message.into(),
+            pos: self.current_position,
+        })
     }
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
-    type Item = Result<TokenWithPosition<'a>>;
+    type Item = Result<TokenWithPosition<'a>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_significant_char().map(|x| {

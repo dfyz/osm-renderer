@@ -1,5 +1,3 @@
-use crate::errors::*;
-
 use crate::draw::figure::Figure;
 use crate::draw::fill::{fill_contour, Filler};
 use crate::draw::icon_cache::IconCache;
@@ -12,6 +10,7 @@ use crate::draw::TILE_SIZE;
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler};
 use crate::tile::Tile;
+use failure::Error;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -35,7 +34,7 @@ impl Drawer {
         }
     }
 
-    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> Result<Vec<u8>> {
+    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> Result<Vec<u8>, Error> {
         let pixels = self.draw_to_pixels(entities, tile, styler);
         rgb_triples_to_png(&pixels, dimension(), dimension())
     }

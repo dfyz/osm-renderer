@@ -1,4 +1,3 @@
-use error_chain::ChainedError;
 use ini::ini::Properties;
 use ini::Ini;
 use renderer::http_server::run_server;
@@ -101,7 +100,9 @@ fn main() {
     );
 
     if let Err(e) = res {
-        eprintln!("{}", e.display_chain());
+        for cause in e.iter_chain() {
+            eprintln!("{}", cause);
+        }
         fail();
     }
 }
