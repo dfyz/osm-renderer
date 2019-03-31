@@ -622,9 +622,10 @@ impl<'a> Parser<'a> {
     }
 
     fn read_optional_token(&mut self) -> Option<Result<TokenWithPosition<'a>, Error>> {
-        self.tokenizer
-            .next()
-            .map(|x| x.context(format!("Failed to tokenize {}", self.file_name)).map_err(Error::from))
+        self.tokenizer.next().map(|x| {
+            x.context(format!("Failed to tokenize {}", self.file_name))
+                .map_err(Error::from)
+        })
     }
 
     fn expect_simple_token(&mut self, expected: &Token<'static>) -> Result<(), Error> {

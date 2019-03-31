@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 byteorder = "*"
-failure = "*"
 memmap = "*"
 num_cpus = "*"
 owning_ref = "*"
@@ -15,6 +14,11 @@ rust-ini = "*"
 stb_truetype = "*"
 xml-rs = "*"
 indexmap = { version = "*", optional = true }
+
+[dependencies.failure]
+version = "*"
+default-features = false
+features = ["std"]
 
 [features]
 perf-stats = ["indexmap"]
