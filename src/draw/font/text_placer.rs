@@ -54,7 +54,7 @@ impl TextPlacer {
             Some(ref color) => color,
             _ => &Color { r: 0, g: 0, b: 0 },
         };
-        let mut rasterizer = Rasterizer::new(text_color);
+        let mut rasterizer = Rasterizer::new(text_color, pixels.scale());
         let vm = self.get_v_metrics(scale);
 
         match text_pos {

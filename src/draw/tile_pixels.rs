@@ -110,6 +110,15 @@ impl TilePixels {
         self.subpixels.iter_mut().all(|sp| sp.set_label_pixel(idx, color))
     }
 
+    pub fn set_label_subpixel(&mut self, x: usize, y: usize, color: &RgbaColor) -> bool {
+        let idx = match self.global_coords_to_idx(x / self.scale, y / self.scale, true) {
+            Some(idx) => idx,
+            _ => return true,
+        };
+        let sp_idx = (y % self.scale) * self.scale + (x % self.scale);
+        self.subpixels[sp_idx].set_label_pixel(idx, color)
+    }
+
     pub fn bump_generation(&mut self) {
         self.for_all_subpixels(|sp| sp.bump_generation());
     }
@@ -151,6 +160,10 @@ impl TilePixels {
 
     pub fn bb(&self) -> &BoundingBox {
         &self.labels_bb
+    }
+
+    pub fn scale(&self) -> usize {
+        self.scale
     }
 
     fn global_coords_to_idx(&self, x: usize, y: usize, for_labels: bool) -> Option<usize> {

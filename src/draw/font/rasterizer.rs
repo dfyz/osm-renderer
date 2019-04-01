@@ -14,13 +14,15 @@ type Stripes = BTreeMap<i32, Stripe>;
 pub struct Rasterizer {
     stripes: Stripes,
     color: Color,
+    scale: usize,
 }
 
 impl Rasterizer {
-    pub fn new(color: &Color) -> Rasterizer {
+    pub fn new(color: &Color, scale: usize) -> Rasterizer {
         Rasterizer {
             stripes: Stripes::default(),
             color: color.clone(),
+            scale,
         }
     }
 
@@ -30,6 +32,10 @@ impl Rasterizer {
         if delta == 0.0 {
             return;
         }
+
+        let sc = |c| c * (self.scale as f64);
+
+        let (x0, y0, x1, y1) = (sc(x0), sc(y0), sc(x1), sc(y1));
 
         let sign = if y0 <= y1 { 1.0 } else { -1.0 };
 
@@ -140,7 +146,7 @@ impl Rasterizer {
             for x in x_min..=x_max {
                 s_acc += extract_val(&cur_s, &mut s_idx, x);
                 let total = extract_val(&cur_a, &mut a_idx, x) + s_acc;
-                if !pixels.set_label_pixel(x as usize, *y as usize, &RgbaColor::from_color(&self.color, total)) {
+                if !pixels.set_label_subpixel(x as usize, *y as usize, &RgbaColor::from_color(&self.color, total)) {
                     return false;
                 }
             }

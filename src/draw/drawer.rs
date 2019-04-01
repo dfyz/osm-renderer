@@ -43,7 +43,7 @@ impl Drawer {
     }
 
     pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> TileRenderedPixels {
-        let mut pixels = TilePixels::new(tile, 1);
+        let mut pixels = TilePixels::new(tile, 2);
         fill_canvas(&mut pixels, styler);
 
         let styled_areas = {
