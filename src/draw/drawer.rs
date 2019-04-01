@@ -4,7 +4,7 @@ use crate::draw::labeler::Labeler;
 use crate::draw::line::draw_lines;
 use crate::draw::png_writer::rgb_triples_to_png;
 use crate::draw::point_pairs::PointPairCollection;
-use crate::draw::tile_pixels::{dimension, RgbTriples, RgbaColor, TilePixels};
+use crate::draw::tile_pixels::{RgbTriples, RgbaColor, TilePixels};
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler};
 use crate::tile::Tile;
@@ -24,6 +24,11 @@ enum DrawType {
     Casing,
 }
 
+pub struct TileRenderedPixels {
+    pub triples: RgbTriples,
+    pub dimension: usize,
+}
+
 impl Drawer {
     pub fn new(base_path: &Path) -> Drawer {
         Drawer {
@@ -34,11 +39,11 @@ impl Drawer {
 
     pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> Result<Vec<u8>, Error> {
         let pixels = self.draw_to_pixels(entities, tile, styler);
-        rgb_triples_to_png(&pixels, dimension(), dimension())
+        rgb_triples_to_png(&pixels.triples, pixels.dimension, pixels.dimension)
     }
 
-    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> RgbTriples {
-        let mut pixels = TilePixels::new(tile);
+    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> TileRenderedPixels {
+        let mut pixels = TilePixels::new(tile, 1);
         fill_canvas(&mut pixels, styler);
 
         let styled_areas = {
@@ -81,7 +86,10 @@ impl Drawer {
 
         pixels.blend_unfinished_pixels(true);
 
-        pixels.to_rgb_triples()
+        TileRenderedPixels {
+            triples: pixels.to_rgb_triples(),
+            dimension: pixels.dimension(),
+        }
     }
 
     fn draw_areas(

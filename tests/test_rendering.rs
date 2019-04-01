@@ -4,7 +4,7 @@ use renderer;
 mod common;
 
 use renderer::draw::png_writer::rgb_triples_to_png;
-use renderer::draw::tile_pixels::{dimension, RgbTriples};
+use renderer::draw::tile_pixels::RgbTriples;
 use renderer::mapcss::parser::parse_file;
 use renderer::mapcss::styler::{StyleType, Styler};
 use std::collections::BTreeMap;
@@ -87,27 +87,29 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32)
                 .or_insert_with(Default::default)
                 .entry(tile_to_draw.y)
                 .or_insert_with(Default::default)
-                .insert(tile_to_draw.x, rendered);
+                .insert(tile_to_draw.x, rendered.triples);
         }
     }
+
+    const REGULAR_TILE_DIMENSION: usize = 256;
 
     for (zoom, y_x_rendered) in rendered_tiles {
         let mut rgb = RgbTriples::new();
         for x_rendered in y_x_rendered.values() {
-            for sub_y in 0..dimension() {
+            for sub_y in 0..REGULAR_TILE_DIMENSION {
                 for rendered in x_rendered.values() {
                     if sub_y == 0 {
-                        rgb.extend(std::iter::repeat(RED_PIXEL).take(dimension()));
+                        rgb.extend(std::iter::repeat(RED_PIXEL).take(REGULAR_TILE_DIMENSION));
                     } else {
-                        rgb.extend(&rendered[sub_y * dimension()..(sub_y + 1) * dimension() - 1]);
+                        rgb.extend(&rendered[sub_y * REGULAR_TILE_DIMENSION..(sub_y + 1) * REGULAR_TILE_DIMENSION - 1]);
                         rgb.push(RED_PIXEL);
                     }
                 }
             }
         }
 
-        let height = y_x_rendered.values().len() * dimension();
-        let width = y_x_rendered.values().nth(0).unwrap().len() * dimension();
+        let height = y_x_rendered.values().len() * REGULAR_TILE_DIMENSION;
+        let width = y_x_rendered.values().nth(0).unwrap().len() * REGULAR_TILE_DIMENSION;
         let png_bytes = rgb_triples_to_png(&rgb, width, height);
 
         let png_output = File::create(common::get_test_path(&["rendered", &format!("{}.png", zoom)]));
