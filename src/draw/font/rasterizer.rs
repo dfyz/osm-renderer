@@ -14,7 +14,7 @@ type Stripes = BTreeMap<i32, Stripe>;
 pub struct Rasterizer {
     stripes: Stripes,
     color: Color,
-    scale: usize,
+    scale: f64,
 }
 
 impl Rasterizer {
@@ -22,20 +22,19 @@ impl Rasterizer {
         Rasterizer {
             stripes: Stripes::default(),
             color: color.clone(),
-            scale,
+            scale: scale as f64,
         }
     }
 
     pub fn draw_line(&mut self, x0: f64, y0: f64, x1: f64, y1: f64) {
+        let sc = |c| c * self.scale;
+        let (x0, y0, x1, y1) = (sc(x0), sc(y0), sc(x1), sc(y1));
+
         let delta = y1 - y0;
 
         if delta == 0.0 {
             return;
         }
-
-        let sc = |c| c * (self.scale as f64);
-
-        let (x0, y0, x1, y1) = (sc(x0), sc(y0), sc(x1), sc(y1));
 
         let sign = if y0 <= y1 { 1.0 } else { -1.0 };
 
