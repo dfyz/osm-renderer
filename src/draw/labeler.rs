@@ -77,7 +77,8 @@ impl Labeler {
         E: Labelable + OsmEntity<'e>,
     {
         if let Some(ref text_style) = style.text_style {
-            self.text_placer.place(entity, text_style, zoom, y_offset, default_text_position, pixels)
+            self.text_placer
+                .place(entity, text_style, zoom, y_offset, default_text_position, pixels)
         } else {
             true
         }

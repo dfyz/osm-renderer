@@ -178,13 +178,18 @@ impl Drawer {
             let _m = crate::perf_stats::measure("Label areas");
             for &(ref area, ref style) in areas {
                 match area {
-                    StyledArea::Way(way) => self
-                        .labeler
-                        .label_entity(*way, style, tile.zoom, &self.icon_cache, TextPosition::Line, pixels),
-                    StyledArea::Multipolygon(rel) => {
+                    StyledArea::Way(way) => {
                         self.labeler
-                            .label_entity(*rel, style, tile.zoom, &self.icon_cache, TextPosition::Center, pixels)
+                            .label_entity(*way, style, tile.zoom, &self.icon_cache, TextPosition::Line, pixels)
                     }
+                    StyledArea::Multipolygon(rel) => self.labeler.label_entity(
+                        *rel,
+                        style,
+                        tile.zoom,
+                        &self.icon_cache,
+                        TextPosition::Center,
+                        pixels,
+                    ),
                 }
             }
         }
