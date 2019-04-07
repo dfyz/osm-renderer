@@ -4,7 +4,7 @@ use crate::draw::icon_cache::IconCache;
 use crate::draw::labelable::Labelable;
 use crate::draw::tile_pixels::TilePixels;
 use crate::geodata::reader::OsmEntity;
-use crate::mapcss::styler::Style;
+use crate::mapcss::styler::{Style, TextPosition};
 
 #[derive(Default)]
 pub struct Labeler {
@@ -18,13 +18,14 @@ impl Labeler {
         style: &Style,
         zoom: u8,
         icon_cache: &IconCache,
+        default_text_position: TextPosition,
         pixels: &mut TilePixels,
     ) where
         E: Labelable + OsmEntity<'e>,
     {
         let succeeded = {
             if let Some(y_offset) = self.label_with_icon(entity, style, zoom, icon_cache, pixels) {
-                self.label_with_text(entity, style, zoom, y_offset, pixels)
+                self.label_with_text(entity, style, zoom, y_offset, default_text_position, pixels)
             } else {
                 false
             }
@@ -69,13 +70,14 @@ impl Labeler {
         style: &Style,
         zoom: u8,
         y_offset: usize,
+        default_text_position: TextPosition,
         pixels: &mut TilePixels,
     ) -> bool
     where
         E: Labelable + OsmEntity<'e>,
     {
         if let Some(ref text_style) = style.text_style {
-            self.text_placer.place(entity, text_style, zoom, y_offset, pixels)
+            self.text_placer.place(entity, text_style, zoom, y_offset, default_text_position, pixels)
         } else {
             true
         }
