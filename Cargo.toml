@@ -13,7 +13,7 @@ png = "*"
 rust-ini = "*"
 stb_truetype = "*"
 xml-rs = "*"
-indexmap = { version = "*", optional = true }
+indexmap = "*"
 
 [dependencies.failure]
 version = "*"
@@ -21,7 +21,7 @@ default-features = false
 features = ["std"]
 
 [features]
-perf-stats = ["indexmap"]
+perf-stats = []
 
 # So that we have line numbers in backtraces with RUST_BACKTRACE=1.
 [profile.release]

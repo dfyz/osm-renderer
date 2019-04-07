@@ -3,8 +3,8 @@ use crate::mapcss::parser::*;
 use crate::mapcss::style_cache::StyleCache;
 
 use crate::geodata::reader::{Multipolygon, Node, OsmArea, OsmEntity, Way};
+use indexmap::IndexMap;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -210,7 +210,7 @@ impl Styler {
     where
         A: StyleableEntity + OsmEntity<'e>,
     {
-        let mut result: LayerToPropertyMap<'r> = HashMap::new();
+        let mut result: LayerToPropertyMap<'r> = IndexMap::new();
 
         for rule in &self.rules {
             for sel in rule.selectors.iter().filter(|x| area_matches(area, x, zoom)) {
@@ -256,8 +256,8 @@ where
     cmp_a.partial_cmp(&cmp_b).unwrap()
 }
 
-type LayerToPropertyMap<'r> = HashMap<&'r str, PropertyMap<'r>>;
-type PropertyMap<'r> = HashMap<String, &'r PropertyValue>;
+type LayerToPropertyMap<'r> = IndexMap<&'r str, PropertyMap<'r>>;
+type PropertyMap<'r> = IndexMap<String, &'r PropertyValue>;
 
 fn property_map_to_style<'r, 'e, E>(
     current_layer_map: &'r PropertyMap<'r>,
