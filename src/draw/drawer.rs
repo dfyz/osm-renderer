@@ -6,7 +6,7 @@ use crate::draw::png_writer::rgb_triples_to_png;
 use crate::draw::point_pairs::PointPairCollection;
 use crate::draw::tile_pixels::{RgbTriples, RgbaColor, TilePixels};
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
-use crate::mapcss::styler::{Style, StyledArea, Styler};
+use crate::mapcss::styler::{Style, StyledArea, Styler, TextPosition};
 use crate::tile::Tile;
 use failure::Error;
 use std::path::Path;
@@ -188,10 +188,10 @@ impl Drawer {
                 match area {
                     StyledArea::Way(way) => self
                         .labeler
-                        .label_entity(*way, style, tile.zoom, &self.icon_cache, pixels),
+                        .label_entity(*way, style, tile.zoom, &self.icon_cache, TextPosition::Line, pixels),
                     StyledArea::Multipolygon(rel) => {
                         self.labeler
-                            .label_entity(*rel, style, tile.zoom, &self.icon_cache, pixels)
+                            .label_entity(*rel, style, tile.zoom, &self.icon_cache, TextPosition::Center, pixels)
                     }
                 }
             }
@@ -201,7 +201,7 @@ impl Drawer {
             let _m = crate::perf_stats::measure("Label nodes");
             for &(node, ref style) in nodes {
                 self.labeler
-                    .label_entity(node, style, tile.zoom, &self.icon_cache, pixels);
+                    .label_entity(node, style, tile.zoom, &self.icon_cache, TextPosition::Center, pixels);
             }
         }
     }

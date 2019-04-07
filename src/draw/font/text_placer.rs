@@ -27,6 +27,7 @@ impl TextPlacer {
         text_style: &TextStyle,
         zoom: u8,
         y_offset: usize,
+        default_text_position: TextPosition,
         pixels: &mut TilePixels,
     ) -> bool
     where
@@ -37,15 +38,12 @@ impl TextPlacer {
             _ => return true,
         };
 
-        let text_pos = match text_style.text_position {
-            Some(ref text_pos) => text_pos,
-            _ => return true,
-        };
-
         let text_to_draw = match on.tags().get_by_key(&text_style.text) {
             Some(text_to_draw) => text_to_draw,
             _ => return true,
         };
+
+        let text_pos = text_style.text_position.as_ref().unwrap_or(&default_text_position);
 
         let scale = f64::from(self.font.scale_for_pixel_height(font_size as f32));
         let glyphs = self.text_to_glyphs(text_to_draw, scale);
