@@ -10,6 +10,6 @@ if __name__ == '__main__':
             os.remove(fn)
         elif fn.endswith('.png'):
             fn = fn.replace('.png', '')
-            if fn.isdigit():
+            if fn.isdigit() or fn.replace('_2x', '').isdigit():
                 shutil.copy(fn + '.png', fn + '_expected.png')
                 os.remove(fn + '.png')

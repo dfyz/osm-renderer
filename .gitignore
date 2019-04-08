@@ -2,4 +2,9 @@ target
 .idea
 tests/mapcss/*.parsed
 tests/osm/*.bin
-tests/rendered
+tests/rendered/14.png
+tests/rendered/15.png
+tests/rendered/16.png
+tests/rendered/17.png
+tests/rendered/18.png
+tests/rendered/18_2x.png
