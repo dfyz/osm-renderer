@@ -32,6 +32,7 @@ pub struct TilePixels {
     subpixels: Vec<TileSubpixels>,
     bb: BoundingBox,
     labels_bb: BoundingBox,
+    subpixel_bb: BoundingBox,
     scale: usize,
 }
 
@@ -76,11 +77,18 @@ impl TilePixels {
             min_y: bounding_box.min_y - TILE_SIZE,
             max_y: bounding_box.max_y + TILE_SIZE,
         };
+        let bounding_box_for_subpixels = BoundingBox {
+            min_x: bounding_box_for_labels.min_x * scale,
+            max_x: bounding_box_for_labels.max_x * scale,
+            min_y: bounding_box_for_labels.min_y * scale,
+            max_y: bounding_box_for_labels.max_y * scale,
+        };
 
         TilePixels {
             subpixels: vec![TileSubpixels::new(); scale * scale],
             bb: bounding_box,
             labels_bb: bounding_box_for_labels,
+            subpixel_bb: bounding_box_for_subpixels,
             scale,
         }
     }
@@ -95,27 +103,20 @@ impl TilePixels {
     }
 
     pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
-        let idx = match self.global_coords_to_idx(x, y, false) {
+        let idx = match self.coords_to_pixel_idx(x, y, false) {
             Some(idx) => idx,
             _ => return,
         };
-        self.for_all_subpixels(|sp| sp.set_pixel(idx, color));
+        let sp_idx = self.coords_to_subpixel_idx(x, y);
+        self.subpixels[sp_idx].set_pixel(idx, color);
     }
 
     pub fn set_label_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) -> bool {
-        let idx = match self.global_coords_to_idx(x, y, true) {
+        let idx = match self.coords_to_pixel_idx(x, y, true) {
             Some(idx) => idx,
             _ => return true,
         };
-        self.subpixels.iter_mut().all(|sp| sp.set_label_pixel(idx, color))
-    }
-
-    pub fn set_label_subpixel(&mut self, x: usize, y: usize, color: &RgbaColor) -> bool {
-        let idx = match self.global_coords_to_idx(x / self.scale, y / self.scale, true) {
-            Some(idx) => idx,
-            _ => return true,
-        };
-        let sp_idx = (y % self.scale) * self.scale + (x % self.scale);
+        let sp_idx = self.coords_to_subpixel_idx(x, y);
         self.subpixels[sp_idx].set_label_pixel(idx, color)
     }
 
@@ -158,20 +159,22 @@ impl TilePixels {
         TILE_SIZE * self.scale
     }
 
-    pub fn bb(&self) -> &BoundingBox {
-        &self.labels_bb
+    pub fn subpixel_bb(&self) -> &BoundingBox {
+        &self.subpixel_bb
     }
 
-    pub fn scale(&self) -> usize {
-        self.scale
-    }
-
-    fn global_coords_to_idx(&self, x: usize, y: usize, for_labels: bool) -> Option<usize> {
+    fn coords_to_pixel_idx(&self, x: usize, y: usize, for_labels: bool) -> Option<usize> {
+        let x = x / self.scale;
+        let y = y / self.scale;
         let bb = if for_labels { &self.labels_bb } else { &self.bb };
         if x < bb.min_x || x > bb.max_x || y < bb.min_y || y > bb.max_y {
             return None;
         }
         Some(self.local_coords_to_idx(x - self.labels_bb.min_x, y - self.labels_bb.min_y))
+    }
+
+    fn coords_to_subpixel_idx(&self, x: usize, y: usize) -> usize {
+        (y % self.scale) * self.scale + (x % self.scale)
     }
 
     fn local_coords_to_idx(&self, x: usize, y: usize) -> usize {

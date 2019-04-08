@@ -37,13 +37,25 @@ impl Drawer {
         }
     }
 
-    pub fn draw_tile<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> Result<Vec<u8>, Error> {
-        let pixels = self.draw_to_pixels(entities, tile, styler);
+    pub fn draw_tile<'a>(
+        &self,
+        entities: &OsmEntities<'a>,
+        tile: &Tile,
+        scale: usize,
+        styler: &Styler,
+    ) -> Result<Vec<u8>, Error> {
+        let pixels = self.draw_to_pixels(entities, tile, scale, styler);
         rgb_triples_to_png(&pixels.triples, pixels.dimension, pixels.dimension)
     }
 
-    pub fn draw_to_pixels<'a>(&self, entities: &OsmEntities<'a>, tile: &Tile, styler: &Styler) -> TileRenderedPixels {
-        let mut pixels = TilePixels::new(tile, 2);
+    pub fn draw_to_pixels<'a>(
+        &self,
+        entities: &OsmEntities<'a>,
+        tile: &Tile,
+        scale: usize,
+        styler: &Styler,
+    ) -> TileRenderedPixels {
+        let mut pixels = TilePixels::new(tile, scale);
         fill_canvas(&mut pixels, styler);
 
         let styled_areas = {
@@ -51,11 +63,14 @@ impl Drawer {
             styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom)
         };
 
+        let float_scale = scale as f64;
+
         let draw_areas_with_type = |pixels: &mut TilePixels, draw_type, use_multipolygons| {
             self.draw_areas(
                 pixels,
                 &styled_areas,
-                tile,
+                tile.zoom,
+                float_scale,
                 draw_type,
                 use_multipolygons,
                 styler.use_caps_for_dashes,
@@ -81,7 +96,7 @@ impl Drawer {
 
         {
             let _m = crate::perf_stats::measure("Draw labels");
-            self.draw_labels(&mut pixels, tile, &styled_areas, &styled_nodes);
+            self.draw_labels(&mut pixels, tile.zoom, float_scale, &styled_areas, &styled_nodes);
         }
 
         pixels.blend_unfinished_pixels(true);
@@ -96,7 +111,8 @@ impl Drawer {
         &self,
         pixels: &mut TilePixels,
         areas: &[(StyledArea<'_, '_>, Arc<Style>)],
-        tile: &Tile,
+        zoom: u8,
+        scale: f64,
         draw_type: &DrawType,
         use_multipolygons: bool,
         use_caps_for_dashes: bool,
@@ -104,10 +120,10 @@ impl Drawer {
         for (area, style) in areas {
             match area {
                 StyledArea::Way(way) => {
-                    self.draw_one_area(pixels, tile, *way, style, draw_type, use_caps_for_dashes);
+                    self.draw_one_area(pixels, zoom, scale, *way, style, draw_type, use_caps_for_dashes);
                 }
                 StyledArea::Multipolygon(rel) if use_multipolygons => {
-                    self.draw_one_area(pixels, tile, *rel, style, draw_type, use_caps_for_dashes);
+                    self.draw_one_area(pixels, zoom, scale, *rel, style, draw_type, use_caps_for_dashes);
                 }
                 _ => {}
             }
@@ -117,7 +133,8 @@ impl Drawer {
     fn draw_one_area<'e, A>(
         &self,
         pixels: &mut TilePixels,
-        tile: &Tile,
+        zoom: u8,
+        scale: f64,
         area: &'e A,
         style: &Style,
         draw_type: &DrawType,
@@ -125,8 +142,11 @@ impl Drawer {
     ) where
         A: OsmEntity<'e> + PointPairCollection<'e>,
     {
-        let points = area.to_point_pairs(tile.zoom);
+        let points = area.to_point_pairs(zoom, scale);
         let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
+
+        let scale_dashes =
+            |dashes: &Option<Vec<f64>>| dashes.as_ref().map(|nums| nums.iter().map(|x| x * scale).collect());
 
         match *draw_type {
             DrawType::Fill => {
@@ -145,10 +165,10 @@ impl Drawer {
                     if let Some(casing_width) = style.casing_width {
                         draw_lines(
                             points,
-                            casing_width,
+                            casing_width * scale,
                             color,
                             1.0,
-                            &style.casing_dashes,
+                            &scale_dashes(&style.casing_dashes),
                             &style.casing_line_cap,
                             use_caps_for_dashes,
                             pixels,
@@ -160,10 +180,10 @@ impl Drawer {
                 if let Some(color) = style.color.as_ref() {
                     draw_lines(
                         points,
-                        float_or_one(&style.width),
+                        scale * float_or_one(&style.width),
                         color,
                         float_or_one(&style.opacity),
-                        &style.dashes,
+                        &scale_dashes(&style.dashes),
                         &style.line_cap,
                         use_caps_for_dashes,
                         pixels,
@@ -178,7 +198,8 @@ impl Drawer {
     fn draw_labels(
         &self,
         pixels: &mut TilePixels,
-        tile: &Tile,
+        zoom: u8,
+        scale: f64,
         areas: &[(StyledArea<'_, '_>, Arc<Style>)],
         nodes: &[(&Node<'_>, Arc<Style>)],
     ) {
@@ -186,14 +207,20 @@ impl Drawer {
             let _m = crate::perf_stats::measure("Label areas");
             for &(ref area, ref style) in areas {
                 match area {
-                    StyledArea::Way(way) => {
-                        self.labeler
-                            .label_entity(*way, style, tile.zoom, &self.icon_cache, TextPosition::Line, pixels)
-                    }
+                    StyledArea::Way(way) => self.labeler.label_entity(
+                        *way,
+                        style,
+                        zoom,
+                        scale,
+                        &self.icon_cache,
+                        TextPosition::Line,
+                        pixels,
+                    ),
                     StyledArea::Multipolygon(rel) => self.labeler.label_entity(
                         *rel,
                         style,
-                        tile.zoom,
+                        zoom,
+                        scale,
                         &self.icon_cache,
                         TextPosition::Center,
                         pixels,
@@ -206,7 +233,7 @@ impl Drawer {
             let _m = crate::perf_stats::measure("Label nodes");
             for &(node, ref style) in nodes {
                 self.labeler
-                    .label_entity(node, style, tile.zoom, &self.icon_cache, TextPosition::Center, pixels);
+                    .label_entity(node, style, zoom, scale, &self.icon_cache, TextPosition::Center, pixels);
             }
         }
     }

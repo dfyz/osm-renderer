@@ -25,7 +25,7 @@
 
     var nonce = 1;
 
-    var local = L.tileLayer('http://localhost:8080/{z}/{x}/{y}.png?nonce={nonce}', {
+    var local = L.tileLayer('http://localhost:8080/{z}/{x}/{y}{r}.png?nonce={nonce}', {
         maxZoom: 18,
         unloadInvisibleTiles: false,
         nonce: () => nonce,

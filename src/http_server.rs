@@ -121,14 +121,18 @@ impl<'a> HttpServer<'a> {
         };
 
         if cfg!(feature = "perf-stats") {
-            crate::perf_stats::start_tile(tile.zoom);
+            crate::perf_stats::start_tile(tile.tile.zoom);
         }
 
         let entities = {
             let _m = crate::perf_stats::measure("Get tile entities");
-            self.reader.get_entities_in_tile_with_neighbors(&tile, &self.osm_ids)
+            self.reader
+                .get_entities_in_tile_with_neighbors(&tile.tile, &self.osm_ids)
         };
-        let tile_png_bytes = self.drawer.draw_tile(&entities, &tile, &self.styler).unwrap();
+        let tile_png_bytes = self
+            .drawer
+            .draw_tile(&entities, &tile.tile, tile.scale, &self.styler)
+            .unwrap();
 
         if cfg!(feature = "perf-stats") {
             crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
@@ -175,7 +179,12 @@ fn extract_path_from_request(first_line: &str) -> Result<String, Error> {
     Ok(tokens[1].to_string())
 }
 
-fn extract_tile_from_path(path: &str) -> Option<Tile> {
+struct RequestTile {
+    tile: Tile,
+    scale: usize,
+}
+
+fn extract_tile_from_path(path: &str) -> Option<RequestTile> {
     let expected_token_count = 3;
 
     let real_path = match path.rfind('?') {
@@ -194,10 +203,23 @@ fn extract_tile_from_path(path: &str) -> Option<Tile> {
     }
 
     tokens.reverse();
-    let (z_str, x_str, y_str) = (tokens[0], tokens[1], tokens[2]);
+    let (z_str, x_str, mut y_str) = (tokens[0], tokens[1], tokens[2]);
+
+    let mut scale = 1;
+
+    let y_tokens = y_str.split('@').collect::<Vec<_>>();
+    if y_tokens.len() == 2 {
+        if let Ok(parsed_scale) = y_tokens[1].trim_end_matches('x').parse() {
+            y_str = y_tokens[0];
+            scale = parsed_scale;
+        }
+    }
 
     match (z_str.parse(), x_str.parse(), y_str.parse()) {
-        (Ok(z), Ok(x), Ok(y)) if z <= MAX_ZOOM => Some(Tile { zoom: z, x, y }),
+        (Ok(z), Ok(x), Ok(y)) if z <= MAX_ZOOM => Some(RequestTile {
+            tile: Tile { zoom: z, x, y },
+            scale,
+        }),
         _ => None,
     }
 }

@@ -26,6 +26,7 @@ impl TextPlacer {
         on: &E,
         text_style: &TextStyle,
         zoom: u8,
+        global_scale: f64,
         y_offset: usize,
         default_text_position: TextPosition,
         pixels: &mut TilePixels,
@@ -34,7 +35,7 @@ impl TextPlacer {
         E: Labelable + OsmEntity<'e>,
     {
         let font_size = match text_style.font_size {
-            Some(font_size) => font_size,
+            Some(font_size) => font_size * global_scale,
             _ => return true,
         };
 
@@ -52,12 +53,12 @@ impl TextPlacer {
             Some(ref color) => color,
             _ => &Color { r: 0, g: 0, b: 0 },
         };
-        let mut rasterizer = Rasterizer::new(text_color, pixels.scale());
+        let mut rasterizer = Rasterizer::new(text_color);
         let vm = self.get_v_metrics(scale);
 
         match text_pos {
             TextPosition::Line => {
-                if let Some(orig_points) = on.get_waypoints(zoom) {
+                if let Some(orig_points) = on.get_waypoints(zoom, global_scale) {
                     let mut points = orig_points.clone();
                     if points.len() < 2 {
                         return true;
@@ -110,7 +111,7 @@ impl TextPlacer {
                 }
             }
             TextPosition::Center => {
-                if let Some((center_x, center_y)) = on.get_center(zoom) {
+                if let Some((center_x, center_y)) = on.get_center(zoom, global_scale) {
                     let mut glyph_rows = Vec::new();
                     let mut current_row = Vec::new();
                     let mut current_row_width = 0.0;

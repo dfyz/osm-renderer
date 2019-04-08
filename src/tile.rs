@@ -29,7 +29,7 @@ pub struct TileRange {
 /// ```
 pub fn coords_to_max_zoom_tile<C: Coords>(coords: &C) -> Tile {
     let (x, y) = coords_to_xy(coords, MAX_ZOOM);
-    let tile_index = |t| t / TILE_SIZE;
+    let tile_index = |t| (t as u32) / TILE_SIZE;
     Tile {
         zoom: MAX_ZOOM,
         x: tile_index(x),
@@ -76,12 +76,16 @@ pub fn tile_to_max_zoom_tile_range(tile: &Tile) -> TileRange {
 /// # Examples
 /// ```
 /// use renderer::tile::coords_to_xy;
-/// assert_eq!(coords_to_xy(&(55.747764f64, 37.437745f64), 5), (4947, 2561));
-/// assert_eq!(coords_to_xy(&(55.747764f64, 37.437745f64), 18), (40533333, 20981065));
-/// assert_eq!(coords_to_xy(&(40.1222f64, 20.6852f64), 0), (142, 96));
-/// assert_eq!(coords_to_xy(&(-35.306536f64, 149.126545f64), 10), (239662, 158582));
+/// fn assert_floor_eq((x_actual, y_actual): (f64, f64), (x_expected, y_expected): (u32, u32)) {
+///     assert_eq!(x_actual as u32, x_expected as u32);
+///     assert_eq!(y_actual as u32, y_expected as u32);
+/// }
+/// assert_floor_eq(coords_to_xy(&(55.747764f64, 37.437745f64), 5), (4947, 2561));
+/// assert_floor_eq(coords_to_xy(&(55.747764f64, 37.437745f64), 18), (40533333, 20981065));
+/// assert_floor_eq(coords_to_xy(&(40.1222f64, 20.6852f64), 0), (142, 96));
+/// assert_floor_eq(coords_to_xy(&(-35.306536f64, 149.126545f64), 10), (239662, 158582));
 /// ```
-pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
+pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (f64, f64) {
     let (lat_rad, lon_rad) = (coords.lat().to_radians(), coords.lon().to_radians());
 
     let x = lon_rad + PI;
@@ -90,7 +94,7 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (u32, u32) {
     let rescale = |x: f64| {
         let factor = x / (2f64 * PI);
         let dimension_in_pixels = f64::from(TILE_SIZE * (1 << zoom));
-        (factor * dimension_in_pixels) as u32
+        factor * dimension_in_pixels
     };
 
     (rescale(x), rescale(y))

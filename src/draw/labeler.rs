@@ -17,6 +17,7 @@ impl Labeler {
         entity: &E,
         style: &Style,
         zoom: u8,
+        scale: f64,
         icon_cache: &IconCache,
         default_text_position: TextPosition,
         pixels: &mut TilePixels,
@@ -24,8 +25,8 @@ impl Labeler {
         E: Labelable + OsmEntity<'e>,
     {
         let succeeded = {
-            if let Some(y_offset) = self.label_with_icon(entity, style, zoom, icon_cache, pixels) {
-                self.label_with_text(entity, style, zoom, y_offset, default_text_position, pixels)
+            if let Some(y_offset) = self.label_with_icon(entity, style, zoom, scale, icon_cache, pixels) {
+                self.label_with_text(entity, style, zoom, scale, y_offset, default_text_position, pixels)
             } else {
                 false
             }
@@ -39,6 +40,7 @@ impl Labeler {
         entity: &impl Labelable,
         style: &Style,
         zoom: u8,
+        scale: f64,
         icon_cache: &IconCache,
         pixels: &mut TilePixels,
     ) -> Option<usize> {
@@ -50,7 +52,7 @@ impl Labeler {
         let read_icon_cache = icon_cache.open_read_session(icon_name);
 
         if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
-            let (center_x, center_y) = match entity.get_center(zoom) {
+            let (center_x, center_y) = match entity.get_center(zoom, scale) {
                 Some(center) => center,
                 _ => return Some(0),
             };
@@ -69,6 +71,7 @@ impl Labeler {
         entity: &E,
         style: &Style,
         zoom: u8,
+        scale: f64,
         y_offset: usize,
         default_text_position: TextPosition,
         pixels: &mut TilePixels,
@@ -78,7 +81,7 @@ impl Labeler {
     {
         if let Some(ref text_style) = style.text_style {
             self.text_placer
-                .place(entity, text_style, zoom, y_offset, default_text_position, pixels)
+                .place(entity, text_style, zoom, scale, y_offset, default_text_position, pixels)
         } else {
             true
         }
