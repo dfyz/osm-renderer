@@ -22,8 +22,8 @@ pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64
             &p1,
             &p2,
             &mut y_to_edges,
-            pixels.subpixel_bb().min_y as i32,
-            pixels.subpixel_bb().max_y as i32,
+            pixels.bb().min_y as i32,
+            pixels.bb().max_y as i32,
         );
     }
 
@@ -35,8 +35,8 @@ pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64
         while idx + 1 < good_edges.len() {
             let e1 = good_edges[idx];
             let e2 = good_edges[idx + 1];
-            let from_x = e1.x_min.max(pixels.subpixel_bb().min_x as i32);
-            let to_x = e2.x_max.min(pixels.subpixel_bb().max_x as i32) + 1;
+            let from_x = e1.x_min.max(pixels.bb().min_x as i32);
+            let to_x = e2.x_max.min(pixels.bb().max_x as i32) + 1;
             for x in from_x..to_x {
                 let fill_color = match filler {
                     Filler::Color(color) => RgbaColor::from_color(color, opacity),

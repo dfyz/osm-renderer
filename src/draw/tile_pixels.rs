@@ -1,7 +1,6 @@
 use crate::draw::TILE_SIZE;
 use crate::mapcss::color::Color;
 use crate::tile::Tile;
-use std::ops::Range;
 
 #[derive(Clone)]
 pub struct RgbaColor {
@@ -29,19 +28,14 @@ impl RgbaColor {
 }
 
 pub struct TilePixels {
-    subpixels: Vec<TileSubpixels>,
+    pixels: Vec<RgbaColor>,
     bb: BoundingBox,
     labels_bb: BoundingBox,
-    subpixel_bb: BoundingBox,
-    scale: usize,
-}
-
-#[derive(Clone)]
-pub struct TileSubpixels {
-    pixels: Vec<RgbaColor>,
     next_pixels: Vec<Option<NextPixel>>,
     generation: usize,
     label_generation_statuses: Vec<bool>,
+    scaled_tile_size: usize,
+    scaled_extended_tile_size: usize,
 }
 
 #[derive(Clone)]
@@ -62,8 +56,10 @@ pub struct BoundingBox {
 
 impl TilePixels {
     pub fn new(tile: &Tile, scale: usize) -> TilePixels {
-        let to_tile_start = |c| (c as usize) * TILE_SIZE;
-        let to_tile_end = |tile_start_c| tile_start_c + TILE_SIZE - 1;
+        let scaled_tile_size = TILE_SIZE * scale;
+
+        let to_tile_start = |c| (c as usize) * scaled_tile_size;
+        let to_tile_end = |tile_start_c| tile_start_c + scaled_tile_size - 1;
         let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
         let bounding_box = BoundingBox {
             min_x: tile_start_x,
@@ -72,126 +68,16 @@ impl TilePixels {
             max_y: to_tile_end(tile_start_y),
         };
         let bounding_box_for_labels = BoundingBox {
-            min_x: bounding_box.min_x - TILE_SIZE,
-            max_x: bounding_box.max_x + TILE_SIZE,
-            min_y: bounding_box.min_y - TILE_SIZE,
-            max_y: bounding_box.max_y + TILE_SIZE,
+            min_x: bounding_box.min_x - scaled_tile_size,
+            max_x: bounding_box.max_x + scaled_tile_size,
+            min_y: bounding_box.min_y - scaled_tile_size,
+            max_y: bounding_box.max_y + scaled_tile_size,
         };
-        let bounding_box_for_subpixels = BoundingBox {
-            min_x: bounding_box_for_labels.min_x * scale,
-            max_x: bounding_box_for_labels.max_x * scale,
-            min_y: bounding_box_for_labels.min_y * scale,
-            max_y: bounding_box_for_labels.max_y * scale,
-        };
+
+        let scaled_extended_tile_size = EXTENDED_TILE_SIZE * scale;
+        let pixel_count = scaled_extended_tile_size * scaled_extended_tile_size;
 
         TilePixels {
-            subpixels: vec![TileSubpixels::new(); scale * scale],
-            bb: bounding_box,
-            labels_bb: bounding_box_for_labels,
-            subpixel_bb: bounding_box_for_subpixels,
-            scale,
-        }
-    }
-
-    pub fn fill(&mut self, color: &RgbaColor) {
-        for y in NON_LABEL_PIXEL_RANGE {
-            for x in NON_LABEL_PIXEL_RANGE {
-                let idx = self.local_coords_to_idx(x, y);
-                self.for_all_subpixels(|sp| sp.pixels[idx] = color.clone());
-            }
-        }
-    }
-
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
-        let idx = match self.coords_to_pixel_idx(x, y, false) {
-            Some(idx) => idx,
-            _ => return,
-        };
-        let sp_idx = self.coords_to_subpixel_idx(x, y);
-        self.subpixels[sp_idx].set_pixel(idx, color);
-    }
-
-    pub fn set_label_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) -> bool {
-        let idx = match self.coords_to_pixel_idx(x, y, true) {
-            Some(idx) => idx,
-            _ => return true,
-        };
-        let sp_idx = self.coords_to_subpixel_idx(x, y);
-        self.subpixels[sp_idx].set_label_pixel(idx, color)
-    }
-
-    pub fn bump_generation(&mut self) {
-        self.for_all_subpixels(|sp| sp.bump_generation());
-    }
-
-    pub fn blend_unfinished_pixels(&mut self, for_labels: bool) {
-        self.for_all_subpixels(|sp| sp.blend_unfinished_pixels(for_labels));
-    }
-
-    pub fn bump_label_generation(&mut self, succeeded: bool) {
-        self.for_all_subpixels(|sp| sp.bump_label_generation(succeeded));
-    }
-
-    pub fn to_rgb_triples(&self) -> RgbTriples {
-        let mut triples = Vec::new();
-
-        for y in NON_LABEL_PIXEL_RANGE {
-            for sub_y in 0..self.scale {
-                for x in NON_LABEL_PIXEL_RANGE {
-                    for sub_x in 0..self.scale {
-                        let idx = self.local_coords_to_idx(x, y);
-                        let sp_idx = sub_y * self.scale + sub_x;
-                        let p = &self.subpixels[sp_idx].pixels[idx];
-                        let postdivide = |val| {
-                            let mul = if p.a == 0.0 { 0.0 } else { val / p.a };
-                            (f64::from(u8::max_value()) * mul) as u8
-                        };
-                        triples.push((postdivide(p.r), postdivide(p.g), postdivide(p.b)));
-                    }
-                }
-            }
-        }
-
-        triples
-    }
-
-    pub fn dimension(&self) -> usize {
-        TILE_SIZE * self.scale
-    }
-
-    pub fn subpixel_bb(&self) -> &BoundingBox {
-        &self.subpixel_bb
-    }
-
-    fn coords_to_pixel_idx(&self, x: usize, y: usize, for_labels: bool) -> Option<usize> {
-        let x = x / self.scale;
-        let y = y / self.scale;
-        let bb = if for_labels { &self.labels_bb } else { &self.bb };
-        if x < bb.min_x || x > bb.max_x || y < bb.min_y || y > bb.max_y {
-            return None;
-        }
-        Some(self.local_coords_to_idx(x - self.labels_bb.min_x, y - self.labels_bb.min_y))
-    }
-
-    fn coords_to_subpixel_idx(&self, x: usize, y: usize) -> usize {
-        (y % self.scale) * self.scale + (x % self.scale)
-    }
-
-    fn local_coords_to_idx(&self, x: usize, y: usize) -> usize {
-        y * EXTENDED_TILE_SIZE + x
-    }
-
-    fn for_all_subpixels(&mut self, mut f: impl FnMut(&mut TileSubpixels)) {
-        for sp in self.subpixels.iter_mut() {
-            f(sp);
-        }
-    }
-}
-
-impl TileSubpixels {
-    pub fn new() -> TileSubpixels {
-        let pixel_count = EXTENDED_TILE_SIZE * EXTENDED_TILE_SIZE;
-        TileSubpixels {
             pixels: vec![
                 RgbaColor {
                     r: 0.0,
@@ -201,13 +87,28 @@ impl TileSubpixels {
                 };
                 pixel_count
             ],
+            bb: bounding_box,
+            labels_bb: bounding_box_for_labels,
             next_pixels: vec![None; pixel_count],
             generation: 0,
             label_generation_statuses: Vec::new(),
+            scaled_tile_size,
+            scaled_extended_tile_size,
         }
     }
 
-    pub fn set_pixel(&mut self, idx: usize, color: &RgbaColor) {
+    pub fn fill(&mut self, color: &RgbaColor) {
+        for pixel in self.pixels.iter_mut() {
+            *pixel = color.clone();
+        }
+    }
+
+    pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
+        let idx = match self.global_coords_to_idx(x, y, false) {
+            Some(idx) => idx,
+            _ => return,
+        };
+
         let mut from_same_generation = false;
         if let Some(next_pixel) = &mut self.next_pixels[idx] {
             if next_pixel.generation == self.generation {
@@ -226,7 +127,12 @@ impl TileSubpixels {
         }
     }
 
-    pub fn set_label_pixel(&mut self, idx: usize, color: &RgbaColor) -> bool {
+    pub fn set_label_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) -> bool {
+        let idx = match self.global_coords_to_idx(x, y, true) {
+            Some(idx) => idx,
+            _ => return true,
+        };
+
         let label_generation = self.label_generation_statuses.len();
         if let Some(next_pixel) = &mut self.next_pixels[idx] {
             if next_pixel.generation < label_generation && self.label_generation_statuses[next_pixel.generation] {
@@ -254,6 +160,45 @@ impl TileSubpixels {
         self.label_generation_statuses.push(succeeded);
     }
 
+    pub fn to_rgb_triples(&self) -> RgbTriples {
+        let mut triples = Vec::new();
+
+        let non_label_pixel_range = || self.scaled_tile_size..2 * self.scaled_tile_size;
+
+        for y in non_label_pixel_range() {
+            for x in non_label_pixel_range() {
+                let p = &self.pixels[self.local_coords_to_idx(x, y)];
+                let postdivide = |val| {
+                    let mul = if p.a == 0.0 { 0.0 } else { val / p.a };
+                    (f64::from(u8::max_value()) * mul) as u8
+                };
+                triples.push((postdivide(p.r), postdivide(p.g), postdivide(p.b)));
+            }
+        }
+
+        triples
+    }
+
+    pub fn dimension(&self) -> usize {
+        self.scaled_tile_size
+    }
+
+    pub fn bb(&self) -> &BoundingBox {
+        &self.bb
+    }
+
+    fn global_coords_to_idx(&self, x: usize, y: usize, for_labels: bool) -> Option<usize> {
+        let bb = if for_labels { &self.labels_bb } else { &self.bb };
+        if x < bb.min_x || x > bb.max_x || y < bb.min_y || y > bb.max_y {
+            return None;
+        }
+        Some(self.local_coords_to_idx(x - self.labels_bb.min_x, y - self.labels_bb.min_y))
+    }
+
+    fn local_coords_to_idx(&self, x: usize, y: usize) -> usize {
+        y * self.scaled_extended_tile_size + x
+    }
+
     fn blend_pixel(&mut self, idx: usize, for_labels: bool) {
         let next_pixel_ref = &mut self.next_pixels[idx];
         if let Some(next_pixel) = next_pixel_ref {
@@ -275,15 +220,8 @@ impl TileSubpixels {
     }
 }
 
-impl Default for TileSubpixels {
-    fn default() -> Self {
-        TileSubpixels::new()
-    }
-}
-
 fn component_to_opacity(comp: u8) -> f64 {
     f64::from(comp) / f64::from(u8::max_value())
 }
 
-const NON_LABEL_PIXEL_RANGE: Range<usize> = TILE_SIZE..2 * TILE_SIZE;
 const EXTENDED_TILE_SIZE: usize = 3 * TILE_SIZE;

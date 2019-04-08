@@ -25,8 +25,14 @@ fn read_png(file_name: &str) -> (RgbTriples, png::OutputInfo) {
 }
 
 fn compare_png_outputs(zoom: u8, suffix: &str) {
-    let (expected, expected_info) = read_png(&common::get_test_path(&["rendered", &format!("{}{}_expected.png", zoom, suffix)]));
-    let (actual, actual_info) = read_png(&common::get_test_path(&["rendered", &format!("{}{}.png", zoom, suffix)]));
+    let (expected, expected_info) = read_png(&common::get_test_path(&[
+        "rendered",
+        &format!("{}{}_expected.png", zoom, suffix),
+    ]));
+    let (actual, actual_info) = read_png(&common::get_test_path(&[
+        "rendered",
+        &format!("{}{}.png", zoom, suffix),
+    ]));
 
     assert_eq!(
         expected_info.width, actual_info.width,
@@ -156,4 +162,3 @@ fn test_zoom_18() {
 fn test_zoom_18_2x() {
     test_rendering_zoom(18, 158_457, 158_465, 81_946, 81_953, 2)
 }
-
