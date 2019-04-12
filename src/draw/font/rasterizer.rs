@@ -107,19 +107,6 @@ impl Rasterizer {
     }
 
     pub fn save_to_figure(&self, pixels: &mut TilePixels) -> bool {
-        let mut x_min = i32::max_value();
-        let mut x_max = i32::min_value();
-        for stripe in self.stripes.values() {
-            if !stripe.a.is_empty() {
-                x_min = x_min.min(*stripe.a.keys().min().unwrap());
-                x_max = x_max.max(*stripe.a.keys().max().unwrap());
-            }
-            if !stripe.s.is_empty() {
-                x_min = x_min.min(*stripe.s.keys().min().unwrap());
-                x_max = x_max.max(*stripe.s.keys().max().unwrap());
-            }
-        }
-
         for (y, stripe) in &self.stripes {
             let cur_a = stripe.a.iter().collect();
             let cur_s = stripe.s.iter().collect();
@@ -136,6 +123,17 @@ impl Rasterizer {
                     0.0
                 }
             };
+
+            let mut x_min = i32::max_value();
+            let mut x_max = i32::min_value();
+            if !stripe.a.is_empty() {
+                x_min = x_min.min(*stripe.a.keys().min().unwrap());
+                x_max = x_max.max(*stripe.a.keys().max().unwrap());
+            }
+            if !stripe.s.is_empty() {
+                x_min = x_min.min(*stripe.s.keys().min().unwrap());
+                x_max = x_max.max(*stripe.s.keys().max().unwrap());
+            }
 
             for x in x_min..=x_max {
                 s_acc += extract_val(&cur_s, &mut s_idx, x);
