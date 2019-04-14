@@ -228,7 +228,7 @@ fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String), Error> {
     let mut result = PathBuf::from(file_path);
     let file_name = result
         .file_name()
-        .and_then(|x| x.to_str().map(|y| y.to_string()))
+        .and_then(|x| x.to_str().map(ToString::to_string))
         .ok_or_else(|| format_err!("Failed to extract the file name for {}", file_path))?;
     result.pop();
     Ok((result, file_name))

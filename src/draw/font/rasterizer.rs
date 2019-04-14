@@ -138,10 +138,10 @@ impl Rasterizer {
             for x in x_min..=x_max {
                 s_acc += extract_val(&cur_s, &mut s_idx, x);
                 let total = extract_val(&cur_a, &mut a_idx, x) + s_acc;
-                if total > 0.0 {
-                    if !pixels.set_label_pixel(x as usize, *y as usize, &RgbaColor::from_color(&self.color, total)) {
-                        return false;
-                    }
+                if total > 0.0
+                    && !pixels.set_label_pixel(x as usize, *y as usize, &RgbaColor::from_color(&self.color, total))
+                {
+                    return false;
                 }
             }
         }

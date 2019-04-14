@@ -38,7 +38,7 @@ fn main() {
     let args: Vec<_> = env::args().collect();
 
     if args.len() < 2 {
-        let bin_name = args.first().map(|x| x.as_str()).unwrap_or("renderer");
+        let bin_name = args.first().map(String::as_str).unwrap_or("renderer");
         eprintln!("Usage: {} CONFIG [OSM_IDS]", bin_name);
         fail();
     }

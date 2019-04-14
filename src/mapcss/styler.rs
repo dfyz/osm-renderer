@@ -248,6 +248,7 @@ impl Styler {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::float_cmp))]
 fn compare_styled_entities<'a, E1, E2>(
     (a, a_style): &(&E1, Arc<Style>),
     (b, b_style): &(&E2, Arc<Style>),
@@ -369,7 +370,10 @@ where
         }
     };
 
-    let layer = osm_entity.tags().get_by_key("layer").and_then(|x| x.parse::<i64>().ok());
+    let layer = osm_entity
+        .tags()
+        .get_by_key("layer")
+        .and_then(|x| x.parse::<i64>().ok());
     let z_index = get_num(current_layer_map, "z-index").unwrap_or(default_z_index);
 
     let is_foreground_fill = match current_layer_map.get("fill-position") {
@@ -494,7 +498,7 @@ where
             ref value,
             ref test_type,
         } => {
-            let tag_val = match tags.get_by_key(tag_name).map(|x| x.parse::<f64>()) {
+            let tag_val = match tags.get_by_key(tag_name).map(str::parse::<f64>) {
                 Some(Ok(x)) => x,
                 _ => return false,
             };

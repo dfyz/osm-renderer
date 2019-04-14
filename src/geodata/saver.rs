@@ -327,7 +327,7 @@ mod tests {
             .get_entities_in_tile(&tile, &None)
             .nodes
             .iter()
-            .map(|x| x.global_id())
+            .map(OsmEntity::global_id)
             .collect::<BTreeSet<_>>();
         assert_eq!(good_node_ids, node_ids);
     }

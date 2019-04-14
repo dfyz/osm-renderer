@@ -10,7 +10,7 @@ fn main() {
     let args: Vec<_> = env::args().collect();
 
     if args.len() != 3 {
-        let bin_name = args.first().map(|x| x.as_str()).unwrap_or("importer");
+        let bin_name = args.first().map(String::as_str).unwrap_or("importer");
         eprintln!("Usage: {} INPUT OUTPUT", bin_name);
         std::process::exit(1);
     }
