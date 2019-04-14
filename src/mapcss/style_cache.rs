@@ -23,6 +23,8 @@ impl StyleCache {
     pub fn new(rules: &[Rule]) -> StyleCache {
         let mut tag_value_matters = HashMap::new();
 
+        tag_value_matters.insert("layer".to_string(), true);
+
         for r in rules.iter() {
             for sel in r.selectors.iter() {
                 for test in sel.tests.iter() {

@@ -144,6 +144,7 @@ fn from_josm_style(way_is_closed: bool, style: &str) -> Style {
     let parse_num = |prop_name| props.get(prop_name).map(|x| x.parse().unwrap());
 
     Style {
+        layer: None,
         z_index: parse_num("z-index").unwrap_or(if way_is_closed { 1.0 } else { 3.0 }),
 
         color: parse_color("color"),

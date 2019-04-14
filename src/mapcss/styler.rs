@@ -50,6 +50,7 @@ pub struct TextStyle {
 }
 
 pub struct Style {
+    pub layer: Option<i64>,
     pub z_index: f64,
 
     pub color: Option<Color>,
@@ -256,6 +257,14 @@ where
     E1: OsmEntity<'a>,
     E2: OsmEntity<'a>,
 {
+    let get_layer = |s: &Style| s.layer.unwrap_or(0);
+
+    let (a_layer, b_layer) = (get_layer(a_style), get_layer(b_style));
+
+    if a_layer != b_layer {
+        return a_layer.cmp(&b_layer);
+    }
+
     if !for_labels && a_style.is_foreground_fill != b_style.is_foreground_fill {
         return a_style.is_foreground_fill.cmp(&b_style.is_foreground_fill);
     }
@@ -360,6 +369,7 @@ where
         }
     };
 
+    let layer = osm_entity.tags().get_by_key("layer").and_then(|x| x.parse::<i64>().ok());
     let z_index = get_num(current_layer_map, "z-index").unwrap_or(default_z_index);
 
     let is_foreground_fill = match current_layer_map.get("fill-position") {
@@ -397,6 +407,7 @@ where
     });
 
     Style {
+        layer,
         z_index,
 
         color: get_color("color"),
