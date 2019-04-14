@@ -32,7 +32,7 @@ fn test_styling() {
     );
 
     let named_ways = entities.ways.iter().filter(|x| x.tags().get_by_key("name").is_some());
-    let styles = styler.style_entities(named_ways, 18);
+    let styles = styler.style_entities(named_ways, 18, false);
 
     let get_styles = |id, name| {
         styles

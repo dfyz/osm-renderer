@@ -117,7 +117,7 @@ impl Styler {
         }
     }
 
-    pub fn style_entities<'e, 'wp, I, A>(&self, areas: I, zoom: u8) -> Vec<(&'wp A, Arc<Style>)>
+    pub fn style_entities<'e, 'wp, I, A>(&self, areas: I, zoom: u8, for_labels: bool) -> Vec<(&'wp A, Arc<Style>)>
     where
         A: CacheableEntity + StyleableEntity + OsmEntity<'e>,
         I: Iterator<Item = &'wp A>,
@@ -165,7 +165,7 @@ impl Styler {
             self.style_cache.write().unwrap().insert(area, zoom, styles)
         }
 
-        styled_areas.sort_by(compare_styled_entities);
+        styled_areas.sort_by(|a, b| compare_styled_entities(a, b, for_labels));
 
         styled_areas
     }
@@ -175,9 +175,10 @@ impl Styler {
         ways: impl Iterator<Item = &'wr Way<'a>>,
         multipolygons: impl Iterator<Item = &'wr Multipolygon<'a>>,
         zoom: u8,
+        for_labels: bool,
     ) -> Vec<(StyledArea<'a, 'wr>, Arc<Style>)> {
-        let styled_ways = self.style_entities(ways, zoom);
-        let styled_multipolygons = self.style_entities(multipolygons, zoom);
+        let styled_ways = self.style_entities(ways, zoom, for_labels);
+        let styled_multipolygons = self.style_entities(multipolygons, zoom, for_labels);
 
         let mut mp_iter = styled_multipolygons.into_iter();
         let mut way_iter = styled_ways.into_iter();
@@ -190,7 +191,7 @@ impl Styler {
                     (None, None) => break,
                     (Some(_), None) => true,
                     (None, Some(_)) => false,
-                    (Some(mp), Some(way)) => compare_styled_entities(mp, way) != Ordering::Greater,
+                    (Some(mp), Some(way)) => compare_styled_entities(mp, way, for_labels) != Ordering::Greater,
                 }
             };
             if is_rel_better {
@@ -246,14 +247,24 @@ impl Styler {
     }
 }
 
-fn compare_styled_entities<'a, E1, E2>(a: &(&E1, Arc<Style>), b: &(&E2, Arc<Style>)) -> Ordering
+fn compare_styled_entities<'a, E1, E2>(
+    (a, a_style): &(&E1, Arc<Style>),
+    (b, b_style): &(&E2, Arc<Style>),
+    for_labels: bool,
+) -> Ordering
 where
     E1: OsmEntity<'a>,
     E2: OsmEntity<'a>,
 {
-    let cmp_a = (a.1.is_foreground_fill, a.1.z_index, a.0.global_id());
-    let cmp_b = (b.1.is_foreground_fill, b.1.z_index, b.0.global_id());
-    cmp_a.partial_cmp(&cmp_b).unwrap()
+    if !for_labels && a_style.is_foreground_fill != b_style.is_foreground_fill {
+        return a_style.is_foreground_fill.cmp(&b_style.is_foreground_fill);
+    }
+
+    if a_style.z_index != b_style.z_index {
+        return a_style.z_index.partial_cmp(&b_style.z_index).unwrap();
+    }
+
+    a.global_id().cmp(&b.global_id())
 }
 
 type LayerToPropertyMap<'r> = IndexMap<&'r str, PropertyMap<'r>>;

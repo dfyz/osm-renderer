@@ -60,7 +60,7 @@ impl Drawer {
 
         let styled_areas = {
             let _m = crate::perf_stats::measure("Style areas");
-            styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom)
+            styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom, false)
         };
 
         let float_scale = scale as f64;
@@ -89,14 +89,25 @@ impl Drawer {
 
         pixels.blend_unfinished_pixels(false);
 
+        let styled_areas_for_labels = {
+            let _m = crate::perf_stats::measure("Style area for labels");
+            styler.style_areas(entities.ways.iter(), entities.multipolygons.iter(), tile.zoom, true)
+        };
+
         let styled_nodes = {
             let _m = crate::perf_stats::measure("Style nodes");
-            styler.style_entities(entities.nodes.iter(), tile.zoom)
+            styler.style_entities(entities.nodes.iter(), tile.zoom, true)
         };
 
         {
             let _m = crate::perf_stats::measure("Draw labels");
-            self.draw_labels(&mut pixels, tile.zoom, float_scale, &styled_areas, &styled_nodes);
+            self.draw_labels(
+                &mut pixels,
+                tile.zoom,
+                float_scale,
+                &styled_areas_for_labels,
+                &styled_nodes,
+            );
         }
 
         pixels.blend_unfinished_pixels(true);
