@@ -111,7 +111,7 @@ impl TextPlacer {
                 }
             }
             TextPosition::Center => {
-                if let Some((center_x, center_y)) = on.get_center(zoom, global_scale) {
+                if let Some((center_x, center_y)) = on.get_label_position(zoom, global_scale) {
                     let mut glyph_rows = Vec::new();
                     let mut current_row = Vec::new();
                     let mut current_row_width = 0.0;

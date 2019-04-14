@@ -52,7 +52,7 @@ impl Labeler {
         let read_icon_cache = icon_cache.open_read_session(icon_name);
 
         if let Some(Some(icon)) = read_icon_cache.get(icon_name) {
-            let (center_x, center_y) = match entity.get_center(zoom, scale) {
+            let (center_x, center_y) = match entity.get_label_position(zoom, scale) {
                 Some(center) => center,
                 _ => return Some(0),
             };
