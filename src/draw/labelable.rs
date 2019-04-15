@@ -187,6 +187,8 @@ fn polylabel<'a>(polygons: Polygons<'a>, bb: &BoundingBox, precision: f64) -> Po
 }
 
 fn get_label_position(polygons: Polygons<'_>, scale: f64) -> Option<PointF> {
+    let _m = crate::perf_stats::measure("Polylabel");
+
     if polygons.is_empty() || polygons[0].is_empty() {
         return None;
     }
