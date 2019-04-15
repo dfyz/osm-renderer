@@ -266,19 +266,14 @@ fn point_to_polygon_dist<'a>(point: &PointF, polygons: Polygons<'a>) -> f64 {
     let mut min_dist_sq = std::f64::INFINITY;
 
     for poly in polygons {
-        let mut i = 0;
-        let mut j = poly.len() - 1;
-        while i < poly.len() {
+        for i in 1..poly.len() {
             let a = &poly[i];
-            let b = &poly[j];
+            let b = &poly[i - 1];
 
             if (a.1 > point.1) != (b.1 > point.1) && (point.0 < (b.0 - a.0) * (point.1 - a.1) / (b.1 - a.1) + a.0) {
                 inside = !inside;
             }
             min_dist_sq = min_dist_sq.min(segment_dist_sq(point, a, b));
-
-            j = i;
-            i += 1;
         }
     }
 
@@ -291,19 +286,14 @@ fn get_centroid(polygon: &[PointF]) -> PointF {
     let mut centroid_x = 0.0;
     let mut centroid_y = 0.0;
 
-    let mut i = 0;
-    let mut j = polygon.len() - 1;
-    while i < polygon.len() {
+    for i in 1..polygon.len() {
         let a = &polygon[i];
-        let b = &polygon[j];
+        let b = &polygon[i - 1];
 
         let area_component = a.0 * b.1 - b.0 * a.1;
         centroid_x += (a.0 + b.0) * area_component;
         centroid_y += (a.1 + b.1) * area_component;
         area += area_component * 3.0;
-
-        j = i;
-        i += 1;
     }
 
     if area == 0.0 {
