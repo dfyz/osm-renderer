@@ -17,14 +17,7 @@ pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64
     let mut y_to_edges = EdgesByY::default();
 
     for (idx, (p1, p2)) in points.enumerate() {
-        draw_line(
-            idx,
-            &p1,
-            &p2,
-            &mut y_to_edges,
-            pixels.bb().min_y as i32,
-            pixels.bb().max_y as i32,
-        );
+        draw_line(idx, &p1, &p2, &mut y_to_edges, pixels.bb().min_y, pixels.bb().max_y);
     }
 
     for (y, edges) in y_to_edges.iter() {
@@ -35,8 +28,8 @@ pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64
         while idx + 1 < good_edges.len() {
             let e1 = good_edges[idx];
             let e2 = good_edges[idx + 1];
-            let from_x = e1.x_min.max(pixels.bb().min_x as i32);
-            let to_x = e2.x_max.min(pixels.bb().max_x as i32) + 1;
+            let from_x = e1.x_min.max(pixels.bb().min_x);
+            let to_x = e2.x_max.min(pixels.bb().max_x) + 1;
             for x in from_x..to_x {
                 let fill_color = match filler {
                     Filler::Color(color) => RgbaColor::from_color(color, opacity),
@@ -46,7 +39,7 @@ pub fn fill_contour(points: PointPairIter<'_>, filler: &Filler<'_>, opacity: f64
                         icon.get(icon_x, icon_y)
                     }
                 };
-                pixels.set_pixel(x as usize, *y as usize, &fill_color);
+                pixels.set_pixel(x, *y, &fill_color);
             }
             idx += 2;
         }

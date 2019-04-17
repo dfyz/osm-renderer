@@ -127,7 +127,7 @@ fn draw_line(
                 }
 
                 let current_color = RgbaColor::from_color(color, initial_opacity * opacity_params.opacity);
-                pixels.set_pixel(current_point.x as usize, current_point.y as usize, &current_color);
+                pixels.set_pixel(current_point.x, current_point.y, &current_color);
 
                 if update_error(&mut error) {
                     p_mn -= mul * mx_inc;

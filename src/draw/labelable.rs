@@ -1,6 +1,6 @@
 use crate::draw::point::Point;
 use crate::geodata::reader::{Multipolygon, Node, Way};
-use crate::tile::coords_to_xy;
+use crate::tile::{coords_to_xy_tile_relative, Tile};
 use std::cmp::Ordering;
 use std::collections::binary_heap::BinaryHeap;
 
@@ -8,44 +8,44 @@ type PointF = (f64, f64);
 type LabelPosition = Option<PointF>;
 
 pub trait Labelable {
-    fn get_label_position(&self, zoom: u8, scale: f64) -> LabelPosition;
-    fn get_waypoints(&self, zoom: u8, scale: f64) -> Option<Vec<Point>>;
+    fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition;
+    fn get_waypoints(&self, tile: &Tile, scale: f64) -> Option<Vec<Point>>;
 }
 
 impl<'n> Labelable for Node<'n> {
-    fn get_label_position(&self, zoom: u8, scale: f64) -> LabelPosition {
-        let label_position = Point::from_node(self, zoom, scale);
+    fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
+        let label_position = Point::from_node(self, tile, scale);
         Some((f64::from(label_position.x), f64::from(label_position.y)))
     }
 
-    fn get_waypoints(&self, _: u8, _: f64) -> Option<Vec<Point>> {
+    fn get_waypoints(&self, _: &Tile, _: f64) -> Option<Vec<Point>> {
         None
     }
 }
 
 impl<'w> Labelable for Way<'w> {
-    fn get_label_position(&self, zoom: u8, scale: f64) -> LabelPosition {
-        let polygon = nodes_to_points((0..self.node_count()).map(|idx| self.get_node(idx)), zoom, scale);
+    fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
+        let polygon = nodes_to_points((0..self.node_count()).map(|idx| self.get_node(idx)), tile, scale);
         get_label_position(&[polygon], scale)
     }
 
-    fn get_waypoints(&self, zoom: u8, scale: f64) -> Option<Vec<Point>> {
+    fn get_waypoints(&self, tile: &Tile, scale: f64) -> Option<Vec<Point>> {
         Some(
             (0..self.node_count())
-                .map(|idx| Point::from_node(&self.get_node(idx), zoom, scale))
+                .map(|idx| Point::from_node(&self.get_node(idx), tile, scale))
                 .collect(),
         )
     }
 }
 
 impl<'r> Labelable for Multipolygon<'r> {
-    fn get_label_position(&self, zoom: u8, scale: f64) -> LabelPosition {
+    fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
         let polygons = (0..self.polygon_count())
             .map(|poly_idx| {
                 let poly = self.get_polygon(poly_idx);
                 nodes_to_points(
                     (0..poly.node_count()).map(|node_idx| poly.get_node(node_idx)),
-                    zoom,
+                    tile,
                     scale,
                 )
             })
@@ -53,18 +53,16 @@ impl<'r> Labelable for Multipolygon<'r> {
         get_label_position(&polygons, scale)
     }
 
-    fn get_waypoints(&self, _: u8, _: f64) -> Option<Vec<Point>> {
+    fn get_waypoints(&self, _: &Tile, _: f64) -> Option<Vec<Point>> {
         None
     }
 }
 
-fn nodes_to_points<'n>(nodes: impl Iterator<Item = Node<'n>>, zoom: u8, scale: f64) -> Vec<PointF> {
+fn nodes_to_points<'n>(nodes: impl Iterator<Item = Node<'n>>, tile: &Tile, scale: f64) -> Vec<PointF> {
     nodes
         .map(|n| {
-            let mut coords = coords_to_xy(&n, zoom);
-            coords.0 *= scale;
-            coords.1 *= scale;
-            coords
+            let (x, y) = coords_to_xy_tile_relative(&n, tile);
+            (x * scale, y * scale)
         })
         .collect()
 }

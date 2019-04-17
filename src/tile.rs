@@ -99,3 +99,8 @@ pub fn coords_to_xy<C: Coords>(coords: &C, zoom: u8) -> (f64, f64) {
 
     (rescale(x), rescale(y))
 }
+
+pub fn coords_to_xy_tile_relative<C: Coords>(coords: &C, tile: &Tile) -> (f64, f64) {
+    let (x, y) = coords_to_xy(coords, tile.zoom);
+    (x - f64::from(tile.x * TILE_SIZE), y - f64::from(tile.y * TILE_SIZE))
+}

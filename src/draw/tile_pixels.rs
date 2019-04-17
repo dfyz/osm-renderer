@@ -1,6 +1,5 @@
 use crate::draw::TILE_SIZE;
 use crate::mapcss::color::Color;
-use crate::tile::Tile;
 
 #[derive(Clone)]
 pub struct RgbaColor {
@@ -48,30 +47,28 @@ pub type RgbTriples = Vec<(u8, u8, u8)>;
 
 #[derive(Clone)]
 pub struct BoundingBox {
-    pub min_x: usize,
-    pub max_x: usize,
-    pub min_y: usize,
-    pub max_y: usize,
+    pub min_x: i32,
+    pub max_x: i32,
+    pub min_y: i32,
+    pub max_y: i32,
 }
 
 impl TilePixels {
-    pub fn new(tile: &Tile, scale: usize) -> TilePixels {
+    pub fn new(scale: usize) -> TilePixels {
         let scaled_tile_size = TILE_SIZE * scale;
+        let scaled_tile_size_i32 = scaled_tile_size as i32;
 
-        let to_tile_start = |c| (c as usize) * scaled_tile_size;
-        let to_tile_end = |tile_start_c| tile_start_c + scaled_tile_size - 1;
-        let (tile_start_x, tile_start_y) = (to_tile_start(tile.x), to_tile_start(tile.y));
         let bounding_box = BoundingBox {
-            min_x: tile_start_x,
-            max_x: to_tile_end(tile_start_x),
-            min_y: tile_start_y,
-            max_y: to_tile_end(tile_start_y),
+            min_x: 0,
+            max_x: scaled_tile_size_i32 - 1,
+            min_y: 0,
+            max_y: scaled_tile_size_i32 - 1,
         };
         let bounding_box_for_labels = BoundingBox {
-            min_x: bounding_box.min_x - scaled_tile_size,
-            max_x: bounding_box.max_x + scaled_tile_size,
-            min_y: bounding_box.min_y - scaled_tile_size,
-            max_y: bounding_box.max_y + scaled_tile_size,
+            min_x: bounding_box.min_x - scaled_tile_size_i32,
+            max_x: bounding_box.max_x + scaled_tile_size_i32,
+            min_y: bounding_box.min_y - scaled_tile_size_i32,
+            max_y: bounding_box.max_y + scaled_tile_size_i32,
         };
 
         let scaled_extended_tile_size = EXTENDED_TILE_SIZE * scale;
@@ -103,7 +100,7 @@ impl TilePixels {
         }
     }
 
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) {
+    pub fn set_pixel(&mut self, x: i32, y: i32, color: &RgbaColor) {
         let idx = match self.global_coords_to_idx(x, y, false) {
             Some(idx) => idx,
             _ => return,
@@ -127,7 +124,7 @@ impl TilePixels {
         }
     }
 
-    pub fn set_label_pixel(&mut self, x: usize, y: usize, color: &RgbaColor) -> bool {
+    pub fn set_label_pixel(&mut self, x: i32, y: i32, color: &RgbaColor) -> bool {
         let idx = match self.global_coords_to_idx(x, y, true) {
             Some(idx) => idx,
             _ => return true,
@@ -187,12 +184,14 @@ impl TilePixels {
         &self.bb
     }
 
-    fn global_coords_to_idx(&self, x: usize, y: usize, for_labels: bool) -> Option<usize> {
+    fn global_coords_to_idx(&self, x: i32, y: i32, for_labels: bool) -> Option<usize> {
         let bb = if for_labels { &self.labels_bb } else { &self.bb };
         if x < bb.min_x || x > bb.max_x || y < bb.min_y || y > bb.max_y {
             return None;
         }
-        Some(self.local_coords_to_idx(x - self.labels_bb.min_x, y - self.labels_bb.min_y))
+        let local_x = (x - self.labels_bb.min_x) as usize;
+        let local_y = (y - self.labels_bb.min_y) as usize;
+        Some(self.local_coords_to_idx(local_x, local_y))
     }
 
     fn local_coords_to_idx(&self, x: usize, y: usize) -> usize {

@@ -55,7 +55,7 @@ impl Drawer {
         scale: usize,
         styler: &Styler,
     ) -> TileRenderedPixels {
-        let mut pixels = TilePixels::new(tile, scale);
+        let mut pixels = TilePixels::new(scale);
         fill_canvas(&mut pixels, styler);
 
         let styled_areas = {
@@ -69,7 +69,7 @@ impl Drawer {
             self.draw_areas(
                 pixels,
                 &styled_areas,
-                tile.zoom,
+                tile,
                 float_scale,
                 draw_type,
                 use_multipolygons,
@@ -101,13 +101,7 @@ impl Drawer {
 
         {
             let _m = crate::perf_stats::measure("Draw labels");
-            self.draw_labels(
-                &mut pixels,
-                tile.zoom,
-                float_scale,
-                &styled_areas_for_labels,
-                &styled_nodes,
-            );
+            self.draw_labels(&mut pixels, tile, float_scale, &styled_areas_for_labels, &styled_nodes);
         }
 
         pixels.blend_unfinished_pixels(true);
@@ -122,7 +116,7 @@ impl Drawer {
         &self,
         pixels: &mut TilePixels,
         areas: &[(StyledArea<'_, '_>, Arc<Style>)],
-        zoom: u8,
+        tile: &Tile,
         scale: f64,
         draw_type: &DrawType,
         use_multipolygons: bool,
@@ -131,10 +125,10 @@ impl Drawer {
         for (area, style) in areas {
             match area {
                 StyledArea::Way(way) => {
-                    self.draw_one_area(pixels, zoom, scale, *way, style, draw_type, use_caps_for_dashes);
+                    self.draw_one_area(pixels, tile, scale, *way, style, draw_type, use_caps_for_dashes);
                 }
                 StyledArea::Multipolygon(rel) if use_multipolygons => {
-                    self.draw_one_area(pixels, zoom, scale, *rel, style, draw_type, use_caps_for_dashes);
+                    self.draw_one_area(pixels, tile, scale, *rel, style, draw_type, use_caps_for_dashes);
                 }
                 _ => {}
             }
@@ -144,7 +138,7 @@ impl Drawer {
     fn draw_one_area<'e, A>(
         &self,
         pixels: &mut TilePixels,
-        zoom: u8,
+        tile: &'e Tile,
         scale: f64,
         area: &'e A,
         style: &Style,
@@ -153,7 +147,7 @@ impl Drawer {
     ) where
         A: OsmEntity<'e> + PointPairCollection<'e>,
     {
-        let points = area.to_point_pairs(zoom, scale);
+        let points = area.to_point_pairs(tile, scale);
         let float_or_one = |num: &Option<f64>| num.unwrap_or(1.0);
 
         let scale_dashes =
@@ -209,7 +203,7 @@ impl Drawer {
     fn draw_labels(
         &self,
         pixels: &mut TilePixels,
-        zoom: u8,
+        tile: &Tile,
         scale: f64,
         areas: &[(StyledArea<'_, '_>, Arc<Style>)],
         nodes: &[(&Node<'_>, Arc<Style>)],
@@ -221,7 +215,7 @@ impl Drawer {
                     StyledArea::Way(way) => self.labeler.label_entity(
                         *way,
                         style,
-                        zoom,
+                        tile,
                         scale,
                         &self.icon_cache,
                         TextPosition::Line,
@@ -230,7 +224,7 @@ impl Drawer {
                     StyledArea::Multipolygon(rel) => self.labeler.label_entity(
                         *rel,
                         style,
-                        zoom,
+                        tile,
                         scale,
                         &self.icon_cache,
                         TextPosition::Center,
@@ -244,7 +238,7 @@ impl Drawer {
             let _m = crate::perf_stats::measure("Label nodes");
             for &(node, ref style) in nodes {
                 self.labeler
-                    .label_entity(node, style, zoom, scale, &self.icon_cache, TextPosition::Center, pixels);
+                    .label_entity(node, style, tile, scale, &self.icon_cache, TextPosition::Center, pixels);
             }
         }
     }

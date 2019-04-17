@@ -5,7 +5,7 @@ use crate::draw::tile_pixels::TilePixels;
 use crate::geodata::reader::OsmEntity;
 use crate::mapcss::color::Color;
 use crate::mapcss::styler::{TextPosition, TextStyle};
-use crate::tile::TILE_SIZE;
+use crate::tile::{Tile, TILE_SIZE};
 use stb_truetype::{FontInfo, Vertex, VertexType};
 
 pub struct TextPlacer {
@@ -25,7 +25,7 @@ impl TextPlacer {
         &self,
         on: &E,
         text_style: &TextStyle,
-        zoom: u8,
+        tile: &Tile,
         global_scale: f64,
         y_offset: usize,
         default_text_position: TextPosition,
@@ -58,7 +58,7 @@ impl TextPlacer {
 
         match text_pos {
             TextPosition::Line => {
-                if let Some(orig_points) = on.get_waypoints(zoom, global_scale) {
+                if let Some(orig_points) = on.get_waypoints(tile, global_scale) {
                     let mut points = orig_points.clone();
                     if points.len() < 2 {
                         return true;
@@ -111,7 +111,7 @@ impl TextPlacer {
                 }
             }
             TextPosition::Center => {
-                if let Some((center_x, center_y)) = on.get_label_position(zoom, global_scale) {
+                if let Some((center_x, center_y)) = on.get_label_position(tile, global_scale) {
                     let mut glyph_rows = Vec::new();
                     let mut current_row = Vec::new();
                     let mut current_row_width = 0.0;
