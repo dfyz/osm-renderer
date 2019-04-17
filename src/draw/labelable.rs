@@ -118,6 +118,10 @@ impl PartialOrd for Cell {
     }
 }
 
+// A more or less line-by-line translation of
+// https://github.com/mapnik/mapnik/blob/master/src/geometry/interior.cpp
+// This is, in turn, a slightly modified version of
+// https://github.com/mapbox/polylabel/blob/master/include/mapbox/polylabel.hpp
 fn polylabel<'a>(polygons: Polygons<'a>, bb: &BoundingBox, precision: f64) -> PointF {
     let size = (bb.width(), bb.height());
     let cell_size = size.0.min(size.1);
