@@ -26,7 +26,7 @@ impl<'n> Labelable for Node<'n> {
 impl<'w> Labelable for Way<'w> {
     fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
         let polygon = nodes_to_points((0..self.node_count()).map(|idx| self.get_node(idx)), tile, scale);
-        get_label_position(&[polygon], scale)
+        get_label_position(vec![polygon], scale)
     }
 
     fn get_waypoints(&self, tile: &Tile, scale: f64) -> Option<Vec<Point>> {
@@ -50,7 +50,7 @@ impl<'r> Labelable for Multipolygon<'r> {
                 )
             })
             .collect::<Vec<_>>();
-        get_label_position(&polygons, scale)
+        get_label_position(polygons, scale)
     }
 
     fn get_waypoints(&self, _: &Tile, _: f64) -> Option<Vec<Point>> {
@@ -67,7 +67,7 @@ fn nodes_to_points<'n>(nodes: impl Iterator<Item = Node<'n>>, tile: &Tile, scale
         .collect()
 }
 
-type Polygons<'a> = &'a [Vec<PointF>];
+type Polygons = Vec<Vec<PointF>>;
 
 #[derive(Clone)]
 struct Cell {
@@ -79,10 +79,10 @@ struct Cell {
 }
 
 impl Cell {
-    fn new<'a>(
+    fn new(
         center: &PointF,
         half_cell_size: f64,
-        polygons: Polygons<'a>,
+        polygons: &Polygons,
         fitness_func: impl Fn(&PointF, f64) -> f64,
     ) -> Cell {
         let distance_to_center = point_to_polygon_dist(center, polygons);
@@ -122,7 +122,7 @@ impl PartialOrd for Cell {
 // https://github.com/mapnik/mapnik/blob/master/src/geometry/interior.cpp
 // This is, in turn, a slightly modified version of
 // https://github.com/mapbox/polylabel/blob/master/include/mapbox/polylabel.hpp
-fn polylabel<'a>(polygons: Polygons<'a>, bb: &BoundingBox, precision: f64) -> PointF {
+fn polylabel(polygons: &Polygons, bb: &BoundingBox, precision: f64) -> PointF {
     let size = (bb.width(), bb.height());
     let cell_size = size.0.min(size.1);
     let max_size = size.0.max(size.1);
@@ -188,17 +188,47 @@ fn polylabel<'a>(polygons: Polygons<'a>, bb: &BoundingBox, precision: f64) -> Po
     best_cell.center
 }
 
-fn get_label_position(polygons: Polygons<'_>, scale: f64) -> Option<PointF> {
+fn get_label_position(mut polygons: Polygons, scale: f64) -> Option<PointF> {
     let _m = crate::perf_stats::measure("Polylabel");
 
     if polygons.is_empty() || polygons[0].is_empty() {
         return None;
     }
 
+    filter_polygons(&mut polygons);
+
     let bb = get_bounding_box(&polygons[0]);
     let precision = bb.width().max(bb.height()) / 100.0 * scale;
 
-    Some(polylabel(polygons, &bb, precision))
+    Some(polylabel(&polygons, &bb, precision))
+}
+
+fn filter_polygons(polygons: &mut Polygons) {
+    let mut largest_poly_idx = 0;
+    let mut largest_poly_area = get_polygon_area(&polygons[0]);
+
+    for i in 1..polygons.len() {
+        let area = get_polygon_area(&polygons[i]);
+        if area > largest_poly_area {
+            largest_poly_idx = i;
+            largest_poly_area = area;
+        }
+    }
+
+    polygons.swap(0, largest_poly_idx);
+
+    let mut good_poly_count = 1;
+    for i in 1..polygons.len() {
+        if polygons[i]
+            .iter()
+            .all(|point| point_to_polygon_dist(point, &polygons[..1]) <= 0.0)
+        {
+            polygons.swap(i, good_poly_count);
+            good_poly_count += 1;
+        }
+    }
+
+    polygons.truncate(good_poly_count);
 }
 
 struct BoundingBox {
@@ -263,15 +293,12 @@ fn segment_dist_sq(point: &PointF, seg_start: &PointF, seg_end: &PointF) -> f64 
     dx * dx + dy * dy
 }
 
-fn point_to_polygon_dist<'a>(point: &PointF, polygons: Polygons<'a>) -> f64 {
+fn point_to_polygon_dist(point: &PointF, polygons: &[Vec<PointF>]) -> f64 {
     let mut inside = false;
     let mut min_dist_sq = std::f64::INFINITY;
 
     for poly in polygons {
-        for i in 1..poly.len() {
-            let a = &poly[i];
-            let b = &poly[i - 1];
-
+        for (a, b) in iterate_polygon(poly) {
             if (a.1 > point.1) != (b.1 > point.1) && (point.0 < (b.0 - a.0) * (point.1 - a.1) / (b.1 - a.1) + a.0) {
                 inside = !inside;
             }
@@ -288,11 +315,8 @@ fn get_centroid(polygon: &[PointF]) -> PointF {
     let mut centroid_x = 0.0;
     let mut centroid_y = 0.0;
 
-    for i in 1..polygon.len() {
-        let a = &polygon[i];
-        let b = &polygon[i - 1];
-
-        let area_component = a.0 * b.1 - b.0 * a.1;
+    for (a, b) in iterate_polygon(polygon) {
+        let area_component = cross_product(a, b);
         centroid_x += (a.0 + b.0) * area_component;
         centroid_y += (a.1 + b.1) * area_component;
         area += area_component * 3.0;
@@ -303,4 +327,22 @@ fn get_centroid(polygon: &[PointF]) -> PointF {
     } else {
         (centroid_x / area, centroid_y / area)
     }
+}
+
+fn iterate_polygon(poly: &[PointF]) -> impl Iterator<Item = (&PointF, &PointF)> {
+    (1..poly.len()).map(move |idx| {
+        let a = &poly[idx];
+        let b = &poly[idx - 1];
+        (a, b)
+    })
+}
+
+fn cross_product(a: &PointF, b: &PointF) -> f64 {
+    a.0 * b.1 - b.0 * a.1
+}
+
+fn get_polygon_area(polygon: &[PointF]) -> f64 {
+    iterate_polygon(polygon)
+        .map(|(a, b)| cross_product(a, b))
+        .sum()
 }
