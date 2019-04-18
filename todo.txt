@@ -1,7 +1,3 @@
-Must have:
-  * improve rendering performance
-  * implement the algo from https://blog.mapbox.com/a-new-algorithm-for-finding-a-visual-center-of-a-polygon-7c77e6492fbc
-
 Nice to have:
   * correctly render multipolygons with touching inner rings (e.g., https://www.openstreetmap.org/relation/4485484)
   * make the import process less memory-hungry
