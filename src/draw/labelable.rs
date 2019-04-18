@@ -82,7 +82,7 @@ impl Cell {
     fn new(
         center: &PointF,
         half_cell_size: f64,
-        polygons: &Polygons,
+        polygons: &[Vec<PointF>],
         fitness_func: impl Fn(&PointF, f64) -> f64,
     ) -> Cell {
         let distance_to_center = point_to_polygon_dist(center, polygons);
@@ -122,7 +122,7 @@ impl PartialOrd for Cell {
 // https://github.com/mapnik/mapnik/blob/master/src/geometry/interior.cpp
 // This is, in turn, a slightly modified version of
 // https://github.com/mapbox/polylabel/blob/master/include/mapbox/polylabel.hpp
-fn polylabel(polygons: &Polygons, bb: &BoundingBox, precision: f64) -> PointF {
+fn polylabel(polygons: &[Vec<PointF>], bb: &BoundingBox, precision: f64) -> PointF {
     let size = (bb.width(), bb.height());
     let cell_size = size.0.min(size.1);
     let max_size = size.0.max(size.1);
@@ -207,8 +207,8 @@ fn filter_polygons(polygons: &mut Polygons) {
     let mut largest_poly_idx = 0;
     let mut largest_poly_area = get_polygon_area(&polygons[0]);
 
-    for i in 1..polygons.len() {
-        let area = get_polygon_area(&polygons[i]);
+    for (i, poly) in polygons.iter().enumerate().skip(1) {
+        let area = get_polygon_area(poly);
         if area > largest_poly_area {
             largest_poly_idx = i;
             largest_poly_area = area;
@@ -221,7 +221,7 @@ fn filter_polygons(polygons: &mut Polygons) {
     for i in 1..polygons.len() {
         if polygons[i]
             .iter()
-            .all(|point| point_to_polygon_dist(point, &polygons[..1]) <= 0.0)
+            .all(|point| point_to_polygon_dist(point, &polygons[..1]) >= 0.0)
         {
             polygons.swap(i, good_poly_count);
             good_poly_count += 1;
@@ -344,5 +344,6 @@ fn cross_product(a: &PointF, b: &PointF) -> f64 {
 fn get_polygon_area(polygon: &[PointF]) -> f64 {
     iterate_polygon(polygon)
         .map(|(a, b)| cross_product(a, b))
-        .sum()
+        .sum::<f64>()
+        .abs()
 }
