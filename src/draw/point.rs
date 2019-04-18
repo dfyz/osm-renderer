@@ -11,7 +11,7 @@ impl Point {
     pub fn from_node(node: &Node<'_>, tile: &t::Tile, scale: f64) -> Point {
         let (x, y) = t::coords_to_xy_tile_relative(node, tile);
 
-        let to_coord = |c| (c * scale) as i32;
+        let to_coord = |c: f64| (c * scale).round() as i32;
         Point {
             x: to_coord(x),
             y: to_coord(y),
