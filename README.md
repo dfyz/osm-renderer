@@ -35,4 +35,4 @@ You can use the `@2x` suffix to request [high-resolution tiles](https://wiki.ope
 
 The rendering style is based on [MAPS.ME](https://github.com/mapsme/omim).
 
-![London centre](/samples/london.png)
+![London centre](/samples/london_2x.png)
