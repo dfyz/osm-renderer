@@ -45,7 +45,11 @@ impl Drawer {
         styler: &Styler,
     ) -> Result<Vec<u8>, Error> {
         let pixels = self.draw_to_pixels(entities, tile, scale, styler);
-        rgb_triples_to_png(&pixels.triples, pixels.dimension, pixels.dimension)
+
+        {
+            let _m = crate::perf_stats::measure("RGB triples to PNG");
+            rgb_triples_to_png(&pixels.triples, pixels.dimension, pixels.dimension)
+        }
     }
 
     pub fn draw_to_pixels<'a>(
@@ -55,8 +59,15 @@ impl Drawer {
         scale: usize,
         styler: &Styler,
     ) -> TileRenderedPixels {
-        let mut pixels = TilePixels::new(scale);
-        fill_canvas(&mut pixels, styler);
+        let mut pixels = {
+            let _m = crate::perf_stats::measure("Initializing TilePixels");
+            TilePixels::new(scale)
+        };
+
+        {
+            let _m = crate::perf_stats::measure("Fill canvas");
+            fill_canvas(&mut pixels, styler);
+        }
 
         let styled_areas = {
             let _m = crate::perf_stats::measure("Style areas");
@@ -87,7 +98,10 @@ impl Drawer {
             draw_areas_with_type(&mut pixels, &DrawType::Stroke, false);
         }
 
-        pixels.blend_unfinished_pixels(false);
+        {
+            let _m = crate::perf_stats::measure("Blend after areas");
+            pixels.blend_unfinished_pixels(false);
+        }
 
         let styled_areas_for_labels = {
             let _m = crate::perf_stats::measure("Style area for labels");
@@ -104,7 +118,10 @@ impl Drawer {
             self.draw_labels(&mut pixels, tile, float_scale, &styled_areas_for_labels, &styled_nodes);
         }
 
-        pixels.blend_unfinished_pixels(true);
+        {
+            let _m = crate::perf_stats::measure("Blend after labels");
+            pixels.blend_unfinished_pixels(true);
+        }
 
         TileRenderedPixels {
             triples: pixels.to_rgb_triples(),
