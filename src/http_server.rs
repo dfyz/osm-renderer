@@ -17,6 +17,11 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+enum HandlerMessage {
+    Terminate,
+    ServeTile { path: String, stream: TcpStream },
+}
+
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
 pub fn run_server(
     address: &str,
@@ -39,8 +44,8 @@ pub fn run_server(
 
     let thread_count = num_cpus::get();
 
-    let mut senders: Vec<Sender<TcpStream>> = Vec::new();
-    let mut receivers: Vec<Receiver<TcpStream>> = Vec::new();
+    let mut senders: Vec<Sender<HandlerMessage>> = Vec::new();
+    let mut receivers: Vec<Receiver<HandlerMessage>> = Vec::new();
 
     for _ in 0..thread_count {
         let (tx, rx) = mpsc::channel();
@@ -53,8 +58,11 @@ pub fn run_server(
     for receiver in receivers {
         let server_ref = Arc::clone(&server);
         handlers.push(thread::spawn(move || {
-            while let Ok(stream) = receiver.recv() {
-                server_ref.handle_connection(stream);
+            while let Ok(msg) = receiver.recv() {
+                match msg {
+                    HandlerMessage::Terminate => break,
+                    HandlerMessage::ServeTile { path, stream } => server_ref.handle_connection(&path, stream),
+                }
             }
         }));
     }
@@ -63,8 +71,26 @@ pub fn run_server(
     let mut thread_id = 0;
 
     for tcp_stream in tcp_listener.incoming() {
-        if let Ok(stream) = tcp_stream {
-            senders[thread_id].send(stream).unwrap();
+        if let Ok(mut stream) = tcp_stream {
+            let path = match extract_path_from_stream(&mut stream) {
+                Ok(path) => path,
+                Err(e) => {
+                    eprintln!("{} didn't send a valid HTTP request: {}", peer_addr(&stream), e);
+                    continue;
+                }
+            };
+
+            if path == "/shutdown" {
+                eprintln!("Shutting down due to a shutdown request");
+                for sender in senders {
+                    sender.send(HandlerMessage::Terminate).unwrap();
+                }
+                break;
+            }
+
+            senders[thread_id]
+                .send(HandlerMessage::ServeTile { path, stream })
+                .unwrap();
             thread_id = (thread_id + 1) % senders.len();
         }
     }
@@ -85,33 +111,17 @@ struct HttpServer<'a> {
 }
 
 impl<'a> HttpServer<'a> {
-    fn handle_connection(&self, stream: TcpStream) {
-        let peer_addr = stream.peer_addr();
-        match self.try_handle_connection(stream) {
+    fn handle_connection(&self, path: &str, mut stream: TcpStream) {
+        match self.try_handle_connection(path, &mut stream) {
             Ok(_) => {}
-            Err(e) => {
-                let peer_addr_str = match peer_addr {
-                    Ok(addr) => format!(" from {}", addr),
-                    _ => String::new(),
-                };
-                eprintln!("Error processing request{}: {}", peer_addr_str, e)
-            }
+            Err(e) => eprintln!("Error processing request from {}: {}", peer_addr(&stream), e),
         }
     }
 
-    fn try_handle_connection(&self, stream: TcpStream) -> Result<(), Error> {
-        let mut rdr = BufReader::new(stream);
-
-        let first_line = match rdr.by_ref().lines().next() {
-            Some(Ok(line)) => line,
-            _ => bail!("Failed to read the first line from the TCP stream"),
-        };
-
-        let path = extract_path_from_request(&first_line)?;
-
+    fn try_handle_connection(&self, path: &str, stream: &mut TcpStream) -> Result<(), Error> {
         if cfg!(feature = "perf-stats") && path == "/perf_stats" {
             let perf_stats_html = self.perf_stats.lock().unwrap().to_html();
-            serve_data(&mut rdr.into_inner(), perf_stats_html.as_bytes(), "text/html");
+            serve_data(stream, perf_stats_html.as_bytes(), "text/html");
             return Ok(());
         }
 
@@ -138,7 +148,7 @@ impl<'a> HttpServer<'a> {
             crate::perf_stats::finish_tile(&mut self.perf_stats.lock().unwrap());
         }
 
-        serve_data(&mut rdr.into_inner(), &tile_png_bytes, "image/png");
+        serve_data(stream, &tile_png_bytes, "image/png");
 
         Ok(())
     }
@@ -163,7 +173,12 @@ fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
     }
 }
 
-fn extract_path_from_request(first_line: &str) -> Result<String, Error> {
+fn extract_path_from_stream(stream: &mut TcpStream) -> Result<String, Error> {
+    let mut rdr = BufReader::new(stream);
+    let first_line = match rdr.by_ref().lines().next() {
+        Some(Ok(line)) => line,
+        _ => bail!("Failed to read the first line from the TCP stream"),
+    };
     let tokens: Vec<_> = first_line.split(' ').collect();
     if tokens.len() != 3 {
         bail!("<{}> doesn't look like a valid HTTP request", first_line);
@@ -232,4 +247,11 @@ fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String), Error> {
         .ok_or_else(|| format_err!("Failed to extract the file name for {}", file_path))?;
     result.pop();
     Ok((result, file_name))
+}
+
+fn peer_addr(stream: &TcpStream) -> String {
+    stream
+        .peer_addr()
+        .map(|x| format!("{}", x))
+        .unwrap_or_else(|_| "N/A".to_string())
 }
