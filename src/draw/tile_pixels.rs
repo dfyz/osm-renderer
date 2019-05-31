@@ -54,7 +54,7 @@ pub struct BoundingBox {
 }
 
 impl TilePixels {
-    pub fn new(scale: usize) -> TilePixels {
+    pub fn new(scale: usize, canvas_color: &Option<Color>) -> TilePixels {
         let scaled_tile_size = TILE_SIZE * scale;
         let scaled_tile_size_i32 = scaled_tile_size as i32;
 
@@ -74,16 +74,18 @@ impl TilePixels {
         let scaled_extended_tile_size = EXTENDED_TILE_SIZE * scale;
         let pixel_count = scaled_extended_tile_size * scaled_extended_tile_size;
 
+        let initial_pixel_color = canvas_color
+            .as_ref()
+            .map(|c| RgbaColor::from_color(c, 1.0))
+            .unwrap_or(RgbaColor {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 1.0,
+            });
+
         TilePixels {
-            pixels: vec![
-                RgbaColor {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0,
-                    a: 1.0,
-                };
-                pixel_count
-            ],
+            pixels: vec![initial_pixel_color; pixel_count],
             bb: bounding_box,
             labels_bb: bounding_box_for_labels,
             next_pixels: vec![None; pixel_count],

@@ -4,7 +4,7 @@ use crate::draw::labeler::Labeler;
 use crate::draw::line::draw_lines;
 use crate::draw::png_writer::rgb_triples_to_png;
 use crate::draw::point_pairs::PointPairCollection;
-use crate::draw::tile_pixels::{RgbTriples, RgbaColor, TilePixels};
+use crate::draw::tile_pixels::{RgbTriples, TilePixels};
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler, TextPosition};
 use crate::tile::Tile;
@@ -61,13 +61,8 @@ impl Drawer {
     ) -> TileRenderedPixels {
         let mut pixels = {
             let _m = crate::perf_stats::measure("Initializing TilePixels");
-            TilePixels::new(scale)
+            TilePixels::new(scale, &styler.canvas_fill_color)
         };
-
-        {
-            let _m = crate::perf_stats::measure("Fill canvas");
-            fill_canvas(&mut pixels, styler);
-        }
 
         let styled_areas = {
             let _m = crate::perf_stats::measure("Style areas");
@@ -258,11 +253,5 @@ impl Drawer {
                     .label_entity(node, style, tile, scale, &self.icon_cache, TextPosition::Center, pixels);
             }
         }
-    }
-}
-
-fn fill_canvas(pixels: &mut TilePixels, styler: &Styler) {
-    if let Some(ref c) = styler.canvas_fill_color {
-        pixels.fill(&RgbaColor::from_color(c, 1.0));
     }
 }
