@@ -1,4 +1,5 @@
 use crate::draw::drawer::Drawer;
+use crate::draw::tile_pixels::TilePixels;
 use crate::geodata::reader::GeodataReader;
 use crate::mapcss::parser::parse_file;
 use crate::mapcss::styler::{StyleType, Styler};
@@ -20,6 +21,11 @@ use std::thread;
 enum HandlerMessage {
     Terminate,
     ServeTile { path: String, stream: TcpStream },
+}
+
+struct HandlerState {
+    current_scale: usize,
+    current_pixels: Box<TilePixels>,
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
@@ -58,10 +64,19 @@ pub fn run_server(
     for receiver in receivers {
         let server_ref = Arc::clone(&server);
         handlers.push(thread::spawn(move || {
+            let initial_scale = 1;
+
+            let mut handler_state = HandlerState {
+                current_scale: initial_scale,
+                current_pixels: Box::new(TilePixels::new(initial_scale)),
+            };
+
             while let Ok(msg) = receiver.recv() {
                 match msg {
                     HandlerMessage::Terminate => break,
-                    HandlerMessage::ServeTile { path, stream } => server_ref.handle_connection(&path, stream),
+                    HandlerMessage::ServeTile { path, stream } => {
+                        server_ref.handle_connection(&path, stream, &mut handler_state)
+                    }
                 }
             }
         }));
@@ -111,14 +126,14 @@ struct HttpServer<'a> {
 }
 
 impl<'a> HttpServer<'a> {
-    fn handle_connection(&self, path: &str, mut stream: TcpStream) {
-        match self.try_handle_connection(path, &mut stream) {
+    fn handle_connection(&self, path: &str, mut stream: TcpStream, state: &mut HandlerState) {
+        match self.try_handle_connection(path, &mut stream, state) {
             Ok(_) => {}
             Err(e) => eprintln!("Error processing request from {}: {}", peer_addr(&stream), e),
         }
     }
 
-    fn try_handle_connection(&self, path: &str, stream: &mut TcpStream) -> Result<(), Error> {
+    fn try_handle_connection(&self, path: &str, stream: &mut TcpStream, state: &mut HandlerState) -> Result<(), Error> {
         if cfg!(feature = "perf-stats") && path == "/perf_stats" {
             let perf_stats_html = self.perf_stats.lock().unwrap().to_html();
             serve_data(stream, perf_stats_html.as_bytes(), "text/html");
@@ -139,9 +154,22 @@ impl<'a> HttpServer<'a> {
             self.reader
                 .get_entities_in_tile_with_neighbors(&tile.tile, &self.osm_ids)
         };
+
+        if tile.scale != state.current_scale {
+            let _m = crate::perf_stats::measure("Re-scaling TilePixels");
+            state.current_scale = tile.scale;
+            state.current_pixels = Box::new(TilePixels::new(tile.scale));
+        }
+
         let tile_png_bytes = self
             .drawer
-            .draw_tile(&entities, &tile.tile, tile.scale, &self.styler)
+            .draw_tile(
+                &entities,
+                &tile.tile,
+                &mut state.current_pixels,
+                state.current_scale,
+                &self.styler,
+            )
             .unwrap();
 
         if cfg!(feature = "perf-stats") {

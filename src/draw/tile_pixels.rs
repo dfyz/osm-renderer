@@ -27,14 +27,14 @@ impl RgbaColor {
 }
 
 pub struct TilePixels {
-    pixels: Vec<RgbaColor>,
     bb: BoundingBox,
     labels_bb: BoundingBox,
+    scaled_tile_size: usize,
+    scaled_extended_tile_size: usize,
+    pixels: Vec<RgbaColor>,
     next_pixels: Vec<Option<NextPixel>>,
     generation: usize,
     label_generation_statuses: Vec<bool>,
-    scaled_tile_size: usize,
-    scaled_extended_tile_size: usize,
 }
 
 #[derive(Clone)]
@@ -54,7 +54,7 @@ pub struct BoundingBox {
 }
 
 impl TilePixels {
-    pub fn new(scale: usize, canvas_color: &Option<Color>) -> TilePixels {
+    pub fn new(scale: usize) -> TilePixels {
         let scaled_tile_size = TILE_SIZE * scale;
         let scaled_tile_size_i32 = scaled_tile_size as i32;
 
@@ -74,32 +74,34 @@ impl TilePixels {
         let scaled_extended_tile_size = EXTENDED_TILE_SIZE * scale;
         let pixel_count = scaled_extended_tile_size * scaled_extended_tile_size;
 
-        let initial_pixel_color = canvas_color
-            .as_ref()
-            .map(|c| RgbaColor::from_color(c, 1.0))
-            .unwrap_or(RgbaColor {
-                r: 0.0,
-                g: 0.0,
-                b: 0.0,
-                a: 1.0,
-            });
-
         TilePixels {
-            pixels: vec![initial_pixel_color; pixel_count],
             bb: bounding_box,
             labels_bb: bounding_box_for_labels,
+            scaled_tile_size,
+            scaled_extended_tile_size,
+            pixels: vec![DEFAULT_PIXEL_COLOR; pixel_count],
             next_pixels: vec![None; pixel_count],
             generation: 0,
             label_generation_statuses: Vec::new(),
-            scaled_tile_size,
-            scaled_extended_tile_size,
         }
     }
 
-    pub fn fill(&mut self, color: &RgbaColor) {
+    pub fn reset(&mut self, canvas_color: &Option<Color>) {
+        let initial_pixel_color = canvas_color
+            .as_ref()
+            .map(|c| RgbaColor::from_color(c, 1.0))
+            .unwrap_or(DEFAULT_PIXEL_COLOR);
+
         for pixel in self.pixels.iter_mut() {
-            *pixel = color.clone();
+            *pixel = initial_pixel_color.clone();
         }
+
+        for next_pixel in self.next_pixels.iter_mut() {
+            next_pixel.take();
+        }
+
+        self.generation = 0;
+        self.label_generation_statuses.clear();
     }
 
     pub fn set_pixel(&mut self, x: i32, y: i32, color: &RgbaColor) {
@@ -226,3 +228,9 @@ fn component_to_opacity(comp: u8) -> f64 {
 }
 
 const EXTENDED_TILE_SIZE: usize = 3 * TILE_SIZE;
+const DEFAULT_PIXEL_COLOR: RgbaColor = RgbaColor {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 1.0,
+};

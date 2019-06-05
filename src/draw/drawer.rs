@@ -41,14 +41,19 @@ impl Drawer {
         &self,
         entities: &OsmEntities<'a>,
         tile: &Tile,
+        pixels: &mut TilePixels,
         scale: usize,
         styler: &Styler,
     ) -> Result<Vec<u8>, Error> {
-        let pixels = self.draw_to_pixels(entities, tile, scale, styler);
+        let rendered_pixels = self.draw_to_pixels(entities, tile, pixels, scale, styler);
 
         {
             let _m = crate::perf_stats::measure("RGB triples to PNG");
-            rgb_triples_to_png(&pixels.triples, pixels.dimension, pixels.dimension)
+            rgb_triples_to_png(
+                &rendered_pixels.triples,
+                rendered_pixels.dimension,
+                rendered_pixels.dimension,
+            )
         }
     }
 
@@ -56,13 +61,14 @@ impl Drawer {
         &self,
         entities: &OsmEntities<'a>,
         tile: &Tile,
+        pixels: &mut TilePixels,
         scale: usize,
         styler: &Styler,
     ) -> TileRenderedPixels {
-        let mut pixels = {
-            let _m = crate::perf_stats::measure("Initializing TilePixels");
-            TilePixels::new(scale, &styler.canvas_fill_color)
-        };
+        {
+            let _m = crate::perf_stats::measure("Resetting TilePixels");
+            pixels.reset(&styler.canvas_fill_color);
+        }
 
         let styled_areas = {
             let _m = crate::perf_stats::measure("Style areas");
@@ -85,12 +91,12 @@ impl Drawer {
 
         {
             let _m = crate::perf_stats::measure("Fill areas");
-            draw_areas_with_type(&mut pixels, &DrawType::Fill, true);
+            draw_areas_with_type(pixels, &DrawType::Fill, true);
         }
         {
             let _m = crate::perf_stats::measure("Draw areas");
-            draw_areas_with_type(&mut pixels, &DrawType::Casing, false);
-            draw_areas_with_type(&mut pixels, &DrawType::Stroke, false);
+            draw_areas_with_type(pixels, &DrawType::Casing, false);
+            draw_areas_with_type(pixels, &DrawType::Stroke, false);
         }
 
         {
@@ -110,7 +116,7 @@ impl Drawer {
 
         {
             let _m = crate::perf_stats::measure("Draw labels");
-            self.draw_labels(&mut pixels, tile, float_scale, &styled_areas_for_labels, &styled_nodes);
+            self.draw_labels(pixels, tile, float_scale, &styled_areas_for_labels, &styled_nodes);
         }
 
         {
