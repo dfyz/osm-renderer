@@ -18,19 +18,17 @@ pub trait OsmEntity<'a> {
     fn tags(&self) -> Tags<'a>;
 }
 
-#[derive(Default)]
 pub struct OsmEntities<'a> {
-    pub nodes: HashSet<Node<'a>>,
-    pub ways: HashSet<Way<'a>>,
-    pub multipolygons: HashSet<Multipolygon<'a>>,
+    pub nodes: Vec<Node<'a>>,
+    pub ways: Vec<Way<'a>>,
+    pub multipolygons: Vec<Multipolygon<'a>>,
 }
 
-impl<'a> OsmEntities<'a> {
-    pub fn merge_from(&mut self, other: OsmEntities<'a>) {
-        self.nodes.extend(other.nodes);
-        self.ways.extend(other.ways);
-        self.multipolygons.extend(other.multipolygons);
-    }
+#[derive(Default)]
+pub(super) struct OsmEntityIds {
+    pub(super) nodes: Vec<u32>,
+    pub(super) ways: Vec<u32>,
+    pub(super) multipolygons: Vec<u32>,
 }
 
 pub trait OsmArea {
@@ -60,8 +58,8 @@ impl<'a> GeodataReader<'a> {
         &'a self,
         t: &tile::Tile,
         osm_ids: &Option<HashSet<u64>>,
-    ) -> OsmEntities<'a> {
-        let mut entities = OsmEntities::default();
+    ) -> OsmEntities {
+        let mut entity_ids = OsmEntityIds::default();
 
         let deltas = [-1, 0, 1];
         for dx in &deltas {
@@ -71,19 +69,40 @@ impl<'a> GeodataReader<'a> {
                     y: (t.y as i32 + dy) as u32,
                     zoom: t.zoom,
                 };
-                let adjacent_entities = self.get_entities_in_tile(&adjacent_tile, osm_ids);
-                entities.merge_from(adjacent_entities);
+                self.get_entities_in_tile(&adjacent_tile, &mut entity_ids);
             }
         }
 
-        entities
+        let uniq = |ids: &mut Vec<u32>| {
+            ids.sort();
+            ids.dedup();
+        };
+
+        uniq(&mut entity_ids.nodes);
+        uniq(&mut entity_ids.ways);
+        uniq(&mut entity_ids.multipolygons);
+
+        let nodes = entity_ids.nodes.iter().map(|id| self.get_node(*id as usize));
+        let ways = entity_ids.ways.iter().map(|id| self.get_way(*id as usize));
+        let multipolygons = entity_ids.multipolygons.iter().filter_map(|id| {
+            let mp = self.get_multipolygon(*id as usize);
+            if mp.polygon_count() > 0 {
+                Some(mp)
+            } else {
+                None
+            }
+        });
+
+        OsmEntities {
+            nodes: filter_entities_by_ids(nodes, osm_ids),
+            ways: filter_entities_by_ids(ways, osm_ids),
+            multipolygons: filter_entities_by_ids(multipolygons, osm_ids),
+        }
     }
 
-    pub fn get_entities_in_tile(&'a self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities<'a> {
+    pub(super) fn get_entities_in_tile(&'a self, t: &tile::Tile, entity_ids: &mut OsmEntityIds) {
         let mut bounds = tile::tile_to_max_zoom_tile_range(t);
         let mut start_from_index = 0;
-
-        let mut result = OsmEntities::default();
 
         let tile_count = self.tile_count();
         while start_from_index < tile_count {
@@ -94,24 +113,9 @@ impl<'a> GeodataReader<'a> {
                     let current_x = tile_x;
 
                     while (tile_x == current_x) && (tile_y <= bounds.max_y) {
-                        for node_id in self.tile_local_ids(current_index, 0) {
-                            let node = self.get_node(*node_id as usize);
-                            insert_entity_if_needed(node, osm_ids, &mut result.nodes);
-                        }
-
-                        for way_id in self.tile_local_ids(current_index, 1) {
-                            let way = self.get_way(*way_id as usize);
-                            if way.node_count() > 0 {
-                                insert_entity_if_needed(way, osm_ids, &mut result.ways);
-                            }
-                        }
-
-                        for multipolygon_id in self.tile_local_ids(current_index, 2) {
-                            let multipolygon = self.get_multipolygon(*multipolygon_id as usize);
-                            if multipolygon.polygon_count() > 0 {
-                                insert_entity_if_needed(multipolygon, osm_ids, &mut result.multipolygons);
-                            }
-                        }
+                        entity_ids.nodes.extend(self.tile_local_ids(current_index, 0));
+                        entity_ids.ways.extend(self.tile_local_ids(current_index, 1));
+                        entity_ids.multipolygons.extend(self.tile_local_ids(current_index, 2));
 
                         current_index += 1;
                         if current_index >= tile_count {
@@ -127,8 +131,6 @@ impl<'a> GeodataReader<'a> {
                 }
             }
         }
-
-        result
     }
 
     fn next_good_tile(&self, bounds: &mut tile::TileRange, start_index: usize) -> Option<usize> {
@@ -250,16 +252,13 @@ impl<'a> GeodataReader<'a> {
     }
 }
 
-fn insert_entity_if_needed<'a, E>(entity: E, osm_ids: &Option<HashSet<u64>>, result: &mut HashSet<E>)
+fn filter_entities_by_ids<'a, E>(entities: impl Iterator<Item = E>, osm_ids: &Option<HashSet<u64>>) -> Vec<E>
 where
     E: OsmEntity<'a> + Hash + Eq,
 {
-    let should_insert = match *osm_ids {
-        Some(ref ids) => ids.contains(&entity.global_id()),
-        None => true,
-    };
-    if should_insert {
-        result.insert(entity);
+    match osm_ids {
+        Some(ids) => entities.filter(|e| ids.contains(&e.global_id())).collect(),
+        _ => entities.collect(),
     }
 }
 

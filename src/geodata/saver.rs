@@ -239,14 +239,13 @@ fn to_u32_safe(num: usize) -> Result<u32, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geodata::importer::RawTags;
     use std::env;
     use std::fs::File;
     use std::io::BufWriter;
 
     #[test]
     fn test_synthetic_data() {
-        let mut good_node_ids = BTreeSet::new();
+        let mut good_node_ids = Vec::new();
         let mut tile_ids = Vec::new();
 
         {
@@ -254,7 +253,7 @@ mod tests {
                 let node_idx = tile_ids.len();
                 tile_ids.push((x, y));
                 if good {
-                    good_node_ids.insert(node_idx as u64);
+                    good_node_ids.push(node_idx as u32);
                 }
             };
 
@@ -291,7 +290,7 @@ mod tests {
                 global_id: idx as u64,
                 lat: 1.0,
                 lon: 1.0,
-                tags: RawTags::default(),
+                tags: crate::geodata::importer::RawTags::default(),
             });
         }
 
@@ -299,8 +298,8 @@ mod tests {
         for (idx, &(x, y)) in tile_ids.iter().enumerate() {
             tile_refs.refs.entry((x, y)).or_insert(TileReferences {
                 local_node_ids: [idx].iter().cloned().collect(),
-                local_way_ids: BTreeSet::<usize>::default(),
-                local_multipolygon_ids: BTreeSet::<usize>::default(),
+                local_way_ids: BTreeSet::default(),
+                local_multipolygon_ids: BTreeSet::default(),
             });
         }
 
@@ -322,13 +321,8 @@ mod tests {
 
         let reader = crate::geodata::reader::GeodataReader::load(tmp_path.to_str().unwrap()).unwrap();
         let tile = crate::tile::Tile { zoom: 15, x: 0, y: 1 };
-        use crate::geodata::reader::OsmEntity;
-        let node_ids = reader
-            .get_entities_in_tile(&tile, &None)
-            .nodes
-            .iter()
-            .map(OsmEntity::global_id)
-            .collect::<BTreeSet<_>>();
-        assert_eq!(good_node_ids, node_ids);
+        let mut local_ids = crate::geodata::reader::OsmEntityIds::default();
+        reader.get_entities_in_tile(&tile, &mut local_ids);
+        assert_eq!(good_node_ids, local_ids.nodes);
     }
 }

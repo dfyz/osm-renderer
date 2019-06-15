@@ -22,7 +22,7 @@ fn test_styling() {
         None,
     );
 
-    let entities = reader.get_entities_in_tile(
+    let entities = reader.get_entities_in_tile_with_neighbors(
         &Tile {
             x: 158_458,
             y: 81_948,
@@ -49,10 +49,10 @@ fn test_styling() {
         "Cascade{ color:#bbbbbb; linecap:Keyword{round}; linejoin:Keyword{round}; width:16.0; z-index:-1.0; }",
     );
     compare_with_josm_style(
-        s1[1],
-        false,
-        "Cascade{ color:Keyword{white}; dashes:[4.0, 2.0]; linecap:Keyword{round}; linejoin:Keyword{round}; width:13.0; }",
-    );
+            s1[1],
+            false,
+            "Cascade{ color:Keyword{white}; dashes:[4.0, 2.0]; linecap:Keyword{round}; linejoin:Keyword{round}; width:13.0; }",
+        );
     compare_with_josm_style(
         s1[2],
         false,
@@ -87,7 +87,7 @@ fn test_styling() {
     );
 
     let building_josm_style =
-        "Cascade{ color:#330066; fill-color:#bca9a9; fill-opacity:0.9; linejoin:Keyword{miter}; width:0.2; z-index:-900.0;";
+            "Cascade{ color:#330066; fill-color:#bca9a9; fill-opacity:0.9; linejoin:Keyword{miter}; width:0.2; z-index:-900.0;";
 
     for &(id, name) in &[
         (31_497_212, "Бизнес-центр «Романов двор»"),
