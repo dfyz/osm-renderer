@@ -177,7 +177,10 @@ impl<'a> Tokenizer<'a> {
 
         let directive_text = &self.text[start_idx..=end_idx];
         if directive_text == "import" {
-            self.expect_char('(')?;
+            match self.peek_char() {
+                Some(ch) if ch.is_whitespace() || ch == '(' => self.advance(),
+                _ => {},
+            }
 
             let import_text = match self.next_char_with_pos() {
                 Some((idx, ch)) if ch == '"' => match self.read_string(idx + 1)? {
@@ -187,7 +190,11 @@ impl<'a> Tokenizer<'a> {
                 _ => self.lexer_error("Expected a string"),
             }?;
 
-            self.expect_char(')')?;
+            match self.peek_char() {
+                Some(ch) if ch.is_whitespace() || ch == ')' => self.advance(),
+                _ => {},
+            }
+
             Ok(Token::Import(import_text))
         } else {
             Ok(Token::ColorRef(directive_text))
@@ -557,6 +564,7 @@ mod tests {
             }
             @import("include.mapcss");
             @black: #ffcc00;
+            @import "include.mapcss";
             "#,
             vec![
                 (Token::Identifier("way"), 2, 1),
@@ -615,6 +623,8 @@ mod tests {
                 (Token::Colon, 12, 7),
                 (Token::Color(Color { r: 255, g: 204, b: 0 }), 12, 9),
                 (Token::SemiColon, 12, 16),
+                (Token::Import("include.mapcss"), 13, 1),
+                (Token::SemiColon, 13, 25),
             ],
         );
     }
