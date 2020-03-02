@@ -1,7 +1,7 @@
-use tini::Ini;
 use renderer::http_server::run_server;
 use renderer::mapcss::styler::StyleType;
 use std::env;
+use tini::Ini;
 
 fn fail() -> ! {
     std::process::exit(1);
@@ -48,14 +48,16 @@ fn main() {
             fail();
         }
     };
-    let font_size_multiplier = config.get::<String>(style_section, "font-mul")
-        .map(|multiplier_str| match multiplier_str.parse() {
-            Ok(multiplier) => multiplier,
-            Err(_) => {
-                eprintln!("Invalid font size multiplier: {}", multiplier_str);
-                fail();
-            }
-        });
+    let font_size_multiplier =
+        config
+            .get::<String>(style_section, "font-mul")
+            .map(|multiplier_str| match multiplier_str.parse() {
+                Ok(multiplier) => multiplier,
+                Err(_) => {
+                    eprintln!("Invalid font size multiplier: {}", multiplier_str);
+                    fail();
+                }
+            });
 
     let osm_ids = if args.len() >= 3 {
         Some(

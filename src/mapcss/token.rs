@@ -179,7 +179,7 @@ impl<'a> Tokenizer<'a> {
         if directive_text == "import" {
             match self.peek_char() {
                 Some(ch) if ch.is_whitespace() || ch == '(' => self.advance(),
-                _ => {},
+                _ => {}
             }
 
             let import_text = match self.next_char_with_pos() {
@@ -192,7 +192,7 @@ impl<'a> Tokenizer<'a> {
 
             match self.peek_char() {
                 Some(ch) if ch.is_whitespace() || ch == ')' => self.advance(),
-                _ => {},
+                _ => {}
             }
 
             Ok(Token::Import(import_text))
