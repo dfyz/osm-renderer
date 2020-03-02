@@ -1,5 +1,4 @@
-use ini::ini::Properties;
-use ini::Ini;
+use tini::Ini;
 use renderer::http_server::run_server;
 use renderer::mapcss::styler::StyleType;
 use std::env;
@@ -8,23 +7,11 @@ fn fail() -> ! {
     std::process::exit(1);
 }
 
-type NamedSection<'a, 'b> = (&'a Properties, &'b str);
-
-fn get_section_from_config<'a, 'b>(config: &'a Ini, section_name: &'b str) -> NamedSection<'a, 'b> {
-    match config.section(Some(section_name)) {
-        Some(section) => (section, section_name),
-        _ => {
-            eprintln!("The [{}] section is missing", section_name);
-            fail();
-        }
-    }
-}
-
-fn get_value_from_config<'a>(section: &'a NamedSection<'_, '_>, name: &str) -> &'a str {
-    match section.0.get(name) {
+fn get_value_from_config<'a>(config: &Ini, section: &str, name: &str) -> String {
+    match config.get(section, name) {
         Some(value) => value,
         _ => {
-            eprintln!("Property {} is missing in section [{}]", name, section.1);
+            eprintln!("Property {} is missing in section [{}]", name, section);
             fail();
         }
     }
@@ -40,7 +27,7 @@ fn main() {
     }
 
     let config_path = &args[1];
-    let config = match Ini::load_from_file_noescape(config_path) {
+    let config = match Ini::from_file(config_path) {
         Ok(config) => config,
         Err(err) => {
             eprintln!("Failed to parse config from {}: {}", config_path, err);
@@ -48,15 +35,12 @@ fn main() {
         }
     };
 
-    let http_section = get_section_from_config(&config, "http");
-    let server_address = get_value_from_config(&http_section, "address");
+    let server_address = get_value_from_config(&config, "http", "address");
+    let geodata_file = get_value_from_config(&config, "geodata", "file");
 
-    let geodata_section = get_section_from_config(&config, "geodata");
-    let geodata_file = get_value_from_config(&geodata_section, "file");
-
-    let style_section = get_section_from_config(&config, "style");
-    let stylesheet_file = get_value_from_config(&style_section, "file");
-    let stylesheet_type = match get_value_from_config(&style_section, "type") {
+    let style_section = "style";
+    let stylesheet_file = get_value_from_config(&config, style_section, "file");
+    let stylesheet_type = match get_value_from_config(&config, style_section, "type").as_str() {
         "josm" => StyleType::Josm,
         "mapsme" => StyleType::MapsMe,
         unknown_style => {
@@ -64,9 +48,7 @@ fn main() {
             fail();
         }
     };
-    let font_size_multiplier = style_section
-        .0
-        .get("font-mul")
+    let font_size_multiplier = config.get::<String>(style_section, "font-mul")
         .map(|multiplier_str| match multiplier_str.parse() {
             Ok(multiplier) => multiplier,
             Err(_) => {
@@ -87,9 +69,9 @@ fn main() {
     };
 
     let res = run_server(
-        server_address,
-        geodata_file,
-        stylesheet_file,
+        &server_address,
+        &geodata_file,
+        &stylesheet_file,
         &stylesheet_type,
         font_size_multiplier,
         osm_ids,
