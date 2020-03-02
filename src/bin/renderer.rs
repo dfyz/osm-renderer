@@ -2,11 +2,7 @@ use ini::ini::Properties;
 use ini::Ini;
 use renderer::http_server::run_server;
 use renderer::mapcss::styler::StyleType;
-use std::alloc::System;
 use std::env;
-
-#[global_allocator]
-static GLOBAL: System = System;
 
 fn fail() -> ! {
     std::process::exit(1);
