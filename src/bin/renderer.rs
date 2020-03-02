@@ -7,7 +7,7 @@ fn fail() -> ! {
     std::process::exit(1);
 }
 
-fn get_value_from_config<'a>(config: &Ini, section: &str, name: &str) -> String {
+fn get_value_from_config(config: &Ini, section: &str, name: &str) -> String {
     match config.get(section, name) {
         Some(value) => value,
         _ => {

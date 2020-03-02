@@ -58,8 +58,7 @@ impl TextPlacer {
 
         match text_pos {
             TextPosition::Line => {
-                if let Some(orig_points) = on.get_waypoints(tile, global_scale) {
-                    let mut points = orig_points.clone();
+                if let Some(mut points) = on.get_waypoints(tile, global_scale) {
                     if points.len() < 2 {
                         return true;
                     }

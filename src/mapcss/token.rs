@@ -512,7 +512,7 @@ fn can_continue_identifier(ch: char) -> bool {
 }
 
 fn is_digit(ch: char) -> bool {
-    ch.to_digit(10).is_some()
+    ch.is_digit(10)
 }
 
 fn with_pos(token: Token<'_>, position: InputPosition) -> TokenWithPosition<'_> {
