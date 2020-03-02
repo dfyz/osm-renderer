@@ -20,13 +20,6 @@ version = "*"
 default-features = false
 features = ["std"]
 
-[dev-dependencies]
-criterion = "*"
-
-[[bench]]
-name = "tile_pixels_benchmark"
-harness = false
-
 [features]
 perf-stats = []
 
