@@ -1,7 +1,7 @@
 use crate::coords::Coords;
 use crate::tile;
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use failure::{Error, ResultExt};
+use anyhow::{Context, Result};
 use memmap::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
 use std::cmp::Ordering;
@@ -40,7 +40,7 @@ pub struct GeodataReader<'a> {
 }
 
 impl<'a> GeodataReader<'a> {
-    pub fn load(file_name: &str) -> Result<GeodataReader<'a>, Error> {
+    pub fn load(file_name: &str) -> Result<GeodataReader<'a>> {
         let input_file = File::open(file_name).context(format!("Failed to open {} for memory mapping", file_name))?;
         let mmap = unsafe {
             MmapOptions::new()
@@ -269,7 +269,7 @@ struct ObjectStorage<'a> {
 }
 
 impl<'a> ObjectStorage<'a> {
-    fn from_bytes(bytes: &[u8], object_size: usize) -> Result<(ObjectStorage<'_>, &[u8]), Error> {
+    fn from_bytes(bytes: &[u8], object_size: usize) -> Result<(ObjectStorage<'_>, &[u8])> {
         let object_count = LittleEndian::read_u32(bytes) as usize;
         let object_start_pos = mem::size_of::<u32>();
         let object_end_pos = object_start_pos + object_size * object_count;
@@ -309,7 +309,7 @@ impl<'a> ObjectStorages<'a> {
     // All geodata members have sizes divisible by 4, so the u8* -> u32* cast should be safe,
     // provided that `bytes` is aligned to 4 bytes (if it's not, we're in trouble anyway).
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
-    fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages<'_>, Error> {
+    fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages<'_>> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
         let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;
         let (polygon_storage, rest) = ObjectStorage::from_bytes(rest, POLYGON_SIZE)?;

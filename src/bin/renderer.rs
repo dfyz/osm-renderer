@@ -80,7 +80,7 @@ fn main() {
     );
 
     if let Err(e) = res {
-        for cause in e.iter_chain() {
+        for cause in e.chain() {
             eprintln!("{}", cause);
         }
         fail();

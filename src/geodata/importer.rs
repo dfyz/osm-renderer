@@ -1,7 +1,7 @@
 use crate::coords;
 use crate::geodata::find_polygons::{find_polygons_in_multipolygon, NodeDesc, NodeDescPair};
 use crate::geodata::saver::save_to_internal_format;
-use failure::{format_err, Error, Fail, ResultExt};
+use anyhow::{anyhow, Context, Result};
 use std::collections::HashSet;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
@@ -10,7 +10,7 @@ use std::io::{BufReader, BufWriter};
 use xml::attribute::OwnedAttribute;
 use xml::reader::{EventReader, XmlEvent};
 
-pub fn import(input: &str, output: &str) -> Result<(), Error> {
+pub fn import(input: &str, output: &str) -> Result<()> {
     let input_file = File::open(input).context(format!("Failed to open {} for reading", input))?;
     let output_file = File::create(output).context(format!("Failed to open {} for writing", output))?;
 
@@ -61,7 +61,7 @@ pub(super) struct EntityStorages {
     pub(super) multipolygon_storage: OsmEntityStorage<Multipolygon>,
 }
 
-fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages, Error> {
+fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> {
     let mut entity_storages = EntityStorages {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
@@ -105,7 +105,7 @@ fn process_element<R: Read>(
     attrs: &[OwnedAttribute],
     entity_storages: &mut EntityStorages,
     parser: &mut EventReader<R>,
-) -> Result<(), Error> {
+) -> Result<()> {
     match name {
         "node" => {
             let mut node = RawNode {
@@ -169,9 +169,9 @@ fn process_subelements<E: Default, R: Read, F>(
     entity_storages: &EntityStorages,
     subelement_processor: F,
     parser: &mut EventReader<R>,
-) -> Result<(), Error>
+) -> Result<()>
 where
-    F: Fn(&mut E, &EntityStorages, &str, &[OwnedAttribute]) -> Result<(), Error>,
+    F: Fn(&mut E, &EntityStorages, &str, &[OwnedAttribute]) -> Result<()>,
 {
     loop {
         let e = parser.next().context(format!(
@@ -216,7 +216,7 @@ fn process_node_subelement(
     _: &EntityStorages,
     sub_name: &str,
     sub_attrs: &[OwnedAttribute],
-) -> Result<(), Error> {
+) -> Result<()> {
     try_add_tag(sub_name, sub_attrs, &mut node.tags).map(|_| ())
 }
 
@@ -225,7 +225,7 @@ fn process_way_subelement(
     entity_storages: &EntityStorages,
     sub_name: &str,
     sub_attrs: &[OwnedAttribute],
-) -> Result<(), Error> {
+) -> Result<()> {
     if try_add_tag(sub_name, sub_attrs, &mut way.tags)? {
         return Ok(());
     }
@@ -242,7 +242,7 @@ fn process_relation_subelement(
     entity_storages: &EntityStorages,
     sub_name: &str,
     sub_attrs: &[OwnedAttribute],
-) -> Result<(), Error> {
+) -> Result<()> {
     if try_add_tag(sub_name, sub_attrs, &mut relation.tags)? {
         return Ok(());
     }
@@ -255,19 +255,19 @@ fn process_relation_subelement(
     Ok(())
 }
 
-fn get_required_attr<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], attr_name: &str) -> Result<&'a String, Error> {
+fn get_required_attr<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], attr_name: &str) -> Result<&'a String> {
     attrs
         .iter()
         .filter(|x| x.name.local_name == attr_name)
         .map(|x| &x.value)
         .next()
-        .ok_or_else(|| format_err!("Element {} doesn't have required attribute: {}", elem_name, attr_name))
+        .ok_or_else(|| anyhow!("Element {} doesn't have required attribute: {}", elem_name, attr_name))
 }
 
-fn parse_required_attr<T>(elem_name: &str, attrs: &[OwnedAttribute], attr_name: &str) -> Result<T, Error>
+fn parse_required_attr<T>(elem_name: &str, attrs: &[OwnedAttribute], attr_name: &str) -> Result<T>
 where
     T: std::str::FromStr,
-    T::Err: Fail,
+    T::Err: std::error::Error + Send + Sync + 'static,
 {
     let value = get_required_attr(elem_name, attrs, attr_name)?;
 
@@ -283,12 +283,12 @@ fn get_ref<E: Default>(
     elem_name: &str,
     attrs: &[OwnedAttribute],
     storage: &OsmEntityStorage<E>,
-) -> Result<Option<usize>, Error> {
+) -> Result<Option<usize>> {
     let reference = parse_required_attr(elem_name, attrs, "ref")?;
     Ok(storage.translate_id(reference))
 }
 
-fn try_add_tag<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], tags: &mut RawTags) -> Result<bool, Error> {
+fn try_add_tag<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], tags: &mut RawTags) -> Result<bool> {
     if elem_name != "tag" {
         return Ok(false);
     }
@@ -298,7 +298,7 @@ fn try_add_tag<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], tags: &mut RawT
     Ok(true)
 }
 
-fn get_id(elem_name: &str, attrs: &[OwnedAttribute]) -> Result<u64, Error> {
+fn get_id(elem_name: &str, attrs: &[OwnedAttribute]) -> Result<u64> {
     parse_required_attr(elem_name, attrs, "id")
 }
 

@@ -2,7 +2,7 @@ use crate::mapcss::color::Color;
 use crate::mapcss::token::{InputPosition, Token, TokenWithPosition, Tokenizer};
 use crate::mapcss::MapcssError;
 
-use failure::{Error, ResultExt};
+use anyhow::{Context, Error, Result};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
@@ -220,7 +220,7 @@ impl fmt::Display for Rule {
     }
 }
 
-pub fn parse_file(base_path: &Path, file_name: &str) -> Result<Vec<Rule>, Error> {
+pub fn parse_file(base_path: &Path, file_name: &str) -> Result<Vec<Rule>> {
     let content = read_stylesheet(base_path, &file_name)?;
     let mut parser = Parser {
         tokenizer: Tokenizer::new(&content),
@@ -241,7 +241,7 @@ struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn parse(&mut self) -> Result<Vec<Rule>, Error> {
+    pub fn parse(&mut self) -> Result<Vec<Rule>> {
         let mut result = Vec::new();
         loop {
             match self.read_optional_token() {
@@ -264,7 +264,7 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn import_file(&mut self, file_name: &str) -> Result<(Vec<Rule>, ColorDefs), Error> {
+    fn import_file(&mut self, file_name: &str) -> Result<(Vec<Rule>, ColorDefs)> {
         let content = read_stylesheet(&self.base_path, file_name)?;
         let mut parser = Parser {
             tokenizer: Tokenizer::new(&content),
@@ -276,7 +276,7 @@ impl<'a> Parser<'a> {
         Ok((imported_rules, parser.color_defs))
     }
 
-    fn read_color_def(&mut self, color_name: &str) -> Result<(), Error> {
+    fn read_color_def(&mut self, color_name: &str) -> Result<()> {
         self.expect_simple_token(&Token::Colon)?;
         let color_value = {
             let color_value_token = self.read_mandatory_token()?;
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn read_rule(&mut self, mut selector_start: TokenWithPosition<'a>) -> Result<Rule, Error> {
+    fn read_rule(&mut self, mut selector_start: TokenWithPosition<'a>) -> Result<Rule> {
         let mut rule = Rule {
             selectors: Vec::new(),
             properties: Vec::new(),
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
         Ok(rule)
     }
 
-    fn read_selector(&mut self, selector_first_token: &TokenWithPosition<'a>) -> Result<ConsumedSelector, Error> {
+    fn read_selector(&mut self, selector_first_token: &TokenWithPosition<'a>) -> Result<ConsumedSelector> {
         let mut selector = match selector_first_token.token {
             Token::Identifier(id) => {
                 let object_type = id_to_object_type(id).ok_or_else(|| {
@@ -383,7 +383,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn read_test(&mut self) -> Result<Test, Error> {
+    fn read_test(&mut self) -> Result<Test> {
         let mut starts_with_bang = false;
 
         let mut current_token = self.read_mandatory_token()?;
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn read_properties(&mut self) -> Result<Vec<Property>, Error> {
+    fn read_properties(&mut self) -> Result<Vec<Property>> {
         let mut result = Vec::new();
         loop {
             let token = self.read_mandatory_token()?;
@@ -496,7 +496,7 @@ impl<'a> Parser<'a> {
         Ok(result)
     }
 
-    fn read_property_value(&mut self) -> Result<PropertyValue, Error> {
+    fn read_property_value(&mut self) -> Result<PropertyValue> {
         let token = self.read_mandatory_token()?;
         let mut expect_semicolon = true;
         let result = match token.token {
@@ -544,7 +544,7 @@ impl<'a> Parser<'a> {
     }
 
     // Support the only form of eval() used in Maps.ME: eval(prop("width") + X);
-    fn read_simple_eval(&mut self, position: InputPosition) -> Result<PropertyValue, Error> {
+    fn read_simple_eval(&mut self, position: InputPosition) -> Result<PropertyValue> {
         let mut tokens = Vec::new();
         loop {
             let token = self.read_mandatory_token()?;
@@ -586,7 +586,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn read_number_list(&mut self, first_num: f64) -> Result<Vec<f64>, Error> {
+    fn read_number_list(&mut self, first_num: f64) -> Result<Vec<f64>> {
         let mut numbers = vec![first_num];
         let mut consumed_number = true;
         loop {
@@ -606,7 +606,7 @@ impl<'a> Parser<'a> {
         Ok(numbers)
     }
 
-    fn read_identifier(&mut self) -> Result<String, Error> {
+    fn read_identifier(&mut self) -> Result<String> {
         let token = self.read_mandatory_token()?;
         match token.token {
             Token::Identifier(id) => Ok(String::from(id)),
@@ -614,21 +614,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn read_mandatory_token(&mut self) -> Result<TokenWithPosition<'a>, Error> {
+    fn read_mandatory_token(&mut self) -> Result<TokenWithPosition<'a>> {
         match self.read_optional_token() {
             Some(token) => token,
             None => Err(self.parse_error("Unexpected end of file", self.tokenizer.position())),
         }
     }
 
-    fn read_optional_token(&mut self) -> Option<Result<TokenWithPosition<'a>, Error>> {
+    fn read_optional_token(&mut self) -> Option<Result<TokenWithPosition<'a>>> {
         self.tokenizer.next().map(|x| {
             x.context(format!("Failed to tokenize {}", self.file_name))
                 .map_err(Error::from)
         })
     }
 
-    fn expect_simple_token(&mut self, expected: &Token<'static>) -> Result<(), Error> {
+    fn expect_simple_token(&mut self, expected: &Token<'static>) -> Result<()> {
         let token = self.read_mandatory_token()?;
         if token.token != *expected {
             Err(self.parse_error(
@@ -640,7 +640,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn unexpected_token<T>(&self, token: &TokenWithPosition<'a>) -> Result<T, Error> {
+    fn unexpected_token<T>(&self, token: &TokenWithPosition<'a>) -> Result<T> {
         Err(self.parse_error(format!("Unexpected token: '{}'", token.token), token.position))
     }
 
@@ -653,7 +653,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn read_stylesheet(base_path: &Path, file_name: &str) -> Result<String, Error> {
+fn read_stylesheet(base_path: &Path, file_name: &str) -> Result<String> {
     let file_path = base_path.join(file_name);
     let mut stylesheet_reader = File::open(file_path).context("Failed to open the stylesheet file")?;
     let mut stylesheet = String::new();

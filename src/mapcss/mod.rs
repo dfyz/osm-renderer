@@ -5,7 +5,7 @@ pub mod styler;
 pub mod token;
 
 use crate::mapcss::token::InputPosition;
-use failure::{Backtrace, Fail};
+use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
@@ -21,19 +21,7 @@ enum MapcssError {
     },
 }
 
-impl Fail for MapcssError {
-    fn name(&self) -> Option<&str> {
-        Some("renderer::mapcss::MapcssError")
-    }
-
-    fn cause(&self) -> Option<&dyn Fail> {
-        None
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        None
-    }
-}
+impl Error for MapcssError {}
 
 impl fmt::Display for MapcssError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

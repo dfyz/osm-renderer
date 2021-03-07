@@ -1,7 +1,7 @@
-use failure::{Error, ResultExt};
+use anyhow::{Context, Result};
 use png::{ColorType, Encoder};
 
-pub fn rgb_triples_to_png(triples: &[(u8, u8, u8)], width: usize, height: usize) -> Result<Vec<u8>, Error> {
+pub fn rgb_triples_to_png(triples: &[(u8, u8, u8)], width: usize, height: usize) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
     {
         let mut png_encoder = Encoder::new(&mut buf, width as u32, height as u32);

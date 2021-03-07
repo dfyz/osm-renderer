@@ -8,7 +8,7 @@ use crate::draw::tile_pixels::{RgbTriples, TilePixels};
 use crate::geodata::reader::{Node, OsmEntities, OsmEntity};
 use crate::mapcss::styler::{Style, StyledArea, Styler, TextPosition};
 use crate::tile::Tile;
-use failure::Error;
+use anyhow::Result;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -44,7 +44,7 @@ impl Drawer {
         pixels: &mut TilePixels,
         scale: usize,
         styler: &Styler,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>> {
         let rendered_pixels = self.draw_to_pixels(entities, tile, pixels, scale, styler);
 
         {

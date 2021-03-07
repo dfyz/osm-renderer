@@ -5,7 +5,7 @@ use crate::mapcss::parser::parse_file;
 use crate::mapcss::styler::{StyleType, Styler};
 use crate::perf_stats::PerfStats;
 use crate::tile::{Tile, MAX_ZOOM};
-use failure::{bail, format_err, Error, ResultExt};
+use anyhow::{anyhow, bail, Context, Result};
 use num_cpus;
 use std::collections::HashSet;
 use std::io::prelude::*;
@@ -36,7 +36,7 @@ pub fn run_server(
     stylesheet_type: &StyleType,
     font_size_multiplier: Option<f64>,
     osm_ids: Option<HashSet<u64>>,
-) -> Result<(), Error> {
+) -> Result<()> {
     let (base_path, file_name) = split_stylesheet_path(stylesheet_file)?;
     let rules = parse_file(&base_path, &file_name).context("Failed to parse the stylesheet file")?;
 
@@ -133,7 +133,7 @@ impl<'a> HttpServer<'a> {
         }
     }
 
-    fn try_handle_connection(&self, path: &str, stream: &mut TcpStream, state: &mut HandlerState) -> Result<(), Error> {
+    fn try_handle_connection(&self, path: &str, stream: &mut TcpStream, state: &mut HandlerState) -> Result<()> {
         if cfg!(feature = "perf-stats") && path == "/perf_stats" {
             let perf_stats_html = self.perf_stats.lock().unwrap().to_html();
             serve_data(stream, perf_stats_html.as_bytes(), "text/html");
@@ -201,7 +201,7 @@ fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
     }
 }
 
-fn extract_path_from_stream(stream: &mut TcpStream) -> Result<String, Error> {
+fn extract_path_from_stream(stream: &mut TcpStream) -> Result<String> {
     let mut rdr = BufReader::new(stream);
     let first_line = match rdr.by_ref().lines().next() {
         Some(Ok(line)) => line,
@@ -267,12 +267,12 @@ fn extract_tile_from_path(path: &str) -> Option<RequestTile> {
     }
 }
 
-fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String), Error> {
+fn split_stylesheet_path(file_path: &str) -> Result<(PathBuf, String)> {
     let mut result = PathBuf::from(file_path);
     let file_name = result
         .file_name()
         .and_then(|x| x.to_str().map(ToString::to_string))
-        .ok_or_else(|| format_err!("Failed to extract the file name for {}", file_path))?;
+        .ok_or_else(|| anyhow!("Failed to extract the file name for {}", file_path))?;
     result.pop();
     Ok((result, file_name))
 }

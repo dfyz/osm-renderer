@@ -1,7 +1,7 @@
 use crate::geodata::importer::{EntityStorages, Multipolygon, Polygon, RawNode, RawRefs, RawWay};
 use crate::tile;
 use byteorder::{LittleEndian, WriteBytesExt};
-use failure::{bail, Error};
+use anyhow::{bail, Result};
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;
@@ -18,7 +18,7 @@ struct TileIdToReferences {
     refs: BTreeMap<(u32, u32), TileReferences>,
 }
 
-pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &EntityStorages) -> Result<(), Error> {
+pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &EntityStorages) -> Result<()> {
     let mut buffered_data = BufferedData::default();
     let nodes = &entity_storages.node_storage.get_entities();
     save_nodes(writer, nodes, &mut buffered_data)?;
@@ -51,7 +51,7 @@ impl TileIdToReferences {
     }
 }
 
-fn save_nodes(writer: &mut dyn Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<(), Error> {
+fn save_nodes(writer: &mut dyn Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(nodes.len())?)?;
     for node in nodes {
         writer.write_u64::<LittleEndian>(node.global_id)?;
@@ -62,7 +62,7 @@ fn save_nodes(writer: &mut dyn Write, nodes: &[RawNode], data: &mut BufferedData
     Ok(())
 }
 
-fn save_ways(writer: &mut dyn Write, ways: &[RawWay], data: &mut BufferedData) -> Result<(), Error> {
+fn save_ways(writer: &mut dyn Write, ways: &[RawWay], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(ways.len())?)?;
     for way in ways {
         writer.write_u64::<LittleEndian>(way.global_id)?;
@@ -72,7 +72,7 @@ fn save_ways(writer: &mut dyn Write, ways: &[RawWay], data: &mut BufferedData) -
     Ok(())
 }
 
-fn save_polygons(writer: &mut dyn Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<(), Error> {
+fn save_polygons(writer: &mut dyn Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(polygons.len())?)?;
     for polygon in polygons {
         save_refs(writer, polygon.iter(), data)?;
@@ -84,7 +84,7 @@ fn save_multipolygons(
     writer: &mut dyn Write,
     multipolygons: &[Multipolygon],
     data: &mut BufferedData,
-) -> Result<(), Error> {
+) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(multipolygons.len())?)?;
     for multipolygon in multipolygons {
         writer.write_u64::<LittleEndian>(multipolygon.global_id)?;
@@ -98,7 +98,7 @@ fn save_tile_references(
     writer: &mut dyn Write,
     tile_references: &TileIdToReferences,
     data: &mut BufferedData,
-) -> Result<(), Error> {
+) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(tile_references.refs.len())?)?;
     for (k, v) in &tile_references.refs {
         writer.write_u32::<LittleEndian>(k.0)?;
@@ -112,7 +112,7 @@ fn save_tile_references(
     Ok(())
 }
 
-fn save_refs<'a, I>(writer: &mut dyn Write, refs: I, data: &mut BufferedData) -> Result<(), Error>
+fn save_refs<'a, I>(writer: &mut dyn Write, refs: I, data: &mut BufferedData) -> Result<()>
 where
     I: Iterator<Item = &'a usize>,
 {
@@ -125,7 +125,7 @@ where
     Ok(())
 }
 
-fn save_tags(writer: &mut dyn Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<(), Error> {
+fn save_tags(writer: &mut dyn Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
     let mut kv_refs = RawRefs::new();
 
     for (ref k, ref v) in tags.iter() {
@@ -158,7 +158,7 @@ impl BufferedData {
         (*offset, bytes.len())
     }
 
-    fn save(&self, writer: &mut dyn Write) -> Result<(), Error> {
+    fn save(&self, writer: &mut dyn Write) -> Result<()> {
         writer.write_u32::<LittleEndian>(to_u32_safe(self.all_ints.len())?)?;
         for i in &self.all_ints {
             writer.write_u32::<LittleEndian>(*i)?;
@@ -229,7 +229,7 @@ fn insert_entity_id_to_tiles<'a, I>(
     }
 }
 
-fn to_u32_safe(num: usize) -> Result<u32, Error> {
+fn to_u32_safe(num: usize) -> Result<u32> {
     if num > (u32::max_value() as usize) {
         bail!("{} doesn't fit into u32", num);
     }

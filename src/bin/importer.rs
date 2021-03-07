@@ -19,7 +19,7 @@ fn main() {
     match renderer::geodata::importer::import(input, output) {
         Ok(_) => println!("All good"),
         Err(err) => {
-            for cause in err.iter_chain() {
+            for cause in err.chain() {
                 eprintln!("{}", cause);
             }
             std::process::exit(1);

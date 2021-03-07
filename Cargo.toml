@@ -5,6 +5,7 @@ authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
 edition = "2018"
 
 [dependencies]
+anyhow = "*"
 byteorder = "*"
 memmap = "*"
 num_cpus = "*"
@@ -14,11 +15,6 @@ tini = "*"
 stb_truetype = "*"
 xml-rs = "*"
 indexmap = "*"
-
-[dependencies.failure]
-version = "*"
-default-features = false
-features = ["std"]
 
 [features]
 perf-stats = []

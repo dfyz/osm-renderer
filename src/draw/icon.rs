@@ -1,5 +1,5 @@
 use crate::draw::tile_pixels::RgbaColor;
-use failure::{bail, Error, ResultExt};
+use anyhow::{bail, Context, Result};
 use png::{ColorType, Decoder};
 use std::fs::File;
 use std::path::Path;
@@ -11,7 +11,7 @@ pub struct Icon {
 }
 
 impl Icon {
-    pub fn load<P>(icon_path: P) -> Result<Icon, Error>
+    pub fn load<P>(icon_path: P) -> Result<Icon>
     where
         P: AsRef<Path>,
     {
