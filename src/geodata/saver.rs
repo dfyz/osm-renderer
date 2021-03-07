@@ -1,7 +1,7 @@
 use crate::geodata::importer::{EntityStorages, Multipolygon, Polygon, RawNode, RawRefs, RawWay};
 use crate::tile;
-use byteorder::{LittleEndian, WriteBytesExt};
 use anyhow::{bail, Result};
+use byteorder::{LittleEndian, WriteBytesExt};
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;
@@ -80,11 +80,7 @@ fn save_polygons(writer: &mut dyn Write, polygons: &[Polygon], data: &mut Buffer
     Ok(())
 }
 
-fn save_multipolygons(
-    writer: &mut dyn Write,
-    multipolygons: &[Multipolygon],
-    data: &mut BufferedData,
-) -> Result<()> {
+fn save_multipolygons(writer: &mut dyn Write, multipolygons: &[Multipolygon], data: &mut BufferedData) -> Result<()> {
     writer.write_u32::<LittleEndian>(to_u32_safe(multipolygons.len())?)?;
     for multipolygon in multipolygons {
         writer.write_u64::<LittleEndian>(multipolygon.global_id)?;

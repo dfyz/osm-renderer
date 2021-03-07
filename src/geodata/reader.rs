@@ -1,7 +1,7 @@
 use crate::coords::Coords;
 use crate::tile;
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use anyhow::{Context, Result};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use memmap::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
 use std::cmp::Ordering;
