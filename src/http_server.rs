@@ -6,7 +6,6 @@ use crate::mapcss::styler::{StyleType, Styler};
 use crate::perf_stats::PerfStats;
 use crate::tile::{Tile, MAX_ZOOM};
 use anyhow::{anyhow, bail, Context, Result};
-use num_cpus;
 use std::collections::HashSet;
 use std::io::prelude::*;
 use std::io::BufReader;

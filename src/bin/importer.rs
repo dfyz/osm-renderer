@@ -1,5 +1,3 @@
-use renderer;
-
 use std::env;
 
 fn main() {

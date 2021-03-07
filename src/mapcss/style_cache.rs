@@ -33,10 +33,7 @@ impl StyleCache {
                             ref tag_name,
                             ref test_type,
                         } => {
-                            let value_matters = match test_type {
-                                UnaryTestType::Exists | UnaryTestType::NotExists => false,
-                                _ => true,
-                            };
+                            let value_matters = !matches!(test_type, UnaryTestType::Exists | UnaryTestType::NotExists);
                             (tag_name, value_matters)
                         }
                         Test::BinaryStringCompare { ref tag_name, .. } => (tag_name, true),

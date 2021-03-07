@@ -48,9 +48,9 @@ impl<'a> GeodataReader<'a> {
                 .context(format!("Failed to map {} to memory", file_name))?
         };
 
-        let handle = OwningHandle::try_new(Box::new(mmap), |mm| {
-            ObjectStorages::from_bytes(unsafe { &*mm }).map(Box::new)
-        })?;
+        let handle = OwningHandle::new_with_fn(Box::new(mmap), |mm| {
+            Box::new(ObjectStorages::from_bytes(unsafe { &*mm }))
+        });
         Ok(GeodataReader { handle })
     }
 
@@ -74,7 +74,7 @@ impl<'a> GeodataReader<'a> {
         }
 
         let uniq = |ids: &mut Vec<u32>| {
-            ids.sort();
+            ids.sort_unstable();
             ids.dedup();
         };
 
@@ -269,7 +269,7 @@ struct ObjectStorage<'a> {
 }
 
 impl<'a> ObjectStorage<'a> {
-    fn from_bytes(bytes: &[u8], object_size: usize) -> Result<(ObjectStorage<'_>, &[u8])> {
+    fn from_bytes(bytes: &[u8], object_size: usize) -> (ObjectStorage<'_>, &[u8]) {
         let object_count = LittleEndian::read_u32(bytes) as usize;
         let object_start_pos = mem::size_of::<u32>();
         let object_end_pos = object_start_pos + object_size * object_count;
@@ -279,7 +279,7 @@ impl<'a> ObjectStorage<'a> {
             objects: &bytes[object_start_pos..object_end_pos],
         };
         let rest = &bytes[object_end_pos..];
-        Ok((storage, rest))
+        (storage, rest)
     }
 
     fn get_object(&self, idx: usize) -> &'a [u8] {
@@ -309,12 +309,12 @@ impl<'a> ObjectStorages<'a> {
     // All geodata members have sizes divisible by 4, so the u8* -> u32* cast should be safe,
     // provided that `bytes` is aligned to 4 bytes (if it's not, we're in trouble anyway).
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
-    fn from_bytes(bytes: &[u8]) -> Result<ObjectStorages<'_>> {
-        let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE)?;
-        let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;
-        let (polygon_storage, rest) = ObjectStorage::from_bytes(rest, POLYGON_SIZE)?;
-        let (multipolygon_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE)?;
-        let (tile_storage, rest) = ObjectStorage::from_bytes(rest, TILE_SIZE)?;
+    fn from_bytes(bytes: &[u8]) -> ObjectStorages<'_> {
+        let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE);
+        let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE);
+        let (polygon_storage, rest) = ObjectStorage::from_bytes(rest, POLYGON_SIZE);
+        let (multipolygon_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE);
+        let (tile_storage, rest) = ObjectStorage::from_bytes(rest, TILE_SIZE);
 
         let int_count = LittleEndian::read_u32(rest) as usize;
         let start_pos = mem::size_of::<u32>();
@@ -326,7 +326,7 @@ impl<'a> ObjectStorages<'a> {
         };
         let strings = &rest[end_pos..];
 
-        Ok(ObjectStorages {
+        ObjectStorages {
             node_storage,
             way_storage,
             polygon_storage,
@@ -334,7 +334,7 @@ impl<'a> ObjectStorages<'a> {
             tile_storage,
             ints,
             strings,
-        })
+        }
     }
 }
 

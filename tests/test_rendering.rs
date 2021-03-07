@@ -1,6 +1,3 @@
-use png;
-use renderer;
-
 mod common;
 
 use renderer::draw::png_writer::rgb_triples_to_png;
@@ -115,7 +112,7 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32,
         }
 
         let height = y_x_rendered.values().len() * tile_dimension;
-        let width = y_x_rendered.values().nth(0).unwrap().len() * tile_dimension;
+        let width = y_x_rendered.values().next().unwrap().len() * tile_dimension;
         let png_bytes = rgb_triples_to_png(&rgb, width, height);
 
         let suffix = if scale > 1 {

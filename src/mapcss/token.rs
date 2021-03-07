@@ -391,10 +391,7 @@ impl<'a> Tokenizer<'a> {
         }
 
         self.current_position.character += 1;
-        self.had_newline = match res {
-            Some((_, '\n')) => true,
-            _ => false,
-        };
+        self.had_newline = matches!(res, Some((_, '\n')));
 
         res
     }
@@ -490,17 +487,11 @@ fn get_one_char_simple_token(ch: char) -> Option<Token<'static>> {
 }
 
 fn can_be_in_at_directive(ch: char) -> bool {
-    match ch {
-        '_' | 'a'..='z' | '0'..='9' => true,
-        _ => false,
-    }
+    matches!(ch, '_' | 'a'..='z' | '0'..='9')
 }
 
 fn can_start_identifier(ch: char) -> bool {
-    match ch {
-        '_' | 'a'..='z' | 'A'..='Z' => true,
-        _ => false,
-    }
+    matches!(ch, '_' | 'a'..='z' | 'A'..='Z')
 }
 
 fn can_continue_identifier(ch: char) -> bool {
@@ -523,7 +514,7 @@ fn with_pos(token: Token<'_>, position: InputPosition) -> TokenWithPosition<'_> 
 mod tests {
     use super::*;
 
-    fn tokenize<'a>(s: &'a str) -> Vec<TokenWithPosition<'a>> {
+    fn tokenize(s: &str) -> Vec<TokenWithPosition> {
         Tokenizer::new(s)
             .map(|x| x.expect("Unexpected lexer error"))
             .collect::<Vec<_>>()

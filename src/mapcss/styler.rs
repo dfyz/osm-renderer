@@ -22,10 +22,7 @@ pub enum TextPosition {
 }
 
 pub fn is_non_trivial_cap(line_cap: &Option<LineCap>) -> bool {
-    match *line_cap {
-        Some(LineCap::Square) | Some(LineCap::Round) => true,
-        _ => false,
-    }
+    matches!(*line_cap, Some(LineCap::Square) | Some(LineCap::Round))
 }
 
 pub enum StyleType {
@@ -95,10 +92,7 @@ where
 
 impl Styler {
     pub fn new(rules: Vec<Rule>, style_type: &StyleType, font_size_multiplier: Option<f64>) -> Styler {
-        let use_caps_for_dashes = match *style_type {
-            StyleType::Josm => true,
-            _ => false,
-        };
+        let use_caps_for_dashes = matches!(*style_type, StyleType::Josm);
         let canvas_fill_color = extract_canvas_fill_color(&rules, style_type);
 
         let casing_width_multiplier = match *style_type {
@@ -376,10 +370,7 @@ where
         .and_then(|x| x.parse::<i64>().ok());
     let z_index = get_num(current_layer_map, "z-index").unwrap_or(default_z_index);
 
-    let is_foreground_fill = match current_layer_map.get("fill-position") {
-        Some(&&PropertyValue::Identifier(ref id)) if *id == "background" => false,
-        _ => true,
-    };
+    let is_foreground_fill = !matches!(current_layer_map.get("fill-position"), Some(&&PropertyValue::Identifier(ref id)) if *id == "background");
 
     let width = get_num(current_layer_map, "width");
 
@@ -472,14 +463,8 @@ where
             match *test_type {
                 UnaryTestType::Exists => tag_val.is_some(),
                 UnaryTestType::NotExists => tag_val.is_none(),
-                UnaryTestType::True => match tag_val {
-                    Some(x) if is_true_value(x) => true,
-                    _ => false,
-                },
-                UnaryTestType::False => match tag_val {
-                    Some(x) if is_true_value(x) => false,
-                    _ => true,
-                },
+                UnaryTestType::True => matches!(tag_val, Some(x) if is_true_value(x)),
+                UnaryTestType::False => !matches!(tag_val, Some(x) if is_true_value(x)),
             }
         }
         Test::BinaryStringCompare {
@@ -548,10 +533,7 @@ impl<'a> StyleableEntity for Node<'a> {
     }
 
     fn matches_object_type(&self, object_type: &ObjectType) -> bool {
-        match *object_type {
-            ObjectType::Node => true,
-            _ => false,
-        }
+        matches!(*object_type, ObjectType::Node)
     }
 }
 
