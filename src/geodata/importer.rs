@@ -1,28 +1,38 @@
 use crate::coords;
 use crate::geodata::find_polygons::{find_polygons_in_multipolygon, NodeDesc, NodeDescPair};
 use crate::geodata::saver::save_to_internal_format;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
+#[cfg(feature = "pbf")]
+use osmpbf::{Element, ElementReader, RelMemberType};
 use std::collections::HashSet;
 use std::collections::{BTreeMap, HashMap};
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
+use std::path::Path;
 use xml::attribute::OwnedAttribute;
 use xml::reader::{EventReader, XmlEvent};
 
 pub fn import(input: &str, output: &str) -> Result<()> {
-    let input_file = File::open(input).context(format!("Failed to open {} for reading", input))?;
     let output_file = File::create(output).context(format!("Failed to open {} for writing", output))?;
 
-    let parser = EventReader::new(BufReader::new(input_file));
     let mut writer = BufWriter::new(output_file);
+    let path = Path::new(input);
 
-    println!("Parsing XML");
-    let parsed_xml = parse_osm_xml(parser)?;
+    let parsed = match path.extension().and_then(OsStr::to_str) {
+        Some("osm") | Some("xml") => {
+            let input_file = File::open(input).context(format!("Failed to open {} for reading", input))?;
+            let parser = EventReader::new(BufReader::new(input_file));
+            parse_osm_xml(parser)?
+        }
+        #[cfg(feature = "pbf")]
+        Some("pbf") => parse_pbf(input)?,
+        _ => bail!("Extension not supported"),
+    };
 
     println!("Converting geodata to internal format");
-    save_to_internal_format(&mut writer, &parsed_xml)
-        .context("Failed to write the imported data to the output file")?;
+    save_to_internal_format(&mut writer, &parsed).context("Failed to write the imported data to the output file")?;
     Ok(())
 }
 
@@ -61,6 +71,113 @@ pub(super) struct EntityStorages {
     pub(super) multipolygon_storage: OsmEntityStorage<Multipolygon>,
 }
 
+fn print_storage_stats(entity_storages: &EntityStorages) {
+    println!(
+        "Got {} so far",
+        format!(
+            "{} nodes, {} ways and {} multipolygon relations",
+            entity_storages.node_storage.entities.len(),
+            entity_storages.way_storage.entities.len(),
+            entity_storages.multipolygon_storage.entities.len()
+        )
+    );
+}
+
+#[cfg(feature = "pbf")]
+fn parse_pbf(input: &str) -> Result<EntityStorages> {
+    let mut entity_storages = EntityStorages {
+        node_storage: OsmEntityStorage::new(),
+        way_storage: OsmEntityStorage::new(),
+        polygon_storage: Vec::new(),
+        multipolygon_storage: OsmEntityStorage::new(),
+    };
+
+    let mut elem_count = 0;
+    println!("Parsing PBF");
+
+    let reader = ElementReader::from_path(input)?;
+    reader.for_each(|element| {
+        match element {
+            Element::DenseNode(el_node) => {
+                let mut node = RawNode {
+                    global_id: el_node.id() as u64,
+                    lat: el_node.lat(),
+                    lon: el_node.lon(),
+                    tags: RawTags::default(),
+                };
+                for (key, value) in el_node.tags() {
+                    node.tags.insert(key.to_string(), value.to_string());
+                }
+                elem_count += 1;
+                entity_storages.node_storage.add(node.global_id, node);
+            }
+            Element::Way(el_way) => {
+                let mut way = RawWay {
+                    global_id: el_way.id() as u64,
+                    node_ids: RawRefs::default(),
+                    tags: RawTags::default(),
+                };
+                for (key, value) in el_way.tags() {
+                    way.tags.insert(key.to_string(), value.to_string());
+                }
+                for r in el_way.refs() {
+                    let local_id = entity_storages.node_storage.translate_id(r as u64).unwrap();
+                    way.node_ids.push(local_id);
+                }
+                postprocess_node_refs(&mut way.node_ids);
+                elem_count += 1;
+                entity_storages.way_storage.add(way.global_id, way);
+            }
+            Element::Relation(el_rel) => {
+                let mut relation = RawRelation {
+                    global_id: el_rel.id() as u64,
+                    way_refs: Vec::<RelationWayRef>::default(),
+                    tags: RawTags::default(),
+                };
+                for (key, value) in el_rel.tags() {
+                    relation.tags.insert(key.to_string(), value.to_string());
+                }
+                for way in el_rel.members() {
+                    if way.member_type == RelMemberType::Way {
+                        let local_id = entity_storages.way_storage.translate_id(way.member_id as u64).unwrap();
+                        let is_inner = way.role().unwrap() == "inner";
+                        relation.way_refs.push(RelationWayRef {
+                            way_id: local_id,
+                            is_inner,
+                        });
+                    }
+                }
+                if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
+                    let segments = relation.to_segments(&entity_storages);
+                    if let Some(polygons) = find_polygons_in_multipolygon(relation.global_id, &segments) {
+                        let mut multipolygon = Multipolygon {
+                            global_id: relation.global_id,
+                            polygon_ids: Vec::new(),
+                            tags: relation.tags,
+                        };
+                        for poly in polygons {
+                            multipolygon.polygon_ids.push(entity_storages.polygon_storage.len());
+                            entity_storages.polygon_storage.push(poly);
+                        }
+                        elem_count += 1;
+                        entity_storages
+                            .multipolygon_storage
+                            .add(relation.global_id, multipolygon);
+                    }
+                }
+            }
+            Element::Node(_) => panic!(),
+        }
+        if elem_count % 100_000 == 0 {
+            print_storage_stats(&entity_storages);
+        }
+    })?;
+
+    print_storage_stats(&entity_storages);
+
+    Ok(entity_storages)
+}
+
 fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> {
     let mut entity_storages = EntityStorages {
         node_storage: OsmEntityStorage::new(),
@@ -71,15 +188,7 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> 
 
     let mut elem_count = 0;
 
-    fn dump_state(entity_storages: &EntityStorages) -> String {
-        format!(
-            "{} nodes, {} ways and {} multipolygon relations",
-            entity_storages.node_storage.entities.len(),
-            entity_storages.way_storage.entities.len(),
-            entity_storages.multipolygon_storage.entities.len()
-        )
-    }
-
+    println!("Parsing XML");
     loop {
         let e = parser.next().context("Failed to parse the input file")?;
         match e {
@@ -88,14 +197,14 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> 
                 process_element(&name.local_name, &attributes, &mut entity_storages, &mut parser)?;
                 elem_count += 1;
                 if elem_count % 100_000 == 0 {
-                    println!("Got {} so far", dump_state(&entity_storages));
+                    print_storage_stats(&entity_storages);
                 }
             }
             _ => {}
         }
     }
 
-    println!("Total: {}", dump_state(&entity_storages));
+    print_storage_stats(&entity_storages);
 
     Ok(entity_storages)
 }
