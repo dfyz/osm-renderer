@@ -9,6 +9,7 @@ anyhow = "*"
 byteorder = "*"
 memmap = "*"
 num_cpus = "*"
+osmpbf = { version = "*", optional = true }
 owning_ref = "*"
 png = "*"
 tini = "*"
@@ -18,6 +19,7 @@ indexmap = "*"
 
 [features]
 perf-stats = []
+pbf = ["osmpbf"]
 
 # So that we have line numbers in backtraces with RUST_BACKTRACE=1.
 [profile.release]
