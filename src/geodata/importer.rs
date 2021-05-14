@@ -121,8 +121,9 @@ fn parse_pbf(input: &str) -> Result<EntityStorages> {
                     way.tags.insert(key.to_string(), value.to_string());
                 }
                 for r in el_way.refs() {
-                    let local_id = entity_storages.node_storage.translate_id(r as u64).unwrap();
-                    way.node_ids.push(local_id);
+                    if let Some(local_id) = entity_storages.node_storage.translate_id(r as u64) {
+                        way.node_ids.push(local_id);
+                    }
                 }
                 postprocess_node_refs(&mut way.node_ids);
                 elem_count += 1;
@@ -139,12 +140,13 @@ fn parse_pbf(input: &str) -> Result<EntityStorages> {
                 }
                 for way in el_rel.members() {
                     if way.member_type == RelMemberType::Way {
-                        let local_id = entity_storages.way_storage.translate_id(way.member_id as u64).unwrap();
-                        let is_inner = way.role().unwrap() == "inner";
-                        relation.way_refs.push(RelationWayRef {
-                            way_id: local_id,
-                            is_inner,
-                        });
+                        if let Some(local_id) = entity_storages.way_storage.translate_id(way.member_id as u64) {
+                            let is_inner = way.role().unwrap() == "inner";
+                            relation.way_refs.push(RelationWayRef {
+                                way_id: local_id,
+                                is_inner,
+                            });
+                        }
                     }
                 }
                 if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
