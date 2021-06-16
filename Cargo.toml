@@ -1,8 +1,9 @@
 [package]
 name = "renderer"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 anyhow = "*"
