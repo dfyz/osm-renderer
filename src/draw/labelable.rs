@@ -73,7 +73,6 @@ type Polygons = Vec<Vec<PointF>>;
 struct Cell {
     center: PointF,
     half_cell_size: f64,
-    distance_to_center: f64,
     fitness: f64,
     max_fitness: f64,
 }
@@ -91,7 +90,6 @@ impl Cell {
         Cell {
             center: *center,
             half_cell_size,
-            distance_to_center,
             fitness: fitness_func(center, distance_to_center),
             max_fitness: fitness_func(center, max_fitness_distance),
         }
