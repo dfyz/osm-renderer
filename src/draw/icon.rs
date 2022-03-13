@@ -1,6 +1,6 @@
 use crate::draw::tile_pixels::RgbaColor;
 use anyhow::{bail, Context, Result};
-use png::{ColorType, Decoder};
+use png::{ColorType, Decoder, Transformations};
 use std::fs::File;
 use std::path::Path;
 
@@ -16,23 +16,26 @@ impl Icon {
         P: AsRef<Path>,
     {
         let icon_file = File::open(&icon_path).context("Failed to open icon file")?;
-        let decoder = Decoder::new(icon_file);
-        let (info, mut reader) = decoder.read_info().context("Icon is not a valid PNG file")?;
+        let mut decoder = Decoder::new(icon_file);
+        decoder.set_transformations(Transformations::normalize_to_color8());
+        let mut reader = decoder.read_info().context("Icon is not a valid PNG file")?;
 
         let mut pixels = Vec::<RgbaColor>::default();
-        while let Some(row) = reader.next_row().context("Failed to read a PNG pixel")? {
-            let mut idx = 0;
-            while idx < row.len() {
-                let (r, g, b, a, idx_delta) = match info.color_type {
-                    ColorType::RGB => (row[idx], row[idx + 1], row[idx + 2], u8::max_value(), 3),
-                    ColorType::RGBA => (row[idx], row[idx + 1], row[idx + 2], row[idx + 3], 4),
-                    ColorType::GrayscaleAlpha => (row[idx], row[idx], row[idx], row[idx + 1], 2),
-                    unknown_color => bail!("Unknown color type: {:?}", unknown_color),
-                };
-                pixels.push(RgbaColor::from_components(r, g, b, a));
-                idx += idx_delta;
-            }
+        let mut raw_pixels = vec![0; reader.output_buffer_size()];
+        let info = reader.next_frame(&mut raw_pixels).context("Failed to read PNG pixels")?;
+
+        let mut idx = 0;
+        while idx < info.buffer_size() {
+            let (r, g, b, a, idx_delta) = match info.color_type {
+                ColorType::Rgb => (raw_pixels[idx], raw_pixels[idx + 1], raw_pixels[idx + 2], u8::max_value(), 3),
+                ColorType::Rgba => (raw_pixels[idx], raw_pixels[idx + 1], raw_pixels[idx + 2], raw_pixels[idx + 3], 4),
+                ColorType::GrayscaleAlpha => (raw_pixels[idx], raw_pixels[idx], raw_pixels[idx], raw_pixels[idx + 1], 2),
+                unknown_color => bail!("Unknown color type: {:?}", unknown_color),
+            };
+            pixels.push(RgbaColor::from_components(r, g, b, a));
+            idx += idx_delta;
         }
+
         Ok(Icon {
             pixels,
             width: info.width as usize,

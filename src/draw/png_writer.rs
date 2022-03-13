@@ -5,7 +5,7 @@ pub fn rgb_triples_to_png(triples: &[(u8, u8, u8)], width: usize, height: usize)
     let mut buf = Vec::new();
     {
         let mut png_encoder = Encoder::new(&mut buf, width as u32, height as u32);
-        png_encoder.set_color(ColorType::RGB);
+        png_encoder.set_color(ColorType::Rgb);
         let mut png_writer = png_encoder.write_header().context("Failed to write PNG header")?;
 
         let mut image_bytes = Vec::new();

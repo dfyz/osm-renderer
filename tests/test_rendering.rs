@@ -13,11 +13,11 @@ const RED_PIXEL: (u8, u8, u8) = (255, 0, 0);
 
 fn read_png(file_name: &str) -> (RgbTriples, png::OutputInfo) {
     let decoder = png::Decoder::new(File::open(file_name).unwrap());
-    let (info, mut reader) = decoder.read_info().unwrap();
+    let mut reader = decoder.read_info().unwrap();
     let mut result = RgbTriples::new();
-    while let Some(row) = reader.next_row().unwrap() {
-        result.extend(row.chunks(3).map(|v| (v[0], v[1], v[2])))
-    }
+    let mut raw_pixels = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut raw_pixels).unwrap();
+    result.extend(raw_pixels[..info.buffer_size()].chunks(3).map(|v| (v[0], v[1], v[2])));
     (result, info)
 }
 
