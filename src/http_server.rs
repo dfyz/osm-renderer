@@ -186,6 +186,7 @@ fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
         "HTTP/1.1 200 OK",
         &format!("Content-Type: {}", content_type),
         &format!("Content-Length: {}", data.len()),
+        "Access-Control-Allow-Origin: *",
         "Connection: close",
         "",
         "",
