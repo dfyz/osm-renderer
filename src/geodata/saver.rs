@@ -6,17 +6,12 @@ use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Write;
 
-#[derive(Default)]
-struct TileReferences {
-    local_node_ids: BTreeSet<usize>,
-    local_way_ids: BTreeSet<usize>,
-    local_multipolygon_ids: BTreeSet<usize>,
-}
+const LOCAL_NODE: u8 = 0;
+const LOCAL_WAY: u8 = 1;
+const LOCAL_MULTIPOLYGON: u8 = 2;
+const LOCAL_COUNT: usize = 3;
 
-#[derive(Default)]
-struct TileIdToReferences {
-    refs: BTreeMap<(u32, u32), TileReferences>,
-}
+type TileIdToReferences = BTreeSet<(u32, u32, u8, u32)>;
 
 pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &EntityStorages) -> Result<()> {
     let mut buffered_data = BufferedData::default();
@@ -32,7 +27,7 @@ pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &
     let multipolygons = &entity_storages.multipolygon_storage.get_entities();
     save_multipolygons(writer, &multipolygons, &mut buffered_data)?;
 
-    let tile_references = get_tile_references(&entity_storages);
+    let tile_references = get_tile_references(&entity_storages)?;
     save_tile_references(writer, &tile_references, &mut buffered_data)?;
 
     buffered_data.save(writer)?;
@@ -40,19 +35,8 @@ pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &
     Ok(())
 }
 
-impl TileIdToReferences {
-    fn tile_ref_by_node(&mut self, node: &RawNode) -> &mut TileReferences {
-        let node_tile = tile::coords_to_max_zoom_tile(node);
-        self.tile_ref_by_xy(node_tile.x, node_tile.y)
-    }
-
-    fn tile_ref_by_xy(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
-        self.refs.entry((tile_x, tile_y)).or_insert_with(Default::default)
-    }
-}
-
 fn save_nodes(writer: &mut dyn Write, nodes: &[RawNode], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(nodes.len())?)?;
+    writer.write_u32::<LittleEndian>(nodes.len().to_u32_safe()?)?;
     for node in nodes {
         writer.write_u64::<LittleEndian>(node.global_id)?;
         writer.write_f64::<LittleEndian>(node.lat)?;
@@ -63,7 +47,7 @@ fn save_nodes(writer: &mut dyn Write, nodes: &[RawNode], data: &mut BufferedData
 }
 
 fn save_ways(writer: &mut dyn Write, ways: &[RawWay], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(ways.len())?)?;
+    writer.write_u32::<LittleEndian>(ways.len().to_u32_safe()?)?;
     for way in ways {
         writer.write_u64::<LittleEndian>(way.global_id)?;
         save_refs(writer, way.node_ids.iter(), data)?;
@@ -73,7 +57,7 @@ fn save_ways(writer: &mut dyn Write, ways: &[RawWay], data: &mut BufferedData) -
 }
 
 fn save_polygons(writer: &mut dyn Write, polygons: &[Polygon], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(polygons.len())?)?;
+    writer.write_u32::<LittleEndian>(polygons.len().to_u32_safe()?)?;
     for polygon in polygons {
         save_refs(writer, polygon.iter(), data)?;
     }
@@ -81,7 +65,7 @@ fn save_polygons(writer: &mut dyn Write, polygons: &[Polygon], data: &mut Buffer
 }
 
 fn save_multipolygons(writer: &mut dyn Write, multipolygons: &[Multipolygon], data: &mut BufferedData) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(multipolygons.len())?)?;
+    writer.write_u32::<LittleEndian>(multipolygons.len().to_u32_safe()?)?;
     for multipolygon in multipolygons {
         writer.write_u64::<LittleEndian>(multipolygon.global_id)?;
         save_refs(writer, multipolygon.polygon_ids.iter(), data)?;
@@ -95,29 +79,64 @@ fn save_tile_references(
     tile_references: &TileIdToReferences,
     data: &mut BufferedData,
 ) -> Result<()> {
-    writer.write_u32::<LittleEndian>(to_u32_safe(tile_references.refs.len())?)?;
-    for (k, v) in &tile_references.refs {
-        writer.write_u32::<LittleEndian>(k.0)?;
-        writer.write_u32::<LittleEndian>(k.1)?;
+    let mut unique_tile_count: usize = 0;
+    let mut cur_tile_id: Option<(u32, u32)> = None;
+    for (x, y, _, _) in tile_references {
+        if cur_tile_id.is_none() || cur_tile_id.unwrap() != (*x, *y) {
+            unique_tile_count += 1;
+        }
+        cur_tile_id = Some((*x, *y));
+    }
+    writer.write_u32::<LittleEndian>(unique_tile_count.to_u32_safe()?)?;
 
-        save_refs(writer, v.local_node_ids.iter(), data)?;
-        save_refs(writer, v.local_way_ids.iter(), data)?;
-        save_refs(writer, v.local_multipolygon_ids.iter(), data)?;
+    cur_tile_id = None;
+    let mut cur_offset: usize = data.all_ints.len();
+    let mut counts: [usize; LOCAL_COUNT] = [0; LOCAL_COUNT];
+
+    let mut dump_counts = |w: &mut dyn Write, counts: [usize; LOCAL_COUNT]| -> Result<()> {
+        for cnt in counts {
+            // println!("{} {}", cur_offset, cnt);
+            w.write_u32::<LittleEndian>(cur_offset.to_u32_safe()?)?;
+            w.write_u32::<LittleEndian>(cnt.to_u32_safe()?)?;
+            cur_offset += cnt;
+        }
+        Ok(())
+    };
+
+    for (x, y, entity_type, entity_ref) in tile_references.iter() {
+        if cur_tile_id.is_none() || cur_tile_id.unwrap() != (*x, *y) {
+            if cur_tile_id.is_some() {
+                dump_counts(writer, counts)?;
+                counts = [0; LOCAL_COUNT];
+            }
+            // println!("new tile: {:?}", (*x, *y));
+            writer.write_u32::<LittleEndian>(*x)?;
+            writer.write_u32::<LittleEndian>(*y)?;
+            cur_tile_id = Some((*x, *y));
+        }
+
+        data.all_ints.push(*entity_ref);
+        counts[*entity_type as usize] += 1;
+    }
+
+    if cur_tile_id.is_some() {
+        dump_counts(writer, counts)?;
     }
 
     Ok(())
 }
 
-fn save_refs<'a, I>(writer: &mut dyn Write, refs: I, data: &mut BufferedData) -> Result<()>
+fn save_refs<'a, I, N>(writer: &mut dyn Write, refs: I, data: &mut BufferedData) -> Result<()>
 where
-    I: Iterator<Item = &'a usize>,
+    N: ConvertableToU32 + Copy + 'static,
+    I: Iterator<Item = &'a N>,
 {
     let offset = data.all_ints.len();
     for r in refs {
-        data.all_ints.push(to_u32_safe(*r)?);
+        data.all_ints.push(r.to_u32_safe()?);
     }
-    writer.write_u32::<LittleEndian>(to_u32_safe(offset)?)?;
-    writer.write_u32::<LittleEndian>(to_u32_safe(data.all_ints.len() - offset)?)?;
+    writer.write_u32::<LittleEndian>(offset.to_u32_safe()?)?;
+    writer.write_u32::<LittleEndian>((data.all_ints.len() - offset).to_u32_safe()?)?;
     Ok(())
 }
 
@@ -155,7 +174,7 @@ impl BufferedData {
     }
 
     fn save(&self, writer: &mut dyn Write) -> Result<()> {
-        writer.write_u32::<LittleEndian>(to_u32_safe(self.all_ints.len())?)?;
+        writer.write_u32::<LittleEndian>(self.all_ints.len().to_u32_safe()?)?;
         for i in &self.all_ints {
             writer.write_u32::<LittleEndian>(*i)?;
         }
@@ -164,18 +183,19 @@ impl BufferedData {
     }
 }
 
-fn get_tile_references(entity_storages: &EntityStorages) -> TileIdToReferences {
+fn get_tile_references(entity_storages: &EntityStorages) -> Result<TileIdToReferences> {
     let mut result = TileIdToReferences::default();
 
     let nodes = &entity_storages.node_storage.get_entities();
     for (i, node) in nodes.iter().enumerate() {
-        result.tile_ref_by_node(node).local_node_ids.insert(i);
+        let node_tile = tile::coords_to_max_zoom_tile(node);
+        result.insert((node_tile.x, node_tile.y, LOCAL_NODE, i.to_u32_safe()?));
     }
 
     for (i, way) in entity_storages.way_storage.get_entities().iter().enumerate() {
         let node_ids = way.node_ids.iter().map(|idx| &nodes[*idx]);
 
-        insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_way_ids, i);
+        insert_entity_id_to_tiles(&mut result, node_ids, LOCAL_WAY, i)?;
     }
 
     let polygons = &entity_storages.polygon_storage;
@@ -185,23 +205,23 @@ fn get_tile_references(entity_storages: &EntityStorages) -> TileIdToReferences {
             .iter()
             .flat_map(move |poly_id| polygons[*poly_id].iter())
             .map(|idx| &nodes[*idx]);
-        insert_entity_id_to_tiles(&mut result, node_ids, |x| &mut x.local_multipolygon_ids, i);
+        insert_entity_id_to_tiles(&mut result, node_ids, LOCAL_MULTIPOLYGON, i)?;
     }
 
-    result
+    Ok(result)
 }
 
 fn insert_entity_id_to_tiles<'a, I>(
     result: &mut TileIdToReferences,
     mut nodes: I,
-    get_refs: impl Fn(&mut TileReferences) -> &mut BTreeSet<usize>,
+    entity_type: u8,
     entity_id: usize,
-) where
+) -> Result<()> where
     I: Iterator<Item = &'a RawNode>,
 {
     let first_node = match nodes.next() {
         Some(n) => n,
-        _ => return,
+        _ => return Ok(()),
     };
 
     let first_tile = tile::coords_to_max_zoom_tile(first_node);
@@ -220,16 +240,30 @@ fn insert_entity_id_to_tiles<'a, I>(
     }
     for x in tile_range.min_x..=tile_range.max_x {
         for y in tile_range.min_y..=tile_range.max_y {
-            get_refs(result.tile_ref_by_xy(x, y)).insert(entity_id);
+            result.insert((x, y, entity_type, entity_id.to_u32_safe()?));
         }
+    }
+
+    Ok(())
+}
+
+trait ConvertableToU32 {
+    fn to_u32_safe(self) -> Result<u32>;
+}
+
+impl ConvertableToU32 for usize {
+    fn to_u32_safe(self) -> Result<u32> {
+        if self > (u32::max_value() as usize) {
+            bail!("{} doesn't fit into u32", self);
+        }
+        Ok(self as u32)
     }
 }
 
-fn to_u32_safe(num: usize) -> Result<u32> {
-    if num > (u32::max_value() as usize) {
-        bail!("{} doesn't fit into u32", num);
+impl ConvertableToU32 for u32 {
+    fn to_u32_safe(self) -> Result<u32> {
+        Ok(self)
     }
-    Ok(num as u32)
 }
 
 #[cfg(test)]
@@ -292,11 +326,7 @@ mod tests {
 
         let mut tile_refs = TileIdToReferences::default();
         for (idx, &(x, y)) in tile_ids.iter().enumerate() {
-            tile_refs.refs.entry((x, y)).or_insert(TileReferences {
-                local_node_ids: [idx].iter().cloned().collect(),
-                local_way_ids: BTreeSet::default(),
-                local_multipolygon_ids: BTreeSet::default(),
-            });
+            tile_refs.insert((x, y, LOCAL_NODE, idx as u32));
         }
 
         let mut tmp_path = env::temp_dir();
