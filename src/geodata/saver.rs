@@ -24,15 +24,15 @@ pub(super) fn save_to_internal_format(writer: &mut dyn Write, entity_storages: &
     save_nodes(writer, nodes, &mut buffered_data)?;
 
     let ways = &entity_storages.way_storage.get_entities();
-    save_ways(writer, &ways, &mut buffered_data)?;
+    save_ways(writer, ways, &mut buffered_data)?;
 
     let polygons = &entity_storages.polygon_storage;
-    save_polygons(writer, &polygons, &mut buffered_data)?;
+    save_polygons(writer, polygons, &mut buffered_data)?;
 
     let multipolygons = &entity_storages.multipolygon_storage.get_entities();
-    save_multipolygons(writer, &multipolygons, &mut buffered_data)?;
+    save_multipolygons(writer, multipolygons, &mut buffered_data)?;
 
-    let tile_references = get_tile_references(&entity_storages);
+    let tile_references = get_tile_references(entity_storages);
     save_tile_references(writer, &tile_references, &mut buffered_data)?;
 
     buffered_data.save(writer)?;
@@ -124,7 +124,7 @@ where
 fn save_tags(writer: &mut dyn Write, tags: &BTreeMap<String, String>, data: &mut BufferedData) -> Result<()> {
     let mut kv_refs = RawRefs::new();
 
-    for (ref k, ref v) in tags.iter() {
+    for (k, v) in tags.iter() {
         let (k_offset, k_length) = data.add_string(k);
         let (v_offset, v_length) = data.add_string(v);
         kv_refs.extend([k_offset, k_length, v_offset, v_length].iter());

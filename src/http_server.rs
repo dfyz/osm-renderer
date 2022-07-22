@@ -84,29 +84,27 @@ pub fn run_server(
     let tcp_listener = TcpListener::bind(address).context(format!("Failed to bind to {}", address))?;
     let mut thread_id = 0;
 
-    for tcp_stream in tcp_listener.incoming() {
-        if let Ok(mut stream) = tcp_stream {
-            let path = match extract_path_from_stream(&mut stream) {
-                Ok(path) => path,
-                Err(e) => {
-                    eprintln!("{} didn't send a valid HTTP request: {}", peer_addr(&stream), e);
-                    continue;
-                }
-            };
-
-            if path == "/shutdown" {
-                eprintln!("Shutting down due to a shutdown request");
-                for sender in senders {
-                    sender.send(HandlerMessage::Terminate).unwrap();
-                }
-                break;
+    for mut stream in tcp_listener.incoming().flatten() {
+        let path = match extract_path_from_stream(&mut stream) {
+            Ok(path) => path,
+            Err(e) => {
+                eprintln!("{} didn't send a valid HTTP request: {}", peer_addr(&stream), e);
+                continue;
             }
+        };
 
-            senders[thread_id]
-                .send(HandlerMessage::ServeTile { path, stream })
-                .unwrap();
-            thread_id = (thread_id + 1) % senders.len();
+        if path == "/shutdown" {
+            eprintln!("Shutting down due to a shutdown request");
+            for sender in senders {
+                sender.send(HandlerMessage::Terminate).unwrap();
+            }
+            break;
         }
+
+        senders[thread_id]
+            .send(HandlerMessage::ServeTile { path, stream })
+            .unwrap();
+        thread_id = (thread_id + 1) % senders.len();
     }
 
     for h in handlers {
@@ -139,7 +137,7 @@ impl<'a> HttpServer<'a> {
             return Ok(());
         }
 
-        let tile = match extract_tile_from_path(&path) {
+        let tile = match extract_tile_from_path(path) {
             Some(tile) => tile,
             _ => bail!("<{}> doesn't look like a valid tile ID", path),
         };
@@ -197,7 +195,7 @@ fn serve_data(stream: &mut TcpStream, data: &[u8], content_type: &str) {
     // reason (e.g. the user scrolls the map). We're not interested in reporting these errors,
     // but there's no point in continuing after a write fails either.
     if stream.write_all(header.as_bytes()).is_ok() {
-        let _ = stream.write_all(&data);
+        let _ = stream.write_all(data);
     }
 }
 

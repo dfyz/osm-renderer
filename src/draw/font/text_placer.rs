@@ -69,7 +69,7 @@ impl TextPlacer {
                         .map(|idx| {
                             let from = &points[idx - 1];
                             let to = &points[idx];
-                            from.dist(&to)
+                            from.dist(to)
                         })
                         .sum();
 
@@ -275,7 +275,7 @@ fn compute_way_position(points: &[Point], advance_by: f64) -> WayPosition {
         if seg_dist >= to_travel {
             let from = &points[point_idx];
             let to = &points[point_idx + 1];
-            let ratio = to_travel / from.dist(&to);
+            let ratio = to_travel / from.dist(to);
             let coord_dist = |from_c, to_c| (f64::from(from_c) + (f64::from(to_c - from_c) * ratio));
             return WayPosition {
                 x: coord_dist(from.x, to.x),

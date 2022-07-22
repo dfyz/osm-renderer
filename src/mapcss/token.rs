@@ -142,11 +142,11 @@ impl<'a> Tokenizer<'a> {
             Ok(self.read_identifier(idx))
         } else if ch == '"' {
             self.read_string(idx + 1)
-        } else if is_digit(ch) || ch == '+' || ch == '.' {
+        } else if ch.is_ascii_digit() || ch == '+' || ch == '.' {
             self.read_number(ch)
         } else if ch == '-' {
             match self.peek_char() {
-                Some(next_ch) if is_digit(next_ch) => self.read_number(ch),
+                Some(next_ch) if next_ch.is_ascii_digit() => self.read_number(ch),
                 Some(next_ch) if can_continue_identifier(next_ch) => Ok(self.read_identifier(idx)),
                 _ => self.lexer_error("Expected a valid number or identifier after '-'"),
             }
@@ -500,10 +500,6 @@ fn can_continue_identifier(ch: char) -> bool {
         ch if can_start_identifier(ch) => true,
         _ => false,
     }
-}
-
-fn is_digit(ch: char) -> bool {
-    ch.is_digit(10)
 }
 
 fn with_pos(token: Token<'_>, position: InputPosition) -> TokenWithPosition<'_> {

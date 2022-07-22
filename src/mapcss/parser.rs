@@ -221,7 +221,7 @@ impl fmt::Display for Rule {
 }
 
 pub fn parse_file(base_path: &Path, file_name: &str) -> Result<Vec<Rule>> {
-    let content = read_stylesheet(base_path, &file_name)?;
+    let content = read_stylesheet(base_path, file_name)?;
     let mut parser = Parser {
         tokenizer: Tokenizer::new(&content),
         base_path: base_path.to_owned(),

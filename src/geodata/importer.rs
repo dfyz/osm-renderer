@@ -73,13 +73,10 @@ pub(super) struct EntityStorages {
 
 fn print_storage_stats(entity_storages: &EntityStorages) {
     println!(
-        "Got {} so far",
-        format!(
-            "{} nodes, {} ways and {} multipolygon relations",
-            entity_storages.node_storage.entities.len(),
-            entity_storages.way_storage.entities.len(),
-            entity_storages.multipolygon_storage.entities.len()
-        )
+        "Got {} nodes, {} ways and {} multipolygon relations so far",
+        entity_storages.node_storage.entities.len(),
+        entity_storages.way_storage.entities.len(),
+        entity_storages.multipolygon_storage.entities.len()
     );
 }
 
@@ -252,7 +249,7 @@ fn process_element<R: Read>(
                 parser,
             )?;
             if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
-                let segments = relation.to_segments(&entity_storages);
+                let segments = relation.to_segments(entity_storages);
                 if let Some(polygons) = find_polygons_in_multipolygon(relation.global_id, &segments) {
                     let mut multipolygon = Multipolygon {
                         global_id: relation.global_id,
