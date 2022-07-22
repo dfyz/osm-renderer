@@ -22,14 +22,34 @@ impl Icon {
 
         let mut pixels = Vec::<RgbaColor>::default();
         let mut raw_pixels = vec![0; reader.output_buffer_size()];
-        let info = reader.next_frame(&mut raw_pixels).context("Failed to read PNG pixels")?;
+        let info = reader
+            .next_frame(&mut raw_pixels)
+            .context("Failed to read PNG pixels")?;
 
         let mut idx = 0;
         while idx < info.buffer_size() {
             let (r, g, b, a, idx_delta) = match info.color_type {
-                ColorType::Rgb => (raw_pixels[idx], raw_pixels[idx + 1], raw_pixels[idx + 2], u8::max_value(), 3),
-                ColorType::Rgba => (raw_pixels[idx], raw_pixels[idx + 1], raw_pixels[idx + 2], raw_pixels[idx + 3], 4),
-                ColorType::GrayscaleAlpha => (raw_pixels[idx], raw_pixels[idx], raw_pixels[idx], raw_pixels[idx + 1], 2),
+                ColorType::Rgb => (
+                    raw_pixels[idx],
+                    raw_pixels[idx + 1],
+                    raw_pixels[idx + 2],
+                    u8::max_value(),
+                    3,
+                ),
+                ColorType::Rgba => (
+                    raw_pixels[idx],
+                    raw_pixels[idx + 1],
+                    raw_pixels[idx + 2],
+                    raw_pixels[idx + 3],
+                    4,
+                ),
+                ColorType::GrayscaleAlpha => (
+                    raw_pixels[idx],
+                    raw_pixels[idx],
+                    raw_pixels[idx],
+                    raw_pixels[idx + 1],
+                    2,
+                ),
                 unknown_color => bail!("Unknown color type: {:?}", unknown_color),
             };
             pixels.push(RgbaColor::from_components(r, g, b, a));
