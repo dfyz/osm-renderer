@@ -14,15 +14,19 @@ use std::path::Path;
 use xml::attribute::OwnedAttribute;
 use xml::reader::{EventReader, XmlEvent};
 
-pub fn import(input: &str, output: &str) -> Result<()> {
-    let output_file = File::create(output).context(format!("Failed to open {} for writing", output))?;
-
+pub fn import<P: AsRef<Path>>(input: P, output: P) -> Result<()> {
+    let output_file = File::create(output.as_ref()).context(format!(
+        "Failed to open {} for writing",
+        output.as_ref().to_string_lossy()
+    ))?;
     let mut writer = BufWriter::new(output_file);
-    let path = Path::new(input);
 
-    let parsed = match path.extension().and_then(OsStr::to_str) {
+    let parsed = match input.as_ref().extension().and_then(OsStr::to_str) {
         Some("osm") | Some("xml") => {
-            let input_file = File::open(input).context(format!("Failed to open {} for reading", input))?;
+            let input_file = File::open(input.as_ref()).context(format!(
+                "Failed to open {} for reading",
+                input.as_ref().to_string_lossy()
+            ))?;
             let parser = EventReader::new(BufReader::new(input_file));
             parse_osm_xml(parser)?
         }

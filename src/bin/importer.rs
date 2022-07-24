@@ -1,4 +1,15 @@
+use anyhow::Result;
 use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+fn import(input: &Path, tmp_output: &Path, output: &Path) -> Result<()> {
+    println!("Importing OSM data from {}", input.to_string_lossy());
+    renderer::geodata::importer::import(input, tmp_output)?;
+    fs::rename(tmp_output, output)?;
+
+    Ok(())
+}
 
 fn main() {
     let args: Vec<_> = env::args().collect();
@@ -9,14 +20,20 @@ fn main() {
         std::process::exit(1);
     }
 
-    let input = &args[1];
-    let output = &args[2];
+    let input = PathBuf::from(&args[1]);
+    let output = PathBuf::from(&args[2]);
 
-    println!("Importing from {} to {}", input, output);
+    let mut tmp_output = output.clone();
+    tmp_output.set_extension("tmp");
 
-    match renderer::geodata::importer::import(input, output) {
-        Ok(_) => println!("All good"),
+    match import(&input, &tmp_output, &output) {
+        Ok(_) => println!("Successfully imported OSM data to {}", output.to_string_lossy()),
         Err(err) => {
+            // Make a best-effort attempt to remove the unfinished mess
+            // we may have potentially left behind, deliberately ignoring
+            // the error.
+            let _ = fs::remove_file(tmp_output);
+
             for cause in err.chain() {
                 eprintln!("{}", cause);
             }
