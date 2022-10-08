@@ -31,7 +31,7 @@ pub fn import<P: AsRef<Path>>(input: P, output: P) -> Result<()> {
             parse_osm_xml(parser)?
         }
         #[cfg(feature = "pbf")]
-        Some("pbf") => parse_pbf(input)?,
+        Some("pbf") => parse_pbf(input.as_ref().to_str().unwrap())?,
         _ => bail!("Extension not supported"),
     };
 
