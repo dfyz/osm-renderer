@@ -85,7 +85,7 @@ fn print_storage_stats(entity_storages: &EntityStorages) {
 }
 
 #[cfg(feature = "pbf")]
-fn parse_pbf(input: &str) -> Result<EntityStorages> {
+fn parse_pbf<P: AsRef<Path>>(input: P) -> Result<EntityStorages> {
     let mut entity_storages = EntityStorages {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
