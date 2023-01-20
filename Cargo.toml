@@ -10,13 +10,16 @@ anyhow = "*"
 byteorder = "*"
 memmap = "*"
 num_cpus = "*"
-osmpbf = { version = "*", optional = true }
 owning_ref = "*"
 png = "*"
 tini = "*"
 stb_truetype = "*"
 xml-rs = "*"
 indexmap = "*"
+
+[dependencies.osmpbf]
+version = "*"
+optional = true
 
 [features]
 perf-stats = []
