@@ -59,7 +59,7 @@ impl Rasterizer {
             let x_to = x_largest.floor() as i32;
             for x in (x_smallest.floor() as i32)..=x_to {
                 let x_left = f64::from(x).max(x_smallest);
-                let x_next = f64::from(x + 1) as f64;
+                let x_next = f64::from(x + 1);
                 let x_right = x_next.min(x_largest);
 
                 let mut pixel_area = (x_next - x_right) * y_delta;
