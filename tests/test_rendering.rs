@@ -66,7 +66,7 @@ fn compare_png_outputs(zoom: u8, suffix: &str) {
 }
 
 fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32, scale: usize) {
-    let bin_file = common::get_test_path(&["osm", &format!("nano_moscow_{}.bin", zoom)]);
+    let bin_file = common::get_test_path(&["osm", &format!("nano_moscow_{}_{}.bin", zoom, scale)]);
     renderer::geodata::importer::import(&common::get_test_path(&["osm", "nano_moscow.osm"]), &bin_file).unwrap();
     let reader = renderer::geodata::reader::GeodataReader::load(&bin_file).unwrap();
     let base_path = common::get_test_path(&["mapcss"]);
