@@ -1,0 +1,23 @@
+name: CI checks
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  run-ci:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run tests
+      run: cargo test --release
