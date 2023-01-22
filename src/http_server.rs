@@ -47,12 +47,13 @@ pub fn run_server(
         perf_stats: Mutex::new(PerfStats::default()),
     });
 
-    let thread_count = num_cpus::get();
+    let thread_count =
+        thread::available_parallelism().context("Failed to determine the number of threads to use for rendering")?;
 
     let mut senders: Vec<Sender<HandlerMessage>> = Vec::new();
     let mut receivers: Vec<Receiver<HandlerMessage>> = Vec::new();
 
-    for _ in 0..thread_count {
+    for _ in 0..thread_count.into() {
         let (tx, rx) = mpsc::channel();
         senders.push(tx);
         receivers.push(rx);

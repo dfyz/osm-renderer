@@ -401,7 +401,6 @@ dependencies = [
  "byteorder",
  "indexmap",
  "memmap",
- "num_cpus",
  "osmpbf",
  "owning_ref",
  "png",
