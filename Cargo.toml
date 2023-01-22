@@ -8,13 +8,13 @@ license = "MIT"
 [dependencies]
 anyhow = "*"
 byteorder = "*"
+indexmap = "*"
 memmap = "*"
 owning_ref = "*"
 png = "*"
-tini = "*"
 stb_truetype = "*"
+tini = "*"
 xml-rs = "*"
-indexmap = "*"
 
 [dependencies.osmpbf]
 version = "*"
