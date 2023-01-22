@@ -38,10 +38,7 @@ fn test_parsing_is_idempotent() {
     let mapnik_path = get_test_path(&["mapcss", "mapnik.parsed.canonical"]);
 
     let mut canonical = String::new();
-    File::open(mapnik_path)
-        .unwrap()
-        .read_to_string(&mut canonical)
-        .unwrap();
+    File::open(mapnik_path).unwrap().read_to_string(&mut canonical).unwrap();
     let rules = parse_file(Path::new(&mapnik_base_path), "mapnik.parsed.canonical").unwrap();
 
     let rules_str = rules.iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join("\n\n");
