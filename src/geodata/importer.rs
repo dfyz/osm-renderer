@@ -5,7 +5,7 @@ use anyhow::{anyhow, bail, Context, Result};
 #[cfg(feature = "pbf")]
 use osmpbf::{Element, ElementReader, RelMemberType};
 use quick_xml::events::attributes::Attributes;
-use quick_xml::events::Event;
+use quick_xml::events::{BytesStart, Event};
 use quick_xml::reader::Reader;
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -199,20 +199,24 @@ fn parse_osm_xml<R: BufRead>(mut parser: Reader<R>) -> Result<EntityStorages> {
         let e = parser
             .read_event_into(&mut buf)
             .context("Failed to parse the input file")?;
+        let mut on_elem = |start: BytesStart, have_subelements: bool| -> Result<()> {
+            process_element(
+                &mut parser,
+                start.local_name().as_ref(),
+                &mut start.attributes(),
+                &mut entity_storages,
+                have_subelements,
+            )?;
+            elem_count += 1;
+            if elem_count % 100_000 == 0 {
+                print_storage_stats(&entity_storages);
+            }
+            Ok(())
+        };
         match e {
             Event::Eof => break,
-            Event::Start(start) => {
-                process_element(
-                    start.local_name().as_ref(),
-                    &mut start.attributes(),
-                    &mut entity_storages,
-                    &mut parser,
-                )?;
-                elem_count += 1;
-                if elem_count % 100_000 == 0 {
-                    print_storage_stats(&entity_storages);
-                }
-            }
+            Event::Start(start) => on_elem(start, true)?,
+            Event::Empty(start) => on_elem(start, false)?,
             _ => {}
         }
         // The official `quick-xml` examples suggests we do this to save memory.
@@ -225,10 +229,11 @@ fn parse_osm_xml<R: BufRead>(mut parser: Reader<R>) -> Result<EntityStorages> {
 }
 
 fn process_element<R: BufRead>(
+    parser: &mut Reader<R>,
     name: &[u8],
     attrs: &mut Attributes,
     entity_storages: &mut EntityStorages,
-    parser: &mut Reader<R>,
+    have_subelements: bool,
 ) -> Result<()> {
     match name {
         b"node" => {
@@ -238,7 +243,9 @@ fn process_element<R: BufRead>(
                 lon: parse_required_attr(parser, name, attrs, b"lon")?,
                 tags: RawTags::default(),
             };
-            process_subelements(name, &mut node, entity_storages, process_node_subelement, parser)?;
+            if have_subelements {
+                process_subelements(name, &mut node, entity_storages, process_node_subelement, parser)?;
+            }
             entity_storages.node_storage.add(node.global_id, node);
         }
         b"way" => {
@@ -247,7 +254,9 @@ fn process_element<R: BufRead>(
                 node_ids: RawRefs::default(),
                 tags: RawTags::default(),
             };
-            process_subelements(name, &mut way, entity_storages, process_way_subelement, parser)?;
+            if have_subelements {
+                process_subelements(name, &mut way, entity_storages, process_way_subelement, parser)?;
+            }
             postprocess_node_refs(&mut way.node_ids);
             entity_storages.way_storage.add(way.global_id, way);
         }
@@ -257,13 +266,15 @@ fn process_element<R: BufRead>(
                 way_refs: Vec::<RelationWayRef>::default(),
                 tags: RawTags::default(),
             };
-            process_subelements(
-                name,
-                &mut relation,
-                entity_storages,
-                process_relation_subelement,
-                parser,
-            )?;
+            if have_subelements {
+                process_subelements(
+                    name,
+                    &mut relation,
+                    entity_storages,
+                    process_relation_subelement,
+                    parser,
+                )?;
+            }
             if relation.tags.iter().any(|(k, v)| k == "type" && v == "multipolygon") {
                 let segments = relation.to_segments(entity_storages);
                 if let Some(polygons) = find_polygons_in_multipolygon(relation.global_id, &segments) {
@@ -306,7 +317,7 @@ where
         match e {
             Event::Eof => break,
             Event::End(end) if end.local_name().as_ref() == entity_name => break,
-            Event::Start(start) => subelement_processor(
+            Event::Start(start) | Event::Empty(start) => subelement_processor(
                 parser,
                 entity,
                 entity_storages,
