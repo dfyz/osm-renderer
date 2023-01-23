@@ -4,6 +4,10 @@ use crate::geodata::saver::save_to_internal_format;
 use anyhow::{anyhow, bail, Context, Result};
 #[cfg(feature = "pbf")]
 use osmpbf::{Element, ElementReader, RelMemberType};
+use quick_xml::events::attributes::Attributes;
+use quick_xml::events::Event;
+use quick_xml::reader::Reader;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::collections::{BTreeMap, HashMap};
 use std::ffi::OsStr;
@@ -11,8 +15,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
-use xml::attribute::OwnedAttribute;
-use xml::reader::{EventReader, XmlEvent};
 
 pub fn import<P: AsRef<Path>>(input: P, output: P) -> Result<()> {
     let output_file = File::create(output.as_ref()).context(format!(
@@ -27,7 +29,7 @@ pub fn import<P: AsRef<Path>>(input: P, output: P) -> Result<()> {
                 "Failed to open {} for reading",
                 input.as_ref().to_string_lossy()
             ))?;
-            let parser = EventReader::new(BufReader::new(input_file));
+            let parser = Reader::from_reader(BufReader::new(input_file));
             parse_osm_xml(parser)?
         }
         #[cfg(feature = "pbf")]
@@ -181,7 +183,7 @@ fn parse_pbf<P: AsRef<Path>>(input: P) -> Result<EntityStorages> {
     Ok(entity_storages)
 }
 
-fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> {
+fn parse_osm_xml<R: BufRead>(mut parser: Reader<R>) -> Result<EntityStorages> {
     let mut entity_storages = EntityStorages {
         node_storage: OsmEntityStorage::new(),
         way_storage: OsmEntityStorage::new(),
@@ -192,12 +194,20 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> 
     let mut elem_count = 0;
 
     println!("Parsing XML");
+    let mut buf = Vec::new();
     loop {
-        let e = parser.next().context("Failed to parse the input file")?;
+        let e = parser
+            .read_event_into(&mut buf)
+            .context("Failed to parse the input file")?;
         match e {
-            XmlEvent::EndDocument => break,
-            XmlEvent::StartElement { name, attributes, .. } => {
-                process_element(&name.local_name, &attributes, &mut entity_storages, &mut parser)?;
+            Event::Eof => break,
+            Event::Start(start) => {
+                process_element(
+                    start.local_name().as_ref(),
+                    &mut start.attributes(),
+                    &mut entity_storages,
+                    &mut parser,
+                )?;
                 elem_count += 1;
                 if elem_count % 100_000 == 0 {
                     print_storage_stats(&entity_storages);
@@ -205,6 +215,8 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> 
             }
             _ => {}
         }
+        // The official `quick-xml` examples suggests we do this to save memory.
+        buf.clear();
     }
 
     print_storage_stats(&entity_storages);
@@ -212,26 +224,26 @@ fn parse_osm_xml<R: Read>(mut parser: EventReader<R>) -> Result<EntityStorages> 
     Ok(entity_storages)
 }
 
-fn process_element<R: Read>(
-    name: &str,
-    attrs: &[OwnedAttribute],
+fn process_element<R: BufRead>(
+    name: &[u8],
+    attrs: &mut Attributes,
     entity_storages: &mut EntityStorages,
-    parser: &mut EventReader<R>,
+    parser: &mut Reader<R>,
 ) -> Result<()> {
     match name {
-        "node" => {
+        b"node" => {
             let mut node = RawNode {
-                global_id: get_id(name, attrs)?,
-                lat: parse_required_attr(name, attrs, "lat")?,
-                lon: parse_required_attr(name, attrs, "lon")?,
+                global_id: get_id(parser, name, attrs)?,
+                lat: parse_required_attr(parser, name, attrs, b"lat")?,
+                lon: parse_required_attr(parser, name, attrs, b"lon")?,
                 tags: RawTags::default(),
             };
             process_subelements(name, &mut node, entity_storages, process_node_subelement, parser)?;
             entity_storages.node_storage.add(node.global_id, node);
         }
-        "way" => {
+        b"way" => {
             let mut way = RawWay {
-                global_id: get_id(name, attrs)?,
+                global_id: get_id(parser, name, attrs)?,
                 node_ids: RawRefs::default(),
                 tags: RawTags::default(),
             };
@@ -239,9 +251,9 @@ fn process_element<R: Read>(
             postprocess_node_refs(&mut way.node_ids);
             entity_storages.way_storage.add(way.global_id, way);
         }
-        "relation" => {
+        b"relation" => {
             let mut relation = RawRelation {
-                global_id: get_id(name, attrs)?,
+                global_id: get_id(parser, name, attrs)?,
                 way_refs: Vec::<RelationWayRef>::default(),
                 tags: RawTags::default(),
             };
@@ -275,29 +287,35 @@ fn process_element<R: Read>(
     Ok(())
 }
 
-fn process_subelements<E: Default, R: Read, F>(
-    entity_name: &str,
+fn process_subelements<E: Default, R: BufRead, F>(
+    entity_name: &[u8],
     entity: &mut E,
     entity_storages: &EntityStorages,
     subelement_processor: F,
-    parser: &mut EventReader<R>,
+    parser: &mut Reader<R>,
 ) -> Result<()>
 where
-    F: Fn(&mut E, &EntityStorages, &str, &[OwnedAttribute]) -> Result<()>,
+    F: Fn(&mut Reader<R>, &mut E, &EntityStorages, &[u8], &mut Attributes) -> Result<()>,
 {
+    let mut buf = Vec::new();
     loop {
-        let e = parser.next().context(format!(
+        let e = parser.read_event_into(&mut buf).context(format!(
             "Failed to parse the input file when processing {}",
-            entity_name
+            ascii_name_as_str(entity_name)
         ))?;
         match e {
-            XmlEvent::EndDocument => break,
-            XmlEvent::EndElement { ref name } if name.local_name == *entity_name => break,
-            XmlEvent::StartElement { name, attributes, .. } => {
-                subelement_processor(entity, entity_storages, &name.local_name, &attributes)?
-            }
+            Event::Eof => break,
+            Event::End(end) if end.local_name().as_ref() == entity_name => break,
+            Event::Start(start) => subelement_processor(
+                parser,
+                entity,
+                entity_storages,
+                start.local_name().as_ref(),
+                &mut start.attributes(),
+            )?,
             _ => {}
         }
+        buf.clear();
     }
     Ok(())
 }
@@ -323,95 +341,125 @@ fn postprocess_node_refs(refs: &mut RawRefs) {
     *refs = refs_without_duplicates;
 }
 
-fn process_node_subelement(
+fn process_node_subelement<R: BufRead>(
+    parser: &mut Reader<R>,
     node: &mut RawNode,
     _: &EntityStorages,
-    sub_name: &str,
-    sub_attrs: &[OwnedAttribute],
+    sub_name: &[u8],
+    sub_attrs: &mut Attributes,
 ) -> Result<()> {
-    try_add_tag(sub_name, sub_attrs, &mut node.tags).map(|_| ())
+    try_add_tag(parser, sub_name, sub_attrs, &mut node.tags).map(|_| ())
 }
 
-fn process_way_subelement(
+fn process_way_subelement<R: BufRead>(
+    parser: &mut Reader<R>,
     way: &mut RawWay,
     entity_storages: &EntityStorages,
-    sub_name: &str,
-    sub_attrs: &[OwnedAttribute],
+    sub_name: &[u8],
+    sub_attrs: &mut Attributes,
 ) -> Result<()> {
-    if try_add_tag(sub_name, sub_attrs, &mut way.tags)? {
+    if try_add_tag(parser, sub_name, sub_attrs, &mut way.tags)? {
         return Ok(());
     }
-    if sub_name == "nd" {
-        if let Some(r) = get_ref(sub_name, sub_attrs, &entity_storages.node_storage)? {
+    if sub_name == b"nd" {
+        if let Some(r) = get_ref(parser, sub_name, sub_attrs, &entity_storages.node_storage)? {
             way.node_ids.push(r);
         }
     }
     Ok(())
 }
 
-fn process_relation_subelement(
+fn process_relation_subelement<R: BufRead>(
+    parser: &mut Reader<R>,
     relation: &mut RawRelation,
     entity_storages: &EntityStorages,
-    sub_name: &str,
-    sub_attrs: &[OwnedAttribute],
+    sub_name: &[u8],
+    sub_attrs: &mut Attributes,
 ) -> Result<()> {
-    if try_add_tag(sub_name, sub_attrs, &mut relation.tags)? {
+    if try_add_tag(parser, sub_name, sub_attrs, &mut relation.tags)? {
         return Ok(());
     }
-    if sub_name == "member" && get_required_attr(sub_name, sub_attrs, "type")? == "way" {
-        if let Some(r) = get_ref(sub_name, sub_attrs, &entity_storages.way_storage)? {
-            let is_inner = get_required_attr(sub_name, sub_attrs, "role")? == "inner";
+    if sub_name == b"member" && get_required_attr(parser, sub_name, sub_attrs, b"type")? == "way" {
+        if let Some(r) = get_ref(parser, sub_name, sub_attrs, &entity_storages.way_storage)? {
+            let is_inner = get_required_attr(parser, sub_name, sub_attrs, b"role")? == "inner";
             relation.way_refs.push(RelationWayRef { way_id: r, is_inner });
         }
     }
     Ok(())
 }
 
-fn get_required_attr<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], attr_name: &str) -> Result<&'a String> {
-    attrs
-        .iter()
-        .filter(|x| x.name.local_name == attr_name)
-        .map(|x| &x.value)
-        .next()
-        .ok_or_else(|| anyhow!("Element {} doesn't have required attribute: {}", elem_name, attr_name))
+fn ascii_name_as_str(elem_name: &[u8]) -> &str {
+    std::str::from_utf8(elem_name).unwrap_or("N/A")
 }
 
-fn parse_required_attr<T>(elem_name: &str, attrs: &[OwnedAttribute], attr_name: &str) -> Result<T>
+fn get_required_attr<'a, R: BufRead>(
+    parser: &mut Reader<R>,
+    elem_name: &[u8],
+    attrs: &mut Attributes<'a>,
+    attr_name: &[u8],
+) -> Result<Cow<'a, str>> {
+    for attr in attrs {
+        let attr = attr?;
+        if attr.key.local_name().as_ref() == attr_name {
+            return Ok(attr.decode_and_unescape_value(parser)?);
+        }
+    }
+    Err(anyhow!(
+        "Element {} doesn't have required attribute: {}",
+        ascii_name_as_str(elem_name),
+        ascii_name_as_str(attr_name)
+    ))
+}
+
+fn parse_required_attr<T, R: BufRead>(
+    parser: &mut Reader<R>,
+    elem_name: &[u8],
+    attrs: &mut Attributes,
+    attr_name: &[u8],
+) -> Result<T>
 where
     T: std::str::FromStr,
     T::Err: std::error::Error + Send + Sync + 'static,
 {
-    let value = get_required_attr(elem_name, attrs, attr_name)?;
+    let value = get_required_attr(parser, elem_name, attrs, attr_name)?;
 
     let parsed_value = value.parse::<T>().context(format!(
         "Failed to parse the value of attribute {} ({}) for element {}",
-        attr_name, value, elem_name
+        ascii_name_as_str(attr_name),
+        value,
+        ascii_name_as_str(elem_name)
     ))?;
 
     Ok(parsed_value)
 }
 
-fn get_ref<E: Default>(
-    elem_name: &str,
-    attrs: &[OwnedAttribute],
+fn get_ref<E: Default, R: BufRead>(
+    parser: &mut Reader<R>,
+    elem_name: &[u8],
+    attrs: &mut Attributes,
     storage: &OsmEntityStorage<E>,
 ) -> Result<Option<usize>> {
-    let reference = parse_required_attr(elem_name, attrs, "ref")?;
+    let reference = parse_required_attr(parser, elem_name, attrs, b"ref")?;
     Ok(storage.translate_id(reference))
 }
 
-fn try_add_tag<'a>(elem_name: &str, attrs: &'a [OwnedAttribute], tags: &mut RawTags) -> Result<bool> {
-    if elem_name != "tag" {
+fn try_add_tag<R: BufRead>(
+    parser: &mut Reader<R>,
+    elem_name: &[u8],
+    attrs: &mut Attributes,
+    tags: &mut RawTags,
+) -> Result<bool> {
+    if elem_name != b"tag" {
         return Ok(false);
     }
-    let key = get_required_attr(elem_name, attrs, "k")?;
-    let value = get_required_attr(elem_name, attrs, "v")?;
-    tags.insert(key.clone(), value.clone());
+    let key = get_required_attr(parser, elem_name, attrs, b"k")?;
+    let value = get_required_attr(parser, elem_name, attrs, b"v")?;
+    tags.insert(key.to_string(), value.to_string());
     Ok(true)
 }
 
-fn get_id(elem_name: &str, attrs: &[OwnedAttribute]) -> Result<u64> {
-    parse_required_attr(elem_name, attrs, "id")
+fn get_id<R: BufRead>(parser: &mut Reader<R>, elem_name: &[u8], attrs: &mut Attributes) -> Result<u64> {
+    parse_required_attr(parser, elem_name, attrs, b"id")
 }
 
 pub(super) type RawRefs = Vec<usize>;

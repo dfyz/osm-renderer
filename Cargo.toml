@@ -12,9 +12,9 @@ indexmap = "*"
 memmap = "*"
 owning_ref = "*"
 png = "*"
+quick-xml = "*"
 stb_truetype = "*"
 tini = "*"
-xml-rs = "*"
 
 [dependencies.osmpbf]
 version = "*"
