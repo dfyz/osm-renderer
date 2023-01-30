@@ -319,9 +319,9 @@ impl<'a> ObjectStorages<'a> {
         let int_count = LittleEndian::read_u32(rest) as usize;
         let start_pos = mem::size_of::<u32>();
         let end_pos = start_pos + mem::size_of::<u32>() * int_count;
+        let byte_seq = &rest[start_pos..end_pos];
+        let int_ptr = byte_seq.as_ptr() as *const u32;
         let ints = unsafe {
-            let byte_seq = &rest[start_pos..end_pos];
-            let int_ptr = byte_seq.as_ptr() as *const u32;
             slice::from_raw_parts(int_ptr, int_count)
         };
         let strings = &rest[end_pos..];
