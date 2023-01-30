@@ -2,7 +2,7 @@
 name = "renderer"
 version = "1.0.0"
 authors = ["Ivan Komarov <Ivan.Komarov@dfyz.info>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [dependencies]
