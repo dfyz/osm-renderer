@@ -2,14 +2,14 @@ use crate::coords::Coords;
 use crate::tile;
 use anyhow::{Context, Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use memmap::{Mmap, MmapOptions};
-use owning_ref::OwningHandle;
+use memmap2::{Mmap, MmapOptions};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::mem;
+use std::ops::Deref;
 use std::slice;
 use std::str;
 
@@ -36,7 +36,8 @@ pub trait OsmArea {
 }
 
 pub struct GeodataReader<'a> {
-    handle: GeodataHandle<'a>,
+    storages: ObjectStorages<'a>,
+    _mmap: Mmap,
 }
 
 impl<'a> GeodataReader<'a> {
@@ -48,10 +49,12 @@ impl<'a> GeodataReader<'a> {
                 .context(format!("Failed to map {} to memory", file_name))?
         };
 
-        let handle = OwningHandle::new_with_fn(Box::new(mmap), |mm| {
-            Box::new(ObjectStorages::from_bytes(unsafe { &*mm }))
-        });
-        Ok(GeodataReader { handle })
+        let raw_mmap_bytes = mmap.deref() as *const [u8];
+        // `raw_mmap_bytes` points to bytes that are destroyed when `mmap` is dropped.
+        // The bytes are only ever accessed from `storages`, which is bundled together with `mmap`
+        // in `GeodataReader`. Therefore, `mmap` is still not dropped whenever we access the bytes.
+        let storages = ObjectStorages::from_bytes(unsafe { &*raw_mmap_bytes });
+        Ok(GeodataReader { storages, _mmap: mmap })
     }
 
     pub fn get_entities_in_tile_with_neighbors(
@@ -248,7 +251,7 @@ impl<'a> GeodataReader<'a> {
     }
 
     fn storages(&self) -> &ObjectStorages<'a> {
-        &self.handle
+        &self.storages
     }
 }
 
@@ -319,11 +322,9 @@ impl<'a> ObjectStorages<'a> {
         let int_count = LittleEndian::read_u32(rest) as usize;
         let start_pos = mem::size_of::<u32>();
         let end_pos = start_pos + mem::size_of::<u32>() * int_count;
-        let ints = unsafe {
-            let byte_seq = &rest[start_pos..end_pos];
-            let int_ptr = byte_seq.as_ptr() as *const u32;
-            slice::from_raw_parts(int_ptr, int_count)
-        };
+        let byte_seq = &rest[start_pos..end_pos];
+        let int_ptr = byte_seq.as_ptr() as *const u32;
+        let ints = unsafe { slice::from_raw_parts(int_ptr, int_count) };
         let strings = &rest[end_pos..];
 
         ObjectStorages {
@@ -337,8 +338,6 @@ impl<'a> ObjectStorages<'a> {
         }
     }
 }
-
-type GeodataHandle<'a> = OwningHandle<Box<Mmap>, Box<ObjectStorages<'a>>>;
 
 pub struct Tags<'a> {
     kv_refs: &'a [u32],
