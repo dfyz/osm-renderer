@@ -2,7 +2,7 @@ use crate::coords::Coords;
 use crate::tile;
 use anyhow::{Context, Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-use memmap::{Mmap, MmapOptions};
+use memmap2::{Mmap, MmapOptions};
 use owning_ref::OwningHandle;
 use std::cmp::Ordering;
 use std::collections::HashSet;
