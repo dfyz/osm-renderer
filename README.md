@@ -36,3 +36,7 @@ You can use the `@2x` suffix to request [high-resolution tiles](https://wiki.ope
 The rendering style is based on [MAPS.ME](https://github.com/mapsme/omim).
 
 ![London centre](/samples/london_2x.png)
+
+## Caveats
+
+The font renderer used in this project is very rudimentary, and only supports a limited number of scripts that are included in [Noto Sans](https://fonts.google.com/noto/specimen/Noto+Sans) (namely, Latin, Greek, and Cyrillic).
