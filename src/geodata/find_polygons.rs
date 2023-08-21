@@ -34,46 +34,27 @@ pub(super) fn find_polygons_in_multipolygon(
     relation_segments: &[NodeDescPair],
 ) -> Option<Vec<Polygon>> {
     let connections = get_connections(relation_segments);
-    let mut unmatched_count = relation_segments.len();
     let mut available_segments = vec![true; relation_segments.len()];
-    let mut all_rings = Vec::new();
-
-    while unmatched_count > 0 {
-        match find_ring(relation_segments, &connections, &mut available_segments) {
-            Some(ring) => {
-                unmatched_count -= ring.len();
-                all_rings.push(ring);
+    find_rings(relation_id, relation_segments, &connections, &mut available_segments).map(|all_rings| {
+        let mut polygons = Vec::new();
+        for ring in all_rings {
+            let mut polygon = Polygon::default();
+            for idx in 0..ring.len() {
+                let seg = &relation_segments[ring[idx]];
+                if idx == 0 {
+                    polygon.push(seg.node1.id);
+                }
+                let last_node = polygon[polygon.len() - 1];
+                polygon.push(if last_node == seg.node1.id {
+                    seg.node2.id
+                } else {
+                    seg.node1.id
+                });
             }
-            None => {
-                eprintln!(
-                    "Relation #{} is not a valid multipolygon (built {} complete rings, but {} segments are unmatched)",
-                    relation_id,
-                    all_rings.len(),
-                    unmatched_count,
-                );
-                return None;
-            }
+            polygons.push(polygon);
         }
-    }
-
-    let mut polygons = Vec::new();
-    for ring in all_rings {
-        let mut polygon = Polygon::default();
-        for idx in 0..ring.len() {
-            let seg = &relation_segments[ring[idx]];
-            if idx == 0 {
-                polygon.push(seg.node1.id);
-            }
-            let last_node = polygon[polygon.len() - 1];
-            polygon.push(if last_node == seg.node1.id {
-                seg.node2.id
-            } else {
-                seg.node1.id
-            });
-        }
-        polygons.push(polygon);
-    }
-    Some(polygons)
+        polygons
+    })
 }
 
 struct SearchParams {
@@ -126,19 +107,16 @@ impl<'a> CurrentRing<'a> {
         self.used_segments.push(seg.segment_index);
         self.used_vertices.insert(seg.other_side);
     }
-
-    fn exclude_segment(&mut self, seg: &ConnectedSegment) {
-        self.available_segments[seg.segment_index] = true;
-        self.used_segments.pop();
-        self.used_vertices.remove(&seg.other_side);
-    }
 }
 
-fn find_ring(
+fn find_rings(
+    relation_id: u64,
     relation_segments: &[NodeDescPair],
     connections: &SegmentConnections,
     available_segments: &mut Vec<bool>,
-) -> Option<Vec<usize>> {
+) -> Option<Vec<Vec<usize>>> {
+    let mut res = Vec::new();
+    let mut unmatched_count = relation_segments.len();
     for start_idx in 0..available_segments.len() {
         if !available_segments[start_idx] {
             continue;
@@ -146,81 +124,73 @@ fn find_ring(
 
         available_segments[start_idx] = false;
 
-        {
-            let start_segment = &relation_segments[start_idx];
-            let mut ring = CurrentRing {
-                available_segments,
-                used_segments: vec![start_idx],
-                used_vertices: [start_segment.node1.pos, start_segment.node2.pos]
-                    .iter()
-                    .cloned()
-                    .collect(),
-            };
-            let search_params = SearchParams {
-                first_pos: start_segment.node1.pos,
-                is_inner: start_segment.is_inner,
-            };
+        let start_segment = &relation_segments[start_idx];
+        let mut ring = CurrentRing {
+            available_segments,
+            used_segments: vec![start_idx],
+            used_vertices: [start_segment.node1.pos, start_segment.node2.pos]
+                .iter()
+                .cloned()
+                .collect(),
+        };
+        let search_params = SearchParams {
+            first_pos: start_segment.node1.pos,
+            is_inner: start_segment.is_inner,
+        };
 
-            if find_ring_from(start_segment.node2.pos, &search_params, connections, &mut ring) {
-                return Some(ring.used_segments);
-            }
+        if !find_ring_from(start_segment.node2.pos, &search_params, connections, &mut ring) {
+            eprintln!(
+                "Relation #{} is not a valid multipolygon (built {} complete rings, but {} segments are unmatched)",
+                relation_id,
+                res.len(),
+                unmatched_count,
+            );
+            return None;
         }
 
-        available_segments[start_idx] = true;
+        unmatched_count -= ring.used_segments.len();
+        res.push(ring.used_segments);
+    }
+
+    Some(res)
+}
+
+fn find_next_segment<'a>(
+    from_pos: NodePos,
+    search_params: &SearchParams,
+    connections: &'a SegmentConnections,
+    ring: &CurrentRing<'_>,
+) -> Option<&'a ConnectedSegment> {
+    if let Some(segs) = connections.get(&from_pos) {
+        for seg in segs.iter() {
+            let can_use = seg.is_inner == search_params.is_inner && ring.available_segments[seg.segment_index];
+            let is_duplicate =
+                ring.used_vertices.contains(&seg.other_side) && seg.other_side != search_params.first_pos;
+            if can_use && !is_duplicate {
+                return Some(seg);
+            }
+        }
     }
 
     None
 }
 
-enum SearchStackElement<'a> {
-    Root,
-    StartSegment(&'a ConnectedSegment),
-    EndSegment(&'a ConnectedSegment),
-}
-
-fn push_next_segments<'a>(
-    from_pos: NodePos,
-    search_params: &SearchParams,
-    connections: &'a SegmentConnections,
-    ring: &mut CurrentRing<'_>,
-    stack: &mut Vec<SearchStackElement<'a>>,
-) {
-    if let Some(segs) = connections.get(&from_pos) {
-        for seg in segs.iter().rev() {
-            let can_use = seg.is_inner == search_params.is_inner && ring.available_segments[seg.segment_index];
-            let is_duplicate =
-                ring.used_vertices.contains(&seg.other_side) && seg.other_side != search_params.first_pos;
-            if can_use && !is_duplicate {
-                stack.push(SearchStackElement::EndSegment(seg));
-                stack.push(SearchStackElement::StartSegment(seg));
-            }
-        }
-    }
-}
-
 fn find_ring_from(
-    last_pos: NodePos,
+    mut start_pos: NodePos,
     search_params: &SearchParams,
     connections: &SegmentConnections,
     ring: &mut CurrentRing<'_>,
 ) -> bool {
-    let mut candidate_stack = vec![SearchStackElement::Root];
-
-    while let Some(current) = candidate_stack.pop() {
-        match current {
-            SearchStackElement::Root => {
-                push_next_segments(last_pos, search_params, connections, ring, &mut candidate_stack)
-            }
-            SearchStackElement::StartSegment(seg) => {
+    loop {
+        match find_next_segment(start_pos, search_params, connections, ring) {
+            Some(seg) => {
                 ring.include_segment(seg);
-                if search_params.first_pos == seg.other_side && ring.used_segments.len() >= 3 {
-                    return true;
+                if search_params.first_pos == seg.other_side {
+                    return ring.used_segments.len() >= 3;
                 }
-                push_next_segments(seg.other_side, search_params, connections, ring, &mut candidate_stack);
+                start_pos = seg.other_side;
             }
-            SearchStackElement::EndSegment(seg) => ring.exclude_segment(seg),
+            None => return false,
         }
     }
-
-    false
 }
