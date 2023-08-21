@@ -37,9 +37,9 @@ impl Drawer {
         }
     }
 
-    pub fn draw_tile<'a>(
+    pub fn draw_tile(
         &self,
-        entities: &OsmEntities<'a>,
+        entities: &OsmEntities<'_>,
         tile: &Tile,
         pixels: &mut TilePixels,
         scale: usize,
@@ -57,9 +57,9 @@ impl Drawer {
         }
     }
 
-    pub fn draw_to_pixels<'a>(
+    pub fn draw_to_pixels(
         &self,
-        entities: &OsmEntities<'a>,
+        entities: &OsmEntities<'_>,
         tile: &Tile,
         pixels: &mut TilePixels,
         scale: usize,
@@ -228,7 +228,7 @@ impl Drawer {
     ) {
         {
             let _m = crate::perf_stats::measure("Label areas");
-            for &(ref area, ref style) in areas {
+            for (area, style) in areas {
                 match area {
                     StyledArea::Way(way) => self.labeler.label_entity(
                         *way,

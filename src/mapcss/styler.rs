@@ -298,8 +298,8 @@ where
     };
 
     let get_color = |prop_name| match current_layer_map.get(prop_name) {
-        Some(&&PropertyValue::Color(ref color)) => Some(color.clone()),
-        Some(&&PropertyValue::Identifier(ref id)) => {
+        Some(&PropertyValue::Color(color)) => Some(color.clone()),
+        Some(&PropertyValue::Identifier(id)) => {
             let color = from_color_name(id.as_str());
             if color.is_none() {
                 warn(current_layer_map, prop_name, "unknown color");
@@ -313,7 +313,7 @@ where
     };
 
     let get_num = |prop_map: &'r PropertyMap<'r>, prop_name| match prop_map.get(prop_name) {
-        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
+        Some(&PropertyValue::Numbers(nums)) if nums.len() == 1 => Some(nums[0]),
         _ => {
             warn(prop_map, prop_name, "expected a number");
             None
@@ -321,7 +321,7 @@ where
     };
 
     let get_id = |prop_name| match current_layer_map.get(prop_name) {
-        Some(&&PropertyValue::Identifier(ref id)) => Some(id.as_str()),
+        Some(&PropertyValue::Identifier(id)) => Some(id.as_str()),
         _ => {
             warn(current_layer_map, prop_name, "expected an identifier");
             None
@@ -329,8 +329,8 @@ where
     };
 
     let get_string = |prop_name| match current_layer_map.get(prop_name) {
-        Some(&&PropertyValue::Identifier(ref id)) => Some(id.to_string()),
-        Some(&&PropertyValue::String(ref str)) => Some(str.to_string()),
+        Some(&PropertyValue::Identifier(id)) => Some(id.to_string()),
+        Some(&PropertyValue::String(str)) => Some(str.to_string()),
         _ => {
             warn(current_layer_map, prop_name, "expected a string");
             None
@@ -357,7 +357,7 @@ where
     };
 
     let get_dashes = |prop_name| match current_layer_map.get(prop_name) {
-        Some(&&PropertyValue::Numbers(ref nums)) => Some(nums.clone()),
+        Some(&PropertyValue::Numbers(nums)) => Some(nums.clone()),
         _ => {
             warn(current_layer_map, prop_name, "expected a sequence of numbers");
             None
@@ -370,7 +370,8 @@ where
         .and_then(|x| x.parse::<i64>().ok());
     let z_index = get_num(current_layer_map, "z-index").unwrap_or(default_z_index);
 
-    let is_foreground_fill = !matches!(current_layer_map.get("fill-position"), Some(&&PropertyValue::Identifier(ref id)) if *id == "background");
+    let is_foreground_fill =
+        !matches!(current_layer_map.get("fill-position"), Some(&PropertyValue::Identifier(id)) if *id == "background");
 
     let width = get_num(current_layer_map, "width");
 
@@ -378,7 +379,7 @@ where
         .or_else(|| base_layer_map.and_then(|prop_map| get_num(prop_map, "width")))
         .unwrap_or_default();
     let casing_only_width = match current_layer_map.get("casing-width") {
-        Some(&&PropertyValue::Numbers(ref nums)) if nums.len() == 1 => Some(nums[0]),
+        Some(&PropertyValue::Numbers(nums)) if nums.len() == 1 => Some(nums[0]),
         Some(&&PropertyValue::WidthDelta(num)) => Some(base_width_for_casing + num),
         _ => {
             warn(

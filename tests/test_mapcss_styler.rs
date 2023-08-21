@@ -36,7 +36,7 @@ fn test_styling() {
         styles
             .iter()
             .filter(|&&(w, _)| w.global_id() == id && w.tags().get_by_key("name") == Some(name))
-            .map(|&(_, ref s)| s)
+            .map(|(_, s)| s)
             .collect::<Vec<_>>()
     };
 

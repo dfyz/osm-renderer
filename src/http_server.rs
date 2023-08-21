@@ -44,7 +44,7 @@ pub fn run_server(
         reader: GeodataReader::load(geodata_file).context("Failed to load the geodata file")?,
         drawer: Drawer::new(&base_path),
         osm_ids,
-        perf_stats: Mutex::new(PerfStats::default()),
+        perf_stats: Mutex::new(PerfStats),
     });
 
     let thread_count =
