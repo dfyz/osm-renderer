@@ -116,8 +116,14 @@ pub struct PerfStats {
 }
 
 impl PerfStats {
+    pub fn new() -> PerfStats {
+        PerfStats {
+            stats_by_zoom: BTreeMap::new(),
+        }
+    }
+
     fn add_tile_stats(&mut self, tile_stats: TilePerfStats) {
-        let mut zoom_stats = self.stats_by_zoom.entry(tile_stats.zoom).or_default();
+        let zoom_stats = self.stats_by_zoom.entry(tile_stats.zoom).or_default();
         zoom_stats.root_element.add(&tile_stats.root_element);
         zoom_stats.count += 1;
     }

@@ -3,6 +3,10 @@ pub struct PerfStats;
 pub struct Measurer;
 
 impl PerfStats {
+    pub fn new() -> PerfStats {
+        PerfStats{}
+    }
+
     pub fn to_html(&self) -> String {
         unimplemented!("This dummy implementation doesn't support HTML rendering")
     }
