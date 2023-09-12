@@ -96,7 +96,7 @@ impl SummedPerfStatsElement {
             if let Some(our_child) = self.children.get_mut(other_child_name) {
                 our_child.add(other_child);
             } else {
-                let mut new_child = Box::new(SummedPerfStatsElement::default());
+                let mut new_child = Box::<SummedPerfStatsElement>::default();
                 new_child.add(other_child);
                 self.children.insert(other_child_name.clone(), new_child);
             }
@@ -117,7 +117,7 @@ pub struct PerfStats {
 
 impl PerfStats {
     fn add_tile_stats(&mut self, tile_stats: TilePerfStats) {
-        let mut zoom_stats = self.stats_by_zoom.entry(tile_stats.zoom).or_default();
+        let zoom_stats = self.stats_by_zoom.entry(tile_stats.zoom).or_default();
         zoom_stats.root_element.add(&tile_stats.root_element);
         zoom_stats.count += 1;
     }
