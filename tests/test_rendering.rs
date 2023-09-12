@@ -4,6 +4,7 @@ use renderer::draw::png_writer::rgb_triples_to_png;
 use renderer::draw::tile_pixels::{RgbTriples, TilePixels};
 use renderer::mapcss::parser::parse_file;
 use renderer::mapcss::styler::{StyleType, Styler};
+use renderer::perf_stats;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
@@ -79,12 +80,16 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32,
 
     let mut rendered_tiles: BTreeMap<u8, BTreeMap<u32, BTreeMap<u32, RgbTriples>>> = BTreeMap::new();
 
+    let mut perf_stats = perf_stats::PerfStats::default();
+
     let mut pixels = TilePixels::new(scale);
     for y in min_y..=max_y {
         for x in min_x..=max_x {
+            perf_stats::start_tile(zoom);
             let tile_to_draw = renderer::tile::Tile { zoom, x, y };
             let entities = reader.get_entities_in_tile_with_neighbors(&tile_to_draw, &None);
             let rendered = drawer.draw_to_pixels(&entities, &tile_to_draw, &mut pixels, scale, &styler);
+            perf_stats::finish_tile(&mut perf_stats);
             rendered_tiles
                 .entry(tile_to_draw.zoom)
                 .or_insert_with(Default::default)
@@ -120,6 +125,16 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32,
         } else {
             String::new()
         };
+
+        if cfg!(feature = "perf-stats") {
+            File::create(common::get_test_path(&[
+                "rendered",
+                &format!("perf_stats_{}{}.html", zoom, suffix),
+            ]))
+            .unwrap()
+            .write_all(perf_stats.to_html().as_bytes())
+            .unwrap();
+        }
 
         let png_output = File::create(common::get_test_path(&["rendered", &format!("{}{}.png", zoom, suffix)]));
 

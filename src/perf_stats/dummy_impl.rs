@@ -1,5 +1,9 @@
+use std::marker::PhantomData;
+
 #[derive(Default)]
-pub struct PerfStats;
+pub struct PerfStats {
+    _dummy: PhantomData<()>,
+}
 pub struct Measurer;
 
 impl PerfStats {
