@@ -14,10 +14,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        features: ["", "perf-stats"]
 
     runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v3
     - name: Run tests
-      run: cargo test --release
+      run: cargo test --release --features=${{ matrix.features }}
