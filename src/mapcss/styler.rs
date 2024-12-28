@@ -242,7 +242,7 @@ impl Styler {
     }
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::float_cmp))]
+#[expect(clippy::float_cmp)]
 fn compare_styled_entities<'a, E1, E2>(
     (a, a_style): &(&E1, Arc<Style>),
     (b, b_style): &(&E2, Arc<Style>),
@@ -528,7 +528,7 @@ fn get_layer_id(selector: &Selector) -> &str {
 
 const BASE_LAYER_NAME: &str = "default";
 
-impl<'a> StyleableEntity for Node<'a> {
+impl StyleableEntity for Node<'_> {
     fn default_z_index(&self) -> f64 {
         4.0
     }
@@ -556,13 +556,13 @@ impl<A: OsmArea> StyleableEntity for A {
     }
 }
 
-impl<'a> CacheableEntity for Node<'a> {
+impl CacheableEntity for Node<'_> {
     fn cache_slot(&self) -> usize {
         0
     }
 }
 
-impl<'a> CacheableEntity for Way<'a> {
+impl CacheableEntity for Way<'_> {
     fn cache_slot(&self) -> usize {
         if self.is_closed() {
             1
@@ -572,7 +572,7 @@ impl<'a> CacheableEntity for Way<'a> {
     }
 }
 
-impl<'a> CacheableEntity for Multipolygon<'a> {
+impl CacheableEntity for Multipolygon<'_> {
     fn cache_slot(&self) -> usize {
         3
     }

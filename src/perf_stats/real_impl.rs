@@ -188,7 +188,7 @@ fn dump_summed_perf_stats_element(
     }
 }
 
-thread_local!(static TLS_PERF_STATS: RefCell<Option<TilePerfStats>> = RefCell::new(None));
+thread_local!(static TLS_PERF_STATS: RefCell<Option<TilePerfStats>> = const { RefCell::new(None) });
 
 pub fn start_tile(zoom: u8) {
     TLS_PERF_STATS.with(|stats| stats.borrow_mut().replace(TilePerfStats::new(zoom)));

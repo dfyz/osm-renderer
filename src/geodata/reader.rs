@@ -57,11 +57,7 @@ impl<'a> GeodataReader<'a> {
         Ok(GeodataReader { storages, _mmap: mmap })
     }
 
-    pub fn get_entities_in_tile_with_neighbors(
-        &'a self,
-        t: &tile::Tile,
-        osm_ids: &Option<HashSet<u64>>,
-    ) -> OsmEntities {
+    pub fn get_entities_in_tile_with_neighbors(&self, t: &tile::Tile, osm_ids: &Option<HashSet<u64>>) -> OsmEntities {
         let mut entity_ids = OsmEntityIds::default();
 
         let deltas = [-1, 0, 1];
@@ -308,10 +304,10 @@ const POLYGON_SIZE: usize = INT_REF_SIZE;
 const WAY_OR_MULTIPOLYGON_SIZE: usize = mem::size_of::<u64>() + 2 * INT_REF_SIZE;
 const TILE_SIZE: usize = 2 * mem::size_of::<u32>() + 3 * INT_REF_SIZE;
 
-impl<'a> ObjectStorages<'a> {
+impl ObjectStorages<'_> {
     // All geodata members have sizes divisible by 4, so the u8* -> u32* cast should be safe,
     // provided that `bytes` is aligned to 4 bytes (if it's not, we're in trouble anyway).
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+    #[expect(clippy::cast_ptr_alignment)]
     fn from_bytes(bytes: &[u8]) -> ObjectStorages<'_> {
         let (node_storage, rest) = ObjectStorage::from_bytes(bytes, NODE_SIZE);
         let (way_storage, rest) = ObjectStorage::from_bytes(rest, WAY_OR_MULTIPOLYGON_SIZE);
@@ -445,7 +441,7 @@ pub struct Node<'a> {
 
 implement_osm_entity!(Node<'a>);
 
-impl<'a> Coords for Node<'a> {
+impl Coords for Node<'_> {
     fn lat(&self) -> f64 {
         let start_pos = mem::size_of::<u64>();
         LittleEndian::read_f64(&self.entity.bytes[start_pos..])
@@ -475,7 +471,7 @@ impl<'a> Way<'a> {
     }
 }
 
-impl<'a> OsmArea for Way<'a> {
+impl OsmArea for Way<'_> {
     fn is_closed(&self) -> bool {
         if self.node_count() <= 2 {
             return false;
@@ -520,7 +516,7 @@ impl<'a> Multipolygon<'a> {
     }
 }
 
-impl<'a> OsmArea for Multipolygon<'a> {
+impl OsmArea for Multipolygon<'_> {
     fn is_closed(&self) -> bool {
         true
     }

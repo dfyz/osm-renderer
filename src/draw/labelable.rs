@@ -12,7 +12,7 @@ pub trait Labelable {
     fn get_waypoints(&self, tile: &Tile, scale: f64) -> Option<Vec<Point>>;
 }
 
-impl<'n> Labelable for Node<'n> {
+impl Labelable for Node<'_> {
     fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
         let label_position = Point::from_node(self, tile, scale);
         Some((f64::from(label_position.x), f64::from(label_position.y)))
@@ -23,7 +23,7 @@ impl<'n> Labelable for Node<'n> {
     }
 }
 
-impl<'w> Labelable for Way<'w> {
+impl Labelable for Way<'_> {
     fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
         let polygon = nodes_to_points((0..self.node_count()).map(|idx| self.get_node(idx)), tile, scale);
         get_label_position(vec![polygon], scale)
@@ -38,7 +38,7 @@ impl<'w> Labelable for Way<'w> {
     }
 }
 
-impl<'r> Labelable for Multipolygon<'r> {
+impl Labelable for Multipolygon<'_> {
     fn get_label_position(&self, tile: &Tile, scale: f64) -> LabelPosition {
         let polygons = (0..self.polygon_count())
             .map(|poly_idx| {
@@ -106,13 +106,15 @@ impl Eq for Cell {}
 
 impl Ord for Cell {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        self.max_fitness
+            .partial_cmp(&other.max_fitness)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
 impl PartialOrd for Cell {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.max_fitness.partial_cmp(&other.max_fitness)
+        Some(self.cmp(other))
     }
 }
 
@@ -247,10 +249,10 @@ impl BoundingBox {
 }
 
 fn get_bounding_box(polygon: &[PointF]) -> BoundingBox {
-    let mut min_x = std::f64::INFINITY;
-    let mut max_x = std::f64::NEG_INFINITY;
-    let mut min_y = std::f64::INFINITY;
-    let mut max_y = std::f64::NEG_INFINITY;
+    let mut min_x = f64::INFINITY;
+    let mut max_x = f64::NEG_INFINITY;
+    let mut min_y = f64::INFINITY;
+    let mut max_y = f64::NEG_INFINITY;
 
     for point in polygon {
         min_x = min_x.min(point.0);
@@ -293,7 +295,7 @@ fn segment_dist_sq(point: &PointF, seg_start: &PointF, seg_end: &PointF) -> f64 
 
 fn point_to_polygon_dist(point: &PointF, polygons: &[Vec<PointF>]) -> f64 {
     let mut inside = false;
-    let mut min_dist_sq = std::f64::INFINITY;
+    let mut min_dist_sq = f64::INFINITY;
 
     for poly in polygons {
         for (a, b) in iterate_polygon(poly) {

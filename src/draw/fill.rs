@@ -74,7 +74,7 @@ fn draw_line(edge_idx: usize, p1: &Point, p2: &Point, y_to_edges: &mut EdgesByY,
         if cur_point.y >= min_y && cur_point.y <= max_y {
             let edge = y_to_edges
                 .entry(cur_point.y)
-                .or_insert_with(Default::default)
+                .or_default()
                 .entry(edge_idx)
                 .or_insert_with(|| Edge {
                     x_min: cur_point.x,

@@ -412,7 +412,7 @@ fn get_required_attr<'a, R: BufRead>(
     for attr in attrs {
         let attr = attr?;
         if attr.key.local_name().as_ref() == attr_name {
-            return Ok(attr.decode_and_unescape_value(parser)?);
+            return Ok(attr.decode_and_unescape_value(parser.decoder())?);
         }
     }
     Err(anyhow!(

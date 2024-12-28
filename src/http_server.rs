@@ -27,7 +27,7 @@ struct HandlerState {
     current_pixels: Box<TilePixels>,
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::implicit_hasher))]
+#[expect(clippy::implicit_hasher)]
 pub fn run_server(
     address: &str,
     geodata_file: &str,
@@ -123,7 +123,7 @@ struct HttpServer<'a> {
     perf_stats: Mutex<PerfStats>,
 }
 
-impl<'a> HttpServer<'a> {
+impl HttpServer<'_> {
     fn handle_connection(&self, path: &str, mut stream: TcpStream, state: &mut HandlerState) {
         match self.try_handle_connection(path, &mut stream, state) {
             Ok(_) => {}
