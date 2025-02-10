@@ -6,17 +6,17 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0.95"
-byteorder = "1.5.0"
-indexmap = "2.7.0"
-memmap2 = "0.9.5"
-png = "0.17.16"
-quick-xml = "0.37.1"
-stb_truetype = "0.3.1"
-tini = "1.3.0"
+anyhow = "*"
+byteorder = "*"
+indexmap = "*"
+memmap2 = "*"
+png = "*"
+quick-xml = "*"
+stb_truetype = "*"
+tini = "*"
 
 [dependencies.osmpbf]
-version = "0.3.4"
+version = "*"
 optional = true
 
 [features]
