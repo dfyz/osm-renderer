@@ -171,7 +171,7 @@ impl TilePixels {
                 let p = &self.pixels[self.local_coords_to_idx(x, y)];
                 let postdivide = |val| {
                     let mul = if p.a == 0.0 { 0.0 } else { val / p.a };
-                    (f64::from(u8::max_value()) * mul) as u8
+                    (f64::from(u8::MAX) * mul) as u8
                 };
                 triples.push((postdivide(p.r), postdivide(p.g), postdivide(p.b)));
             }
@@ -224,7 +224,7 @@ impl TilePixels {
 }
 
 fn component_to_opacity(comp: u8) -> f64 {
-    f64::from(comp) / f64::from(u8::max_value())
+    f64::from(comp) / f64::from(u8::MAX)
 }
 
 const EXTENDED_TILE_SIZE: usize = 3 * TILE_SIZE;

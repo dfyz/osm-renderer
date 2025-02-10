@@ -47,7 +47,7 @@ impl TileIdToReferences {
     }
 
     fn tile_ref_by_xy(&mut self, tile_x: u32, tile_y: u32) -> &mut TileReferences {
-        self.refs.entry((tile_x, tile_y)).or_insert_with(Default::default)
+        self.refs.entry((tile_x, tile_y)).or_default()
     }
 }
 
@@ -226,7 +226,7 @@ fn insert_entity_id_to_tiles<'a, I>(
 }
 
 fn to_u32_safe(num: usize) -> Result<u32> {
-    if num > (u32::max_value() as usize) {
+    if num > (u32::MAX as usize) {
         bail!("{} doesn't fit into u32", num);
     }
     Ok(num as u32)

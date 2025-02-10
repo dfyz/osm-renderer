@@ -29,13 +29,7 @@ impl Icon {
         let mut idx = 0;
         while idx < info.buffer_size() {
             let (r, g, b, a, idx_delta) = match info.color_type {
-                ColorType::Rgb => (
-                    raw_pixels[idx],
-                    raw_pixels[idx + 1],
-                    raw_pixels[idx + 2],
-                    u8::max_value(),
-                    3,
-                ),
+                ColorType::Rgb => (raw_pixels[idx], raw_pixels[idx + 1], raw_pixels[idx + 2], u8::MAX, 3),
                 ColorType::Rgba => (
                     raw_pixels[idx],
                     raw_pixels[idx + 1],

@@ -101,7 +101,7 @@ struct CurrentRing<'a> {
     used_vertices: HashSet<NodePos>,
 }
 
-impl<'a> CurrentRing<'a> {
+impl CurrentRing<'_> {
     fn include_segment(&mut self, seg: &ConnectedSegment) {
         self.available_segments[seg.segment_index] = false;
         self.used_segments.push(seg.segment_index);

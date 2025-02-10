@@ -41,7 +41,7 @@ impl Rasterizer {
         let y_max = y0.max(y1);
 
         for y in (y_min.floor() as i32)..=(y_max.floor() as i32) {
-            let current_stripes = self.stripes.entry(y).or_insert_with(Default::default);
+            let current_stripes = self.stripes.entry(y).or_default();
 
             let y_bottom = f64::from(y).max(y_min);
             let y_top = f64::from(y + 1).min(y_max);
@@ -124,8 +124,8 @@ impl Rasterizer {
                 }
             };
 
-            let mut x_min = i32::max_value();
-            let mut x_max = i32::min_value();
+            let mut x_min = i32::MAX;
+            let mut x_max = i32::MIN;
             if !stripe.a.is_empty() {
                 x_min = x_min.min(*stripe.a.keys().min().unwrap());
                 x_max = x_max.max(*stripe.a.keys().max().unwrap());

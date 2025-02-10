@@ -66,7 +66,7 @@ const ONE_LETTER_MATCH_TABLE: &[(char, Token<'static>)] = &[
     (',', Token::Comma),
 ];
 
-impl<'a> fmt::Display for Token<'a> {
+impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &((ch1, ch2), ref tok) in TWO_LETTER_MATCH_TABLE {
             if tok == self {
@@ -183,7 +183,7 @@ impl<'a> Tokenizer<'a> {
             }
 
             let import_text = match self.next_char_with_pos() {
-                Some((idx, ch)) if ch == '"' => match self.read_string(idx + 1)? {
+                Some((idx, '"')) => match self.read_string(idx + 1)? {
                     Token::String(text) => Ok(text),
                     _ => panic!("read_string() returned a non-string; this is a bug"),
                 },

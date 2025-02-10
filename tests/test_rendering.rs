@@ -92,9 +92,9 @@ fn test_rendering_zoom(zoom: u8, min_x: u32, max_x: u32, min_y: u32, max_y: u32,
             perf_stats::finish_tile(&mut perf_stats);
             rendered_tiles
                 .entry(tile_to_draw.zoom)
-                .or_insert_with(Default::default)
+                .or_default()
                 .entry(tile_to_draw.y)
-                .or_insert_with(Default::default)
+                .or_default()
                 .insert(tile_to_draw.x, rendered.triples);
         }
     }
